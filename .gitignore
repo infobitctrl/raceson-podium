@@ -1,0 +1,31 @@
+# Dependencies and build products
+node_modules/
+.next*/
+dist/
+out/
+coverage/
+*.tsbuildinfo
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Private runtime, recovery and evidence
+/tmp/
+/.migration/
+/.codex/
+/.agents/
+/demo/rewards/local/
+/docs/handoff/
+/docs/threads/
+/docs/delivery/
+*.dump
+*.sqlite
+*.sqlite3
+.DS_Store
