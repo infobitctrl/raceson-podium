@@ -1,8 +1,11 @@
-import {expect,it} from 'vitest';
+import {expect,it,vi,afterEach} from 'vitest';
+const mode=vi.hoisted(()=>({hostedCopy:false}));
+vi.mock('@/lib/public-env',()=>({publicEnv:mode}));
+afterEach(()=>{mode.hostedCopy=false;});
 import {createGuidedSetup} from '@raceson/domain/rewards/guided-setup-editor';
 import type {SavedRewardSetup} from '@raceson/domain/rewards/distribution-setup';
 import type {DirectoryCampaign} from '@raceson/domain/rewards/public-directory';
-import {savedCampaignNext,savedCampaignStatus,savedCampaignAction} from './savedCampaignPresentation';
+import {savedCampaignNext,savedCampaignStatus,savedCampaignAction,savedCampaignHref} from './savedCampaignPresentation';
 const id='73000000-0000-4000-8000-000000000001';
 const record:SavedRewardSetup={id,revision:1,chainId:10143,updatedAt:'2026-09-30T00:00:00.000Z',configuration:createGuidedSetup(()=>crypto.randomUUID()),lifecycle:{state:'funded',canDelete:false,archived:false}};
 const live:DirectoryCampaign={verified:true,selection:null,publishedAt:record.updatedAt,campaign:{id,name:'Synthetic race',chainId:10143,address:'0x'+'1'.repeat(40),budgetWei:'10',fundingHash:'0x'+'2'.repeat(64),blockNumber:'10',blockTimestamp:'100',pots:[{slot:1,name:'Race',amountWei:'10',state:3,paused:false,allocatedWei:'10',paidWei:'0',returnedWei:'0',remainingWei:'10',claimDeadline:'200',groups:[]}]}};
@@ -31,4 +34,13 @@ it('keeps sponsor actions role appropriate and does not claim availability on fa
  expect(savedCampaignAction(record,false)).toBe('Check distribution');
  expect(savedCampaignAction({...record,lifecycle:{state:'deposit',canDelete:false}},false)).toBe('Review source links');
  expect(savedCampaignAction({...record,lifecycle:{state:'draft',canDelete:true},configuration:{...record.configuration,stage:'draft'}},false)).toBe('Continue setup');
+});
+
+it('routes hosted saved drafts to funding without treating preview awards as paid',()=>{
+ mode.hostedCopy=true;const saved={...record,lifecycle:{state:'draft' as const,canDelete:true}};
+ expect(savedCampaignHref(saved)).toBe(`/rewards/campaigns/${id}`);
+ expect(savedCampaignStatus(saved,false)).toBe('Awaiting funding');
+ expect(savedCampaignAction(saved,false)).toBe('Continue to funding');
+ expect(savedCampaignNext(saved,false)).toBe('Sponsor · Continue to funding');
+ expect(savedCampaignStatus(record,false,false,live)).toBe('Last checked · Claims open');
 });

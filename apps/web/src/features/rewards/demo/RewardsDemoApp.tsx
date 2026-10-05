@@ -21,12 +21,14 @@ import DemoWorkspaceReady from "./DemoWorkspaceReady";
 import ClassicRewardFrame from "./portal/ClassicRewardFrame";
 import ClassicSourceEntry from "./portal/ClassicSourceEntry";
 
+const RewardWalletSettings = lazy(() => import("../screens/RewardWalletSettings"));
 const WalletAdministration = lazy(() => import("../screens/WalletAdministration"));
 const HostedCopyPreview = lazy(() => import("../screens/HostedCopyPreview"));
 const RewardReviewQueue = lazy(() => import("../screens/RewardReviewQueue"));
 const SponsorResultsHandoff = lazy(() => import("../screens/SponsorResultsHandoff"));
 const PublicSponsorCampaign = lazy(() => import("../screens/PublicSponsorCampaign"));
 const CopySponsorCampaign = lazy(() => import("../screens/CopySponsorCampaign"));
+const HostedSponsorFunding = lazy(() => import("../screens/HostedSponsorFunding"));
 const SponsorLaunch = lazy(() => import("../screens/SponsorLaunch"));
 const RewardsHome = lazy(() => import("../screens/PodiumHome"));
 const PodiumEvents = lazy(() => import("../screens/SponsorDiscovery"));
@@ -130,9 +132,10 @@ function DemoRoutes() {
         <Route path="/rewards/review" element={<RewardReviewQueue />} />
         <Route path="/rewards/manage/campaigns/:id" element={<SponsorResultsHandoff />} />
         <Route path="/rewards/campaigns/:id/public" element={<PublicSponsorCampaign />} />
-        <Route path="/rewards/campaigns/:id" element={publicEnv.hostedCopy?<CopySponsorCampaign/>:<SponsorLaunch />} />
+        <Route path="/rewards/campaigns/:id" element={publicEnv.hostedCopy?<HostedSponsorFunding/>:<SponsorLaunch />} />
         <Route path="/rewards/create" element={<ProgrammeEntry />} />
         <Route path="/rewards/manage" element={<ManageEntry />} />
+        <Route path="/rewards/wallet" element={<RewardWalletSettings />} />
         <Route path="/rewards/admin/wallets" element={<WalletAdministration />} />
         {/* Retired sporting-management entry points never mount the classic workspace. */}
         <Route path="/organizer" element={<Navigate to="/rewards" replace />} />
