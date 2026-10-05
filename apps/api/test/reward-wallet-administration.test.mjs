@@ -84,3 +84,21 @@ test('creation preparation checks master/CAS, verifies policy owner, then rechec
   if(['unauthorized','stale'].includes(scenario))assert.equal(lookup,0);assert.equal(x.writes,0);
  }
 });
+test('controller creation resolves its own native owner and current wallet without activating settings',async()=>{
+ const {prepareWalletCreation}=await import('../dist/features/rewards/wallet-administration.js');
+ const f=fixture();f.seed();const {readWalletAdministration}=await import('../dist/features/rewards/wallet-administration.js');
+ const before=await readWalletAdministration(identity,env,f.rpc);let seen;
+ const prepared=await prepareWalletCreation(identity,{role:'controller',expectedRevision:before.revision,expectedFingerprint:before.fingerprint},env,async(current,role)=>{seen={current,role};return current.controller.subject;},f.rpc);
+ assert.equal(seen.role,'controller');assert.equal(prepared.role,'controller');assert.equal(prepared.currentWalletAddress,controller.wallet);assert.equal(prepared.ownerSubject,controller.subject);assert.equal(f.writes,0);
+ await assert.rejects(()=>prepareWalletCreation(identity,{role:'sponsor',expectedRevision:before.revision,expectedFingerprint:before.fingerprint},env,async()=>{assert.fail('invalid role resolved');},f.rpc));
+});
+test('hosted creation cannot borrow the retained local gas wallet or change an existing journal signer',async()=>{
+ const hosted={...env,RACESON_REWARD_PORTAL_MODE:'testnet',SUPABASE_URL:'https://niklhlmljiikwbkrmapw.supabase.co',RACESON_REWARD_HOSTED_COPY_MODE:'sponsor-drafts-v1',RACESON_REWARD_HOSTED_OPERATIONS:'testnet-v1'};
+ let revision=0,settings=null;
+ const runtime=async(name,args)=>{assert.equal(name,'service_reward_demo_copy_wallet_operation');assert.equal(args.p_operation,'runtime');return {error:null,data:{revision,settings,controllers:[],deployments:[]}};};
+ assert.equal(await resolveDeploymentSigner(hosted,undefined,undefined,undefined,runtime),null);
+ revision=1;settings={deployment,controller};assert.equal(await resolveDeploymentSigner(hosted,undefined,undefined,undefined,runtime),null);
+ settings={deployment:replacement,controller:{...controller,wallet:a(3)}};assert.equal((await resolveDeploymentSigner(hosted,undefined,undefined,undefined,runtime)).address,replacement.address);
+ const pending=async(name)=>{assert.equal(name,'service_reward_sponsor_auto_deployment');return {error:null,data:{sender:deployment.address}};};
+ assert.equal(await resolveDeploymentSigner(hosted,identity,uuid(3),pending,runtime),null);
+});

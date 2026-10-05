@@ -47,8 +47,18 @@ it('loads native creation only after explicit master action and requires indepen
  render(<MemoryRouter><OperationalWalletRuntimeContext.Provider value={loader}><WalletAdministration/></OperationalWalletRuntimeContext.Provider></MemoryRouter>);
  fireEvent.click(await screen.findByRole('button',{name:'Replace deployment wallet'}));expect(loader).not.toHaveBeenCalled();expect(mock.prepare).not.toHaveBeenCalled();
  fireEvent.click(screen.getByRole('button',{name:'Create new wallet with Privy'}));fireEvent.click(await screen.findByRole('button',{name:'Use created wallet fixture'}));
- expect(mock.prepare).toHaveBeenCalledWith(snapshot);expect(screen.getByLabelText('New Privy wallet ID')).toHaveValue('created-id');expect(mock.review).not.toHaveBeenCalled();expect(mock.activate).not.toHaveBeenCalled();
+ expect(mock.prepare).toHaveBeenCalledWith(snapshot,'deployment');expect(screen.getByLabelText('New Privy wallet ID')).toHaveValue('created-id');expect(mock.review).not.toHaveBeenCalled();expect(mock.activate).not.toHaveBeenCalled();
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Verify replacement'})));expect(mock.review).toHaveBeenCalledWith(snapshot,'deployment','created-id');expect(screen.getByRole('button',{name:'Activate replacement'})).toBeDisabled();
+});
+it('controller creation selects the native controller role and still requires review and activation',async()=>{
+ mock.prepare.mockResolvedValue({ownerSubject:'did:privy:owner',role:'controller',currentWalletAddress:settings.controller.wallet,deployment:settings.deployment,revision:0,fingerprint:snapshot.fingerprint});
+ const loader=vi.fn().mockResolvedValue({default:({onSelected})=><button onClick={()=>onSelected('new-controller-id')}>Use created controller fixture</button>});
+ render(<MemoryRouter><OperationalWalletRuntimeContext.Provider value={loader}><WalletAdministration/></OperationalWalletRuntimeContext.Provider></MemoryRouter>);
+ await screen.findByRole('button',{name:'Replace deployment wallet'});fireEvent.mouseDown(screen.getByRole('tab',{name:'Controller authority'}),{button:0,ctrlKey:false});
+ fireEvent.click(screen.getByRole('button',{name:'Replace distribution controller'}));expect(mock.prepare).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Create new wallet with Privy'}));fireEvent.click(await screen.findByRole('button',{name:'Use created controller fixture'}));
+ expect(mock.prepare).toHaveBeenCalledWith(snapshot,'controller');expect(screen.getByLabelText('New Privy wallet ID')).toHaveValue('new-controller-id');expect(mock.review).not.toHaveBeenCalled();expect(mock.activate).not.toHaveBeenCalled();
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Verify replacement'})));expect(mock.review).toHaveBeenCalledWith(snapshot,'controller','new-controller-id');expect(screen.getByRole('button',{name:'Activate replacement'})).toBeDisabled();
 });
 it('failed creation preparation never starts the Privy SDK',async()=>{
  mock.prepare.mockRejectedValue(Error('access revoked'));const loader=vi.fn();

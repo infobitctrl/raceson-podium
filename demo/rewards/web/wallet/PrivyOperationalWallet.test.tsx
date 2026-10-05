@@ -42,3 +42,11 @@ it('does not hand off a wallet ID while provider metadata is still unavailable',
  expect(screen.getByRole('button',{name:'Use this wallet for verification'})).toBeDisabled();expect(screen.getByText(/Waiting for Privy’s wallet ID/)).toBeVisible();
 });
 it('sign-in never creates a wallet or grants access',()=>{mocks.authenticated=false;render(ui());fireEvent.click(screen.getByRole('button',{name:'Sign in with Privy'}));expect(mocks.login).toHaveBeenCalledTimes(1);expect(mocks.create).not.toHaveBeenCalled();expect(mocks.grant).not.toHaveBeenCalled();});
+it('controller creation remains native-owner controlled and grants no service signing permission',async()=>{
+ render(<Entry preparation={{...preparation,role:'controller',currentWalletAddress:address('1')}} onSelected={mocks.select} onBusy={mocks.busy}/>);
+ expect(mocks.create).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Create controller wallet · Privy'}));
+ await screen.findByText(address('2'));expect(mocks.create).toHaveBeenCalledWith({createAdditional:true});
+ expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:'Approve restricted access in Privy'})).not.toBeInTheDocument();
+ expect(mocks.grant).not.toHaveBeenCalled();expect(mocks.select).not.toHaveBeenCalledWith('wallet-2');
+ fireEvent.click(screen.getByRole('button',{name:'Use this wallet for verification'}));expect(mocks.select).toHaveBeenLastCalledWith('wallet-2');
+});

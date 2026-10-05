@@ -9,10 +9,11 @@ export const walletReviewSchema=z.object({candidate:walletSettingsSchema,fingerp
 export type WalletAdministration=z.infer<typeof walletAdministrationSchema>;
 export type WalletReview=z.infer<typeof walletReviewSchema>;
 export type WalletRole='deployment'|'controller';
-export const walletCreationPreparationSchema=z.object({ownerSubject:z.string().regex(/^did:privy:/),deployment,revision:z.number().int(),fingerprint}).strict();
+export const walletCreationPreparationSchema=z.object({ownerSubject:z.string().regex(/^did:privy:/),role:z.enum(['deployment','controller']).optional(),currentWalletAddress:address.optional(),deployment,revision:z.number().int(),fingerprint}).strict()
+ .refine(value=>value.role!=='controller'||Boolean(value.currentWalletAddress),'Controller creation requires its current wallet scope');
 export type WalletCreationPreparation=z.infer<typeof walletCreationPreparationSchema>;
 const path='/v1/rewards/admin/wallets';
 export const readWalletAdministration=async()=>walletAdministrationSchema.parse(await apiRequest({path,cache:'no-store'}));
-export const prepareWalletCreation=async(current:WalletAdministration)=>walletCreationPreparationSchema.parse(await apiRequest({path:`${path}/creation`,method:'POST',body:{expectedRevision:current.revision,expectedFingerprint:current.fingerprint}}));
+export const prepareWalletCreation=async(current:WalletAdministration,role:WalletRole='deployment')=>walletCreationPreparationSchema.parse(await apiRequest({path:`${path}/creation`,method:'POST',body:{...(role==='controller'?{role}:{}),expectedRevision:current.revision,expectedFingerprint:current.fingerprint}}));
 export async function reviewWalletReplacement(current:WalletAdministration,role:WalletRole,walletId:string){return walletReviewSchema.parse(await apiRequest({path,method:'POST',body:{action:'review',role,walletId,expectedRevision:current.revision,expectedFingerprint:current.fingerprint}}));}
 export async function activateWalletReplacement(current:WalletAdministration,role:WalletRole,walletId:string,review:WalletReview,reason:string){return walletAdministrationSchema.parse(await apiRequest({path,method:'POST',body:{action:'activate',role,walletId,expectedRevision:current.revision,expectedFingerprint:current.fingerprint,candidateFingerprint:review.fingerprint,reason}}));}

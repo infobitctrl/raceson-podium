@@ -2,7 +2,7 @@ import type {IncomingMessage,ServerResponse} from 'node:http';
 import {z} from 'zod';
 import type {OrganizerRewardRouteDependencies} from './organizer.js';
 import {readWalletAdministration,changeWalletAdministration,privyWalletVerifier,prepareWalletCreation,privyCreationOwner,type WalletCandidateVerifier,type WalletSettings} from '../../features/rewards/wallet-administration.js';
-type Deps=OrganizerRewardRouteDependencies&{walletEnvironment?:Record<string,string|undefined>;verifyWallet?:WalletCandidateVerifier;creationOwner?:(settings:WalletSettings)=>Promise<string>};
+type Deps=OrganizerRewardRouteDependencies&{walletEnvironment?:Record<string,string|undefined>;verifyWallet?:WalletCandidateVerifier;creationOwner?:(settings:WalletSettings,role:'deployment'|'controller')=>Promise<string>};
 export async function dispatchWalletAdministration(req:IncomingMessage,res:ServerResponse,url:URL,deps:Deps){
  const creation=url.pathname==='/api/v1/rewards/admin/wallets/creation';
  if(url.pathname!=='/api/v1/rewards/admin/wallets'&&!creation)return false;
