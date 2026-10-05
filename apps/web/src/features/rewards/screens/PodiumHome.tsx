@@ -10,7 +10,7 @@ import {setupAmount} from '../model/setupAmount';
 import PodiumDirectoryStatus from '../components/PodiumDirectoryStatus';
 import PodiumCampaigns from '../components/PodiumCampaigns';
 import PodiumPaymentRing from '../components/PodiumPaymentRing';
-import hero from '../assets/podium-hero.png';
+import hero from '../assets/sitrail-valley.jpeg';
 import s from '../components/Podium.module.css';
 export function DirectoryNotice({loading,error,retry}:{loading:boolean;error:boolean;retry:()=>void}){
  const {locale}=useI18n(),hr=locale==='hr';
@@ -32,7 +32,7 @@ export default function PodiumHome(){
    <p>{t('Fund prizes for RacesOn events. Verified athletes and clubs claim the rewards they earn.','Financirajte nagrade na RacesOn događajima. Provjereni sportaši i klubovi preuzimaju zaslužene nagrade.')}</p>
    <div className={s.heroActions}><Link className={s.primary} to="/rewards/events">{t('Sponsor an event','Sponzoriraj događaj')}<ArrowRight size={18}/></Link><Link className={s.secondary} to="/athlete/rewards">{t('Find my rewards','Pronađi moje nagrade')}</Link></div>
   </div>
-  <figure className={s.heroMedia}><img src={staticAssetUrl(hero)} alt=""/><figcaption><span>RacesOn Podium</span><strong>{t('Every finish deserves support.','Svaki cilj zaslužuje podršku.')}</strong></figcaption></figure>
+  <figure className={s.heroMedia}><img src={staticAssetUrl(hero)} alt={t('Torak Trail landscape through a stone arch','Krajolik Torak Traila kroz kameni luk')}/><figcaption><span>Torak Trail</span><strong>{t('Every finish deserves support.','Svaki cilj zaslužuje podršku.')}</strong></figcaption></figure>
  </section>
  <ol className={s.howItWorks} aria-label={t('How rewards work','Kako funkcioniraju nagrade')}>{[
   [Search,t('Discover','Istražite'),t('Pick an existing event','Odaberite postojeći događaj')],
