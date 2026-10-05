@@ -19,9 +19,9 @@ function fixture(){let seq=2000;const next=()=>id(seq++),catalogue=decodeStoredR
  const setup=bindGuidedSeason(createGuidedSetup(next),context,catalogue);
  return {next,catalogue,setup,selection:{record:{draftId:context.draftId},workspace:{catalogueHash:context.catalogueHash,catalogue}} as SetupEventSelection};
 }
-function Harness({initial,initialStep=1,campaign=false}:{initial:ReturnType<typeof fixture>;initialStep?:number;campaign?:boolean}){
+function Harness({initial,initialStep=1,campaign=false,copySource}:{initial:ReturnType<typeof fixture>;initialStep?:number;campaign?:boolean;copySource?:{name:string;slot:number}}){
  const [configuration,setConfiguration]=useState(initial.setup),[step,setStep]=useState(initialStep);
- return <MemoryRouter><GuidedRewardSetup campaign={campaign} configuration={configuration} onChange={setConfiguration} step={step} onStep={setStep} disabled={false} hr={false} selection={initial.selection} onLoaded={()=>{}} initialProgramme={null}
+ return <MemoryRouter><GuidedRewardSetup campaign={campaign} copySource={copySource} configuration={configuration} onChange={setConfiguration} step={step} onStep={setStep} disabled={false} hr={false} selection={initial.selection} onLoaded={()=>{}} initialProgramme={null}
  saveAction={<button>Save draft</button>} saveStatus="Unsaved changes" error={null} onFinish={()=>onFinish(finishRewardSetup(configuration))} canSave busy={false} revision={null}/><output data-testid="configuration">{JSON.stringify(configuration)}</output></MemoryRouter>;
 }
 const current=()=>JSON.parse(screen.getByTestId("configuration").textContent!) as RewardDistributionSetup;
@@ -131,4 +131,31 @@ it("campaign retains unsaved contribution review until saved",async()=>{
 
 it('preserves the last valid allocation when all prize weights would become zero',()=>{
  const initial=fixture();render(<Harness campaign initial={initial}/>);fireEvent.click(screen.getByRole('button',{name:/Reward rules/}));fireEvent.click(screen.getByRole('checkbox',{name:'Synthetic short · Female Individual'}));fireEvent.change(screen.getByLabelText('Synthetic short · Female prize positions'),{target:{value:'1'}});const before=current();fireEvent.change(screen.getByLabelText('Synthetic short · Female #1 weight'),{target:{value:'0'}});expect(screen.getByRole('alert')).toHaveTextContent('At least one prize weight must be greater than zero');expect(current()).toEqual(before);expect(current().root.children[0].children[0].rule!.sharesBps).toEqual([10000]);
+});
+
+
+it.each([1,5])('presents a single race independently through budget, rules and review (internal slot %s)',slot=>{
+ const initial=fixture(),name='Synthetic coastal race';
+ const selected=initial.setup.guided!.pots.find(p=>p.slot===slot)!;
+ initial.setup.root.children=initial.setup.root.children.map(n=>({...n,name:n.id===selected.nodeId?`Round ${slot}`:n.name,shareBps:n.id===selected.nodeId?10000:0}));
+ initial.setup.sponsorSelection={sourceLeagueId:id(701),sourceSeasonId:id(702),eventEditionId:id(703)};
+ initial.setup.budgetMon='';
+ render(<Harness campaign initial={initial} copySource={{name,slot}}/>);
+ const studio=within(screen.getByRole('article'));
+ expect(studio.getByRole('heading',{name:'Race prize pool'})).toBeVisible();
+ expect(studio.queryByText(/Each percentage is a share/)).not.toBeInTheDocument();
+ expect(studio.queryByLabelText(`Round ${slot} %`)).not.toBeInTheDocument();
+ expect(studio.queryByRole('button',{name:'Split rounds equally'})).not.toBeInTheDocument();
+ expect(studio.queryByText(`Round ${slot}`,{exact:true})).not.toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('Total budget · test MON'),{target:{value:'123.456'}});
+ expect(current().root).toEqual(initial.setup.root);
+ expect(current().guided).toEqual(initial.setup.guided);
+ expect(current().sponsorSelection).toEqual(initial.setup.sponsorSelection);
+ for(const step of ['Reward rules','Review']){
+  fireEvent.click(studio.getByRole('button',{name:new RegExp(step)}));
+  expect(studio.queryByLabelText('Reward pot')).not.toBeInTheDocument();
+  expect(studio.queryByText(`Round ${slot}`,{exact:true})).not.toBeInTheDocument();
+  expect(studio.getAllByText(name).length).toBeGreaterThan(1);
+ }
+ expect(current()).toEqual({...initial.setup,budgetMon:'123.456'});
 });
