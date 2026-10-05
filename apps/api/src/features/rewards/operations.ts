@@ -1,9 +1,10 @@
 import {createHash} from 'node:crypto';
 import {z} from 'zod';
-import {rewardSupportSettings,type RewardAccountIdentity,type RewardLedgerRpc} from '@raceson/db/rewards';
+import {rewardSupportSettings,hostedCopySupportRpc,type RewardAccountIdentity,type RewardLedgerRpc} from '@raceson/db/rewards';
+import {createAdminSupabaseClient,loadServerEnv} from '@raceson/db';
 import {decodeSupportSettings,type SupportSettings} from '@raceson/domain/rewards/operations';
 import {canonicalRewardJson} from '@raceson/rewards-chain';
-import {walletRuntime} from './wallet-administration.js';
+import {walletRuntime,hostedWalletEnvironment} from './wallet-administration.js';
 import {controllerPublicClient} from '@raceson/rewards-chain/canary-public-client';
 
 const common={expectedRevision:z.number().int().min(0).max(999999999),settings:z.unknown()};
@@ -12,7 +13,11 @@ const command=z.discriminatedUnion('action',[
  z.object({...common,action:z.literal('save'),requestId:z.string().uuid(),reviewFingerprint:z.string().regex(/^[0-9a-f]{64}$/),reason:z.string().trim().min(8).max(500)}).strict(),
 ]);
 export const supportFingerprint=(revision:number,settings:SupportSettings)=>createHash('sha256').update(canonicalRewardJson({revision,settings})).digest('hex');
+function supportRpc(identity:RewardAccountIdentity,rpc?:RewardLedgerRpc){
+ return hostedWalletEnvironment(process.env)?hostedCopySupportRpc(identity,rpc??((name,args)=>createAdminSupabaseClient(loadServerEnv(process.env)).rpc(name,args))):rpc;
+}
 export async function changeSupportSettings(identity:RewardAccountIdentity,input:unknown,rpc?:RewardLedgerRpc){
+ rpc=supportRpc(identity,rpc);
  const c=command.parse(input),settings=decodeSupportSettings(c.settings);
  // The repository owns CAS and exact retry semantics for writes.
  if(c.action==='save'){
@@ -28,10 +33,11 @@ export async function readSupportSettings(identity:RewardAccountIdentity,rpc?:Re
  if(!address)return null;
  return {address,balanceWei:(await controllerPublicClient.getBalance({address:address as `0x${string}`,blockTag:'latest'})).toString()};
 }){
- await rewardSupportSettings(identity,undefined,rpc);
+ const scoped=supportRpc(identity,rpc);
+ await rewardSupportSettings(identity,undefined,scoped);
  let gas:{address:string;balanceWei:string}|null=null;
  try{gas=await readGas();}catch{/* Settings remain readable when the chain is unavailable. */}
  // Recheck the session/authority and settings after the chain read.
- const fresh=await rewardSupportSettings(identity,undefined,rpc);
+ const fresh=await rewardSupportSettings(identity,undefined,scoped);
  return {...fresh,gas:gas?{...gas,low:fresh.settings.gasAlertWei===null?null:BigInt(gas.balanceWei)<BigInt(fresh.settings.gasAlertWei)}:null};
 }

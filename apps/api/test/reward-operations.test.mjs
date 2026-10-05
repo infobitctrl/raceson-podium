@@ -39,3 +39,18 @@ test('private endpoints reject foreign origin, anonymous, unauthorized and wrong
  f.revoke();await dispatchRewardOperations({method:'GET',headers:{}},res,url,deps);assert.equal(result.status,403);assert.equal(reads,0);
  await dispatchRewardOperations({method:'GET',headers:{}},res,url,{...deps,config:()=>({chainId:31337,origin:'http://127.0.0.1:3101'})});assert.equal(result.status,503);assert.equal(f.writes,0);
 });
+test('hosted support route uses the bounded transport and rechecks master access after gas reads',async()=>{
+ const patch={SUPABASE_URL:'https://niklhlmljiikwbkrmapw.supabase.co',RACESON_REWARD_PORTAL_MODE:'testnet',RACESON_REWARD_HOSTED_COPY_MODE:'sponsor-drafts-v1',RACESON_REWARD_HOSTED_OPERATIONS:'testnet-v1'};
+ const previous=Object.fromEntries(Object.keys(patch).map(k=>[k,process.env[k]]));Object.assign(process.env,patch);
+ try{
+  let allowed=true,calls=0,gasReads=0,output;
+  const rpc=async(name,args)=>{calls++;assert.equal(name,'service_reward_demo_copy_support_settings');assert.equal(args.p_actor_user_id,identity.userId);assert.equal(args.p_actor_session_id,identity.sessionId);
+   return allowed?{data:{revision:0,settings:{gasAlertWei:null,supportWallet:null,supportLimitWei:'0'},history:[]},error:null}:{data:null,error:{message:'reward_master_admin_required'}};};
+  const deps={config:()=>({chainId:10143,origin:'https://podium.raceson.com'}),rpc,requireIdentity:async()=>identity,
+   readGas:async()=>{gasReads++;allowed=false;return {address:settings.supportWallet,balanceWei:'0'};},
+   applyPrivateSessionHeaders(){},sendSuccess:(_r,data)=>output={status:200,data},sendError:(_r,status,code)=>output={status,code}};
+  const req={method:'GET',headers:{}},res={setHeader(){}},url=new URL('https://podium.raceson.com/api/v1/rewards/admin/support');
+  await dispatchRewardOperations(req,res,url,deps);assert.equal(output.status,403);assert.equal(calls,2);assert.equal(gasReads,1);
+  calls=0;gasReads=0;await dispatchRewardOperations(req,res,url,deps);assert.equal(output.status,403);assert.equal(calls,1);assert.equal(gasReads,0);
+ }finally{for(const [key,value]of Object.entries(previous)){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
+});

@@ -36,3 +36,12 @@ export function hostedCopyWalletRpc(rpc:RewardLedgerRpc):RewardLedgerRpc{
    p_payload:{expectedRevision:args.p_expected_revision,settings:args.p_settings,reason:args.p_reason,previousSettings:args.p_previous_settings}});
  };
 }
+/** Support policy is independent of wallet authority and never signs or pays. */
+export function hostedCopySupportRpc(identity:RewardAccountIdentity,rpc:RewardLedgerRpc):RewardLedgerRpc{
+ if(![identity.userId,identity.sessionId].every(setupId))throw Error('reward_account_session_required');
+ return (name,args)=>{
+  if(name!=='service_reward_support_settings'||args.p_actor_user_id!==identity.userId||args.p_actor_session_id!==identity.sessionId
+   ||Object.keys(args).some(k=>!['p_actor_user_id','p_actor_session_id','p_change'].includes(k)))throw Error('invalid_reward_support_settings');
+  return rpc('service_reward_demo_copy_support_settings',{p_actor_user_id:identity.userId,p_actor_session_id:identity.sessionId,p_change:args.p_change??null});
+ };
+}

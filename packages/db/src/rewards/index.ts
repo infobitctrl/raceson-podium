@@ -107,5 +107,5 @@ export {rewardCampaignBranding} from './campaign-branding.js';
 
 export {rewardSupportSettings,rewardReviewIssues} from './operations.js';
 export { hostedCopySponsor, type HostedSponsorAction, type HostedSponsorChange } from './hosted-copy-sponsor.js';
-export { hostedCopySponsorExecutionRpc,hostedCopyWalletRpc } from './hosted-copy-execution.js';
+export { hostedCopySponsorExecutionRpc,hostedCopyWalletRpc,hostedCopySupportRpc } from './hosted-copy-execution.js';
 export { readHostedCopyAllocation, readHostedCopyAllocationHandoff } from './hosted-copy-allocation.js';
