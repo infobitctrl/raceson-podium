@@ -12,7 +12,13 @@ contains project and release documentation. **Application source is not included
 yet, and this checkout is not runnable.** The full reviewed source will be imported
 before the repository is made public and supplied as the hackathon code link.
 
-The intended demo uses test MON on Monad testnet (10143), with disposable local
+The live planning demo is [podium.raceson.com](https://podium.raceson.com).
+It supports isolated demo logins, source-result inspection, saved sponsor rules
+and allocation review. Contract creation, funding, Privy and claims are not yet
+enabled in this hosted release. See the [current submission preparation](docs/submission-preparation.md)
+for verified scope, judge steps and remaining release gates.
+
+The intended complete demo uses test MON on Monad testnet (10143), with disposable local
 chain (31337) tests. No mainnet deployment or production sporting database belongs
 in this repository.
 
