@@ -27,7 +27,7 @@ npm run check:dependencies
 
 For the hosted-mode build, copy `demo/rewards/web/.env.example` to the ignored `.env.local` in the same directory, supply authorized project keys privately, then run `npm run build`. The server service-role key must never use a `NEXT_PUBLIC_` name. Build guards require matching browser/server mode, origin and isolated database. This copy intentionally fails closed without its provisioned database and source pin; it never falls back to production.
 
-Vercel settings: Next.js, Node 22, root `demo/rewards/web`, install `npm ci --include=dev --prefix ../../..`, build `npm run build`, include files outside the root directory. Deployment configuration is held in the existing Vercel project, not a local prebuilt upload.
+Vercel settings: Next.js, Node 22, root `demo/rewards/web`, install `npm ci --include=dev --prefix ../../..`, build `npm run build`, output `.next-build`, include files outside the root directory. Deployment configuration is held in the existing Vercel project, not a local prebuilt upload.
 
 See [contract setup](contracts/README.md) for the pinned Foundry toolchain. `npm run check:rewards:db` replays base migrations plus the demo overlay into a disposable loopback PostgreSQL database and runs authorization scenarios with owned local chains. It needs local PostgreSQL and the built contract artifacts. The published base migrations are for fresh databases: historical identity repairs are omitted or replaced by schema-only versions. Never replay this public snapshot into an existing RacesOn database.
 
