@@ -52,7 +52,7 @@ function Workspace({id,hr}:{id:string;hr:boolean}){
  const current=wallet?1:0,labels=[t('Funding wallet connected','Novčanik za uplatu povezan'),t('Reward contract created','Ugovor nagrada izrađen'),t('Prize deposit confirmed','Uplata nagrada potvrđena')];
  const edit=`/rewards/create?setup=${id}`,budget=setupAmount(preview.budgetWei,hr);
  return <article className={d.page}>
-  <header className={d.header}><div><span className={d.eyebrow}>{t('My campaigns','Moje kampanje')}</span><h1>{c.name}</h1><p className={d.intro}>{t(`Saved · revision ${record.revision}`,`Spremljeno · revizija ${record.revision}`)}</p></div><div className={d.headerActions}><span className={d.badge}>{t('Awaiting funding','Čeka uplatu')}</span><Link className={d.publicLink} to={edit}>{t('Edit rules','Uredi pravila')}</Link></div></header>
+  <header className={d.header}><div><span className={d.eyebrow}>{t('My campaigns','Moje kampanje')}</span><h1>{c.name}</h1><p className={d.intro}>{t(`Saved · revision ${record.revision}`,`Spremljeno · revizija ${record.revision}`)}</p></div><div className={d.headerActions}><span className={d.badge}>{t('Awaiting funding','Čeka uplatu')}</span><Link className={d.publicLink} to={edit}>{t('Edit rules','Uredi pravila')}</Link><button className={d.publicLink} disabled title={t('Available after the campaign is published','Dostupno nakon objave kampanje')}>{t('Public page','Javna stranica')}</button></div></header>
   <div className={d.layout}><div className={d.main}>
    <section className={`${d.card} ${d.current}`} aria-label={t('Current task','Trenutačni zadatak')}>
     <span className={d.eyebrow}>{t('Current task','Trenutačni zadatak')}</span>

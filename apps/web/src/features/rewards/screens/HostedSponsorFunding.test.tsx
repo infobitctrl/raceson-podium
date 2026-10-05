@@ -19,6 +19,8 @@ beforeEach(()=>{mocks.read.mockReset();mocks.read.mockResolvedValue(saved());moc
 it('resumes the confirmed revision with preserved terms and zero deposited funds',async()=>{
  render(view());await screen.findByRole('heading',{name:'Saved event'});
  expect(screen.getByText('Saved · revision 2')).toBeVisible();expect(screen.getByRole('link',{name:'Edit rules'})).toHaveAttribute('href',`/rewards/create?setup=${id}`);
+ expect(screen.getByRole('button',{name:'Public page'})).toBeDisabled();expect(screen.getByRole('button',{name:'Public page'})).toHaveAttribute('title','Available after the campaign is published');
+ expect(screen.getByText('Allocation preview').closest('details')).not.toHaveAttribute('open');
  expect(screen.getByText('365 days')).toBeVisible();expect(screen.getByText('RacesOn treasury')).toBeVisible();expect(screen.getByText('Exact allocation revision 2')).toBeInTheDocument();expect(screen.getByText('Deposited prize funds').nextElementSibling).toHaveTextContent('0 test MON');
  fireEvent.click(screen.getByText('Connect test wallet'));expect(screen.getByRole('heading',{name:'Create your reward contract'})).toBeVisible();expect(screen.getByRole('button',{name:'Create reward contract'})).toBeDisabled();expect(screen.getByText('Deposited prize funds').nextElementSibling).toHaveTextContent('0 test MON');
 });

@@ -5,6 +5,7 @@
 .headerActions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .badge{border-radius:99px;padding:3px 10px;font-size:12px;font-weight:500;background:#ffedd5;color:#7c2d12}
 .publicLink{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:6px 12px;border:1px solid #e5dfd6;border-radius:10px;font-size:12px;background:#faf8f5;text-decoration:none}
+.publicLink:disabled{color:#62584f;cursor:not-allowed}
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
 .main{display:grid;gap:24px;min-width:0}.aside{display:grid;gap:16px;min-width:0}
 .card{padding:24px;background:#fff;border:1px solid #e5dfd6;border-radius:16px;min-width:0}
