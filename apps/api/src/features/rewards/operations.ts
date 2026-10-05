@@ -4,7 +4,7 @@ import {rewardSupportSettings,hostedCopySupportRpc,type RewardAccountIdentity,ty
 import {createAdminSupabaseClient,loadServerEnv} from '@raceson/db';
 import {decodeSupportSettings,type SupportSettings} from '@raceson/domain/rewards/operations';
 import {canonicalRewardJson} from '@raceson/rewards-chain';
-import {walletRuntime,hostedWalletEnvironment} from './wallet-administration.js';
+import {walletRuntime,hostedWalletEnvironment,initialWalletSettings} from './wallet-administration.js';
 import {controllerPublicClient} from '@raceson/rewards-chain/canary-public-client';
 
 const common={expectedRevision:z.number().int().min(0).max(999999999),settings:z.unknown()};
@@ -28,11 +28,13 @@ export async function changeSupportSettings(identity:RewardAccountIdentity,input
  if(current.revision!==c.expectedRevision)throw Error('reward_support_settings_conflict');
  return {revision:current.revision,settings,fingerprint:supportFingerprint(current.revision,settings)};
 }
-export async function readSupportSettings(identity:RewardAccountIdentity,rpc?:RewardLedgerRpc,readGas:()=>Promise<{address:string;balanceWei:string}|null>=async()=>{
- const runtime=await walletRuntime(process.env,rpc),address=runtime.settings?.deployment.address;
- if(!address)return null;
- return {address,balanceWei:(await controllerPublicClient.getBalance({address:address as `0x${string}`,blockTag:'latest'})).toString()};
-}){
+export async function readConfiguredSupportGas(env:Record<string,string|undefined>,rpc?:RewardLedgerRpc,
+ reader:{getBalance:(input:{address:`0x${string}`;blockTag:'latest'})=>Promise<bigint>}=controllerPublicClient){
+ const runtime=await walletRuntime(env,rpc),address=runtime.settings?.deployment.address;
+ if(!address||hostedWalletEnvironment(env)&&(runtime.revision===0||address===initialWalletSettings(env)?.deployment.address))return null;
+ return {address,balanceWei:(await reader.getBalance({address:address as `0x${string}`,blockTag:'latest'})).toString()};
+}
+export async function readSupportSettings(identity:RewardAccountIdentity,rpc?:RewardLedgerRpc,readGas:()=>Promise<{address:string;balanceWei:string}|null>=()=>readConfiguredSupportGas(process.env,rpc)){
  const scoped=supportRpc(identity,rpc);
  await rewardSupportSettings(identity,undefined,scoped);
  let gas:{address:string;balanceWei:string}|null=null;

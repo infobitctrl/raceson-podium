@@ -4,6 +4,7 @@ import {generateKeyPair,exportSPKI,SignJWT} from 'jose';
 import {changeWalletAdministration,walletSettingsFingerprint,resolveControllerPolicy} from '../dist/features/rewards/wallet-administration.js';
 import {dispatchWalletAdministration} from '../dist/routes/rewards/wallet-administration.js';
 import {resolveDeploymentSigner} from '../dist/features/rewards/wallet-runtime.js';
+import {readConfiguredSupportGas} from '../dist/features/rewards/operations.js';
 const a=n=>'0x'+String(n).repeat(40),uuid=n=>`74000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const identity={userId:uuid(1),sessionId:uuid(2)};
 const deployment={version:1,appId:'cmtx921we00fu0cifaab7exez',walletId:'gas-old',address:a(1),ownerId:'owner',signerId:'signer',policyId:'policy',factory:a(4)};
@@ -20,6 +21,18 @@ function fixture(){let revision=0,settings=null,allowed=true,writes=0,history=[]
  };return{rpc,get writes(){return writes;},revoke:()=>allowed=false,seed:()=>{settings={deployment:replacement,controller};revision=1;history=[{revision,settings,changed_by:identity.userId,reason:'Synthetic activation',changed_at:new Date().toISOString()}];}};}
 const pair=await generateKeyPair('ES256'),policy={appId:deployment.appId,verificationKey:await exportSPKI(pair.publicKey),...controller};delete policy.walletId;delete policy.ownerId;env.RACESON_REWARD_CONTROLLER=JSON.stringify(policy);
 const command={action:'review',role:'deployment',walletId:'gas-new',expectedRevision:0,expectedFingerprint:walletSettingsFingerprint(initial)};
+test('hosted gas display excludes the retained baseline and reads only an activated dedicated wallet',async()=>{
+ const hosted={...env,RACESON_REWARD_PORTAL_MODE:'testnet',SUPABASE_URL:'https://niklhlmljiikwbkrmapw.supabase.co',RACESON_REWARD_HOSTED_COPY_MODE:'sponsor-drafts-v1',RACESON_REWARD_HOSTED_OPERATIONS:'testnet-v1'};
+ let reads=0;
+ const reader={getBalance:async({address,blockTag})=>{reads++;assert.equal(address,replacement.address);assert.equal(blockTag,'latest');return 123n;}};
+ for(const state of [{revision:0,settings:null},{revision:1,settings:initial}]){
+  const rpc=async(name,args)=>{assert.equal(name,'service_reward_demo_copy_wallet_operation');assert.equal(args.p_operation,'runtime');return {data:{...state,controllers:[],deployments:[]},error:null};};
+  assert.equal(await readConfiguredSupportGas(hosted,rpc,reader),null);
+ }
+ assert.equal(reads,0);
+ const rpc=async()=>({data:{revision:1,settings:{deployment:replacement,controller},controllers:[],deployments:[]},error:null});
+ assert.deepEqual(await readConfiguredSupportGas(hosted,rpc,reader),{address:replacement.address,balanceWei:'123'});assert.equal(reads,1);
+});
 test('review never writes; activation re-verifies provider and writes a CAS-protected audit',async()=>{
  const f=fixture(),calls=[];const verify=async(role,id)=>{calls.push([role,id]);return replacement;};
  const review=await changeWalletAdministration(identity,command,env,verify,f.rpc);assert.equal(f.writes,0);assert.equal(review.candidate.deployment.address,a(2));
