@@ -9,7 +9,7 @@ const units=(wei:string)=>{const n=BigInt(wei),fraction=(n%10n**18n).toString().
 const holdLabel=(hold:string)=>hold.split(',').map(reason=>({duplicate_athlete_round:'More than one finish needs a sporting decision',duplicate_round_finish_requires_review:'More than one finish needs a sporting decision',duplicate_classified_finish:'Duplicate classified finish',missing_distance:'A course distance is missing',unattributed_club:'Some finishes have no confirmed club attribution'}[reason]??'Sporting evidence needs review')).join('; ');
 /** Only a saved revision is requested. Parent unmounts this view as soon as the
  * sponsor edits rules, and account changes remount the whole hosted workspace. */
-export default function HostedAllocationPreview({id,revision}:{id:string;revision:number}) {
+export default function HostedAllocationPreview({id,revision,source='sponsor'}:{id:string;revision:number;source?:'sponsor'|'reviewer'}) {
  const [data,setData]=useState<Allocation|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[selected,setSelected]=useState(''),[page,setPage]=useState(0),[downloading,setDownloading]=useState(false),[digest,setDigest]=useState(''),[file,setFile]=useState<{href:string;name:string}|null>(null);
  const alive=useRef(true),lock=useRef(false),downloadUrl=useRef<string|null>(null);
  function clearDownload(){if(downloadUrl.current)URL.revokeObjectURL(downloadUrl.current);downloadUrl.current=null;setFile(null);setDigest('');}
@@ -17,7 +17,7 @@ export default function HostedAllocationPreview({id,revision}:{id:string;revisio
  async function calculate(){
   if(lock.current)return;lock.current=true;setBusy(true);setError('');setData(null);clearDownload();
   try {
-   const result=await apiRequest<Allocation>({path:`/v1/rewards/demo-copy/sponsor-setups/${id}/allocation/${revision}`,cache:'no-store'});
+   const result=await apiRequest<Allocation>({path:source==='reviewer'?`/v1/rewards/demo-copy/reviews/${id}`:`/v1/rewards/demo-copy/sponsor-setups/${id}/allocation/${revision}`,cache:'no-store'});
    if(result.version!=='podium-copy-allocation-v1'||result.state!=='unapproved'||result.payableWei!=='0'||result.setupId!==id||result.revision!==revision
     ||[result.budgetWei,result.proposedWei,result.heldWei,result.unallocatedWei,result.unusedWei].some(n=>!/^\d+$/.test(n))
     ||BigInt(result.budgetWei)!==BigInt(result.proposedWei)+BigInt(result.heldWei)+BigInt(result.unallocatedWei)+BigInt(result.unusedWei))throw Error('invalid_preview');
@@ -48,9 +48,9 @@ export default function HostedAllocationPreview({id,revision}:{id:string;revisio
    <dl className="hosted-allocation-totals">{[['Planned budget',data.budgetWei],['Calculated awards',data.proposedWei],['Held for review',data.heldWei],['Unallocated budget',data.unallocatedWei],['Unused prizes',data.unusedWei]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{units(value!)} <small>test MON</small></dd></div>)}</dl>
    <p>{data.sourceCounts.results} source results · {data.sourceCounts.finished} published finishes · {data.sourceCounts.countedCombinedFinishes} counted combined finishes. {data.sourceCounts.unclassifiedFinishes} unclassified finishes remain in participation without invented category awards.</p>
    <p className="hosted-note">{data.reviewNote}</p>
-   <button onClick={download} disabled={downloading}>{downloading?'Preparing review record…':'Prepare review record'}</button>
+   {source==='sponsor'?<button onClick={download} disabled={downloading}>{downloading?'Preparing review record…':'Prepare review record'}</button>:null}
    {file&&<p><a href={file.href} download={file.name}>Save review JSON</a></p>}
-   <p>The JSON record binds these saved rules, source results and review decisions. Its checksum identifies the exact record; controller approval is still required.</p>
+   {source==='sponsor'?<p>The JSON record binds these saved rules, source results and review decisions. Its checksum identifies the exact record; controller approval is still required.</p>:null}
    {digest&&<p role="status" style={{overflowWrap:'anywhere'}}>Review record SHA-256: <code>{digest}</code></p>}
    <label>Reward group<select aria-label="Allocation reward group" value={selected} onChange={e=>{setSelected(e.target.value);setPage(0);}}>{data.groups.map(g=><option key={g.nodeId} value={g.nodeId}>{g.slot?`Round ${g.slot}`:'League'} · {g.name} · {units(g.budgetWei)} test MON{g.hold?' · held':''}</option>)}</select></label>
    {group&&<>

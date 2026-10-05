@@ -28,6 +28,12 @@ async function readSnapshot(identity:RewardAccountIdentity,id:string,revision:nu
   source=await readFiveRoundCopyV1(pin,async()=>value.source);
  }
  if (saved.revision!==revision) throw Error('reward_setup_conflict');
+ return composeHostedCopyAllocation(saved,source,pin,selections,unaffiliatedReview);
+}
+/** Pure calculation shared by owner previews and authorized results-team reads. */
+export function composeHostedCopyAllocation(saved:SavedRewardSetup,source:Awaited<ReturnType<typeof readFiveRoundCopyV1>>,pin:FiveRoundCopyPinV1,
+ selections:readonly FiveRoundCombinedSelection[]=[],unaffiliatedReview?:FiveRoundUnaffiliatedReview){
+ const id=saved.id;
  const bindings=Array.from({length:6},(_,slot)=>source.classifications.map(c=>({nodeId:hostedCopySetupNodeId(id,`group:${slot}:${c.id}`),classificationId:c.id}))).flat();
  const c=saved.configuration;
  if (c.root.id!==hostedCopySetupNodeId(id,'root')) throw Error('invalid_copy_setup_binding');

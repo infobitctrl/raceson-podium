@@ -7,6 +7,13 @@ const id='00000000-0000-4000-8000-000000000001';
 const group={nodeId:'group',name:'Long Female',slot:0,type:'athlete_standings',beneficiaryKind:'athlete',budgetWei:'101',proposedWei:'101',heldWei:'0',unusedWei:'0',unallocatedWei:'0',hold:null,awards:[{beneficiaryId:'athlete',name:'Races Mon1',place:1,value:'100',amountWei:'101'}]};
 const result={version:'podium-copy-allocation-v1',state:'unapproved',payableWei:'0',setupId:id,revision:2,sourceHash:'a'.repeat(64),configurationHash:'b'.repeat(64),budgetWei:'101',proposedWei:'101',heldWei:'0',unallocatedWei:'0',unusedWei:'0',groups:[group],reviewNote:'Round 3 uses Long and Races Club29.',sourceCounts:{results:471,finished:444,countedCombinedFinishes:443,unclassifiedFinishes:51}};
 beforeEach(()=>{api.request.mockReset();});
+it('results-team preview uses its role-checked reader and cannot download through sponsor authority',async()=>{
+ api.request.mockResolvedValue(result);render(<HostedAllocationPreview id={id} revision={2} source="reviewer"/>);
+ fireEvent.click(screen.getByRole('button',{name:'Preview allocations'}));await screen.findByText('Races Mon1');
+ expect(api.request).toHaveBeenCalledWith({path:`/v1/rewards/demo-copy/reviews/${id}`,cache:'no-store'});
+ expect(screen.queryByRole('button',{name:'Prepare review record'})).not.toBeInTheDocument();
+ expect(screen.getByText(/Not approved/)).toBeInTheDocument();
+});
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 it('requests the exact saved revision and renders every wei without money actions',async()=>{
  api.request.mockResolvedValue(result);render(<HostedAllocationPreview id={id} revision={2}/>);

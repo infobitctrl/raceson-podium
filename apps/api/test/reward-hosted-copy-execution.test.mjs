@@ -17,6 +17,11 @@ test('hosted execution requires explicit operations flag and pinned hosted testn
   assert.equal(allow('GET',path,false),false);assert.equal(allow('POST',path+'?scope=foreign'),false);assert.equal(allow('PATCH',path),false);
  }
  for(const path of ['/api/v1/rewards/control','/api/v1/rewards/distribution-setups/'+id(3)+'/launch','/api/v1/rewards/admin/wallets/other'])assert.equal(allow('POST',path),false);
+ for(const path of ['/api/v1/rewards/demo-copy/reviews',`/api/v1/rewards/demo-copy/reviews/${id(3)}`]){
+  assert.equal(allow('GET',path),true);assert.equal(allow('GET',path,false),false);
+  for(const method of ['POST','PATCH','DELETE'])assert.equal(allow(method,path),false);
+  assert.equal(allow('GET',path+'?approve=true'),false);assert.equal(allow('GET',path+'/approve'),false);
+ }
 });
 test('hosted support cannot substitute identity or forward wallet and signing commands',async()=>{
  const calls=[],rpc=hostedCopySupportRpc(identity,async(name,args)=>{calls.push({name,args});return {data:null,error:null};});

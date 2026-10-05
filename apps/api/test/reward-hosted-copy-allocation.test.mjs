@@ -8,6 +8,7 @@ import {verifyHandoff} from '../../../demo/rewards/hosted-copy/verify-handoff.mj
 import {hostedCopyRequestAllowed} from '../dist/features/rewards/hosted-copy-preview.js';
 import {fiveRoundCopyProjectionHashV1} from '../../../packages/db/dist/rewards/five-round-copy-v1.js';
 import {hostedCopyUnaffiliatedReview,hostedCopyReviewNote} from '../dist/features/rewards/hosted-copy-review.js';
+import {hostedCopyReviewSources} from '../../../packages/db/dist/rewards/hosted-copy-review-sources.js';
 const id=n=>`7c000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 function fixture(){
  const source={version:'raceson-five-round-copy-v1',batchSha256:'a'.repeat(64),sportingSha256:'b'.repeat(64),leagueId:id(1),seasonId:id(2),capturedAt:'2026-10-05T00:00:00.000Z',closedAfterRound:5,clubScoringScope:'combined',
@@ -130,6 +131,19 @@ test('an advanced draft cannot replace a source-bound launch allocation or hando
  assert.equal(handoff.document.setup.revision,1);assert.equal(handoff.document.allocation.budgetWei,'101');assert.equal(reads,2);
  reply={result:current,source};await assert.rejects(()=>readHostedCopyAllocation(identity,frozen.id,1,pin,rpc),/reward_setup_conflict/);
  reply={result:frozen,source:{...source,sportingSha256:'c'.repeat(64)}};await assert.rejects(()=>readHostedCopyAllocation(identity,frozen.id,1,pin,rpc),/copy_projection_changed/);
+});
+test('review-source transport binds the reviewer session and independently verifies copied sporting rows',async()=>{
+ const source=fixture(),record=saved(source),identity={userId:id(9991),sessionId:id(9992)};
+ const pin={batchSha256:source.batchSha256,leagueId:source.leagueId,seasonId:source.seasonId,projectionSha256:fiveRoundCopyProjectionHashV1(source)};
+ const launch={id:id(9993),state:'prepared',configurationHash:'f'.repeat(64),createdAt:'2026-10-05T12:00:00.000Z',setup:record};
+ let item={id:record.id,launch,execution:null,source:null},denied=false;
+ const rpc=async(name,args)=>{assert.equal(name,'service_reward_demo_copy_review_sources');assert.equal(args.p_actor_user_id,identity.userId);assert.equal(args.p_actor_session_id,identity.sessionId);
+  return denied?{data:null,error:{message:'reward_demo_reviewer_required'}}:{data:{version:'podium-copy-review-sources-v1',items:[item]},error:null};};
+ const list=await hostedCopyReviewSources(identity,null,pin,rpc);assert.equal(list[0].summary.budgetWei,'101');assert.equal(list[0].summary.executionState,'awaiting_contract');
+ item={...item,source};const detail=await hostedCopyReviewSources(identity,record.id,pin,rpc);assert.equal(detail[0].source.results.length,15);
+ item={...item,id:id(7777)};await assert.rejects(()=>hostedCopyReviewSources(identity,record.id,pin,rpc),/hosted_copy_unavailable/);
+ item={id:record.id,launch,execution:null,source:{...source,sportingSha256:'c'.repeat(64)}};await assert.rejects(()=>hostedCopyReviewSources(identity,record.id,pin,rpc),/copy_projection_changed/);
+ denied=true;await assert.rejects(()=>hostedCopyReviewSources(identity,null,pin,rpc),/reviewer_required/);
 });
 test('review handoff binds one saved revision, source, both decisions and exact integer awards without writes',async()=>{
  const s=fixture(),selections=duplicate(s),record=saved(s),identity={userId:id(9991),sessionId:id(9992)};selectGroup(record,'club_metres');

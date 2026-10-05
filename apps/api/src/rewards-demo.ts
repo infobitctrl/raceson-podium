@@ -1,3 +1,4 @@
+import {dispatchHostedCopyReviews} from './routes/rewards/hosted-copy-reviews.js';
 import {dispatchHostedCopyCatalogue} from './routes/rewards/hosted-copy-catalogue.js';
 import { dispatchHostedCopyAllocation } from "./routes/rewards/hosted-copy-allocation.js";
 import { dispatchHostedCopySponsor } from "./routes/rewards/hosted-copy-sponsor.js";
@@ -63,6 +64,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   sendError: boundary.sendError, applyPrivateSessionHeaders: boundary.applyPrivateSessionHeaders,
   };
   const config = deps.config();
+  if (await dispatchHostedCopyReviews(req,res,url,deps))return true;
   if (await dispatchHostedCopyCatalogue(req, res, url, deps)) return true;
   if (await dispatchHostedCopyAllocation(req, res, url, deps)) return true;
   if (await dispatchHostedCopySponsor(req, res, url, deps)) return true;

@@ -1,6 +1,9 @@
 import {Link} from 'react-router-dom';
 import {useAuth} from '@/lib/auth';
 import {useI18n} from '@/shared/i18n/I18nContext';
+import {publicEnv} from '@/lib/public-env';
+import HostedReviewQueue from './HostedReviewQueue';
+import {useRewardSessionEpoch} from '../model/useRewardSessionEpoch';
 import {usePublicDirectory} from '../data/publicDirectory';
 import {campaignStatus} from '@raceson/domain/rewards/public-directory';
 import {statusLabel} from '../model/podiumDirectory';
@@ -17,6 +20,7 @@ function Queue(){
 }
 export default function RewardReviewQueue(){
  const auth=useAuth(),{locale}=useI18n(),hr=locale==='hr';
+ const epoch=useRewardSessionEpoch(auth.session);
  const allowed=!!auth.user&&auth.account?.userId===auth.user.id&&(auth.account?.hasOrganizerAccess||auth.account?.platformRole==='super_admin');
- return <article className={`${p.page} ${p.workspace}`}><header className={p.heading}><div><span className={p.eyebrow}>{hr?'Pregled':'Review'}</span><h1>{hr?'Red za pregled nagrada':'Award review queue'}</h1><p>{hr?'Pregledajte službene rezultate i točne iznose nagrada.':'Review official results and exact award allocations.'}</p></div>{allowed?<a className={p.secondary} href="/rewards/control">{hr?'Otvori kontrolu':'Open controller workspace'}</a>:null}</header>{auth.isLoading?<p role="status">{hr?'Provjera pristupa…':'Checking access…'}</p>:allowed?<Queue/>:<section className={p.empty}><p role="alert">{hr?'Potreban je račun tima za rezultate ili glavnog administratora.':'A results-team or master-administrator account is required.'}</p><Link className={p.primary} to="/auth?next=%2Frewards%2Freview">{hr?'Prijava':'Sign in'}</Link></section>}</article>;
+ return <article className={`${p.page} ${p.workspace}`}><header className={p.heading}><div><span className={p.eyebrow}>{hr?'Pregled':'Review'}</span><h1>{hr?'Red za pregled nagrada':'Award review queue'}</h1><p>{hr?'Pregledajte službene rezultate i točne iznose nagrada.':'Review official results and exact award allocations.'}</p></div>{allowed?<a className={p.secondary} href="/rewards/control">{hr?'Otvori kontrolu':'Open controller workspace'}</a>:null}</header>{auth.isLoading?<p role="status">{hr?'Provjera pristupa…':'Checking access…'}</p>:allowed?(publicEnv.hostedOperations?<HostedReviewQueue key={`${auth.user?.id}:${epoch}`} hr={hr}/>:<Queue/>):<section className={p.empty}><p role="alert">{hr?'Potreban je račun tima za rezultate ili glavnog administratora.':'A results-team or master-administrator account is required.'}</p><Link className={p.primary} to="/auth?next=%2Frewards%2Freview">{hr?'Prijava':'Sign in'}</Link></section>}</article>;
 }
