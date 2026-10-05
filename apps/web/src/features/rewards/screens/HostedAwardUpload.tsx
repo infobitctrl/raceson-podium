@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
+import {rewardsControlLink} from '../model/controllerLinks';
 import {readHostedAwardUpload,readHostedAwardHandoff,type HostedUploadScope} from '../data/hostedAwardUpload';
 import p from '../components/Podium.module.css';
 type Upload=Awaited<ReturnType<typeof readHostedAwardUpload>>;
@@ -41,7 +42,7 @@ export default function HostedAwardUpload({id,slot,approvalId,contextHash,docume
    <button className={p.secondary} disabled={busy} onClick={()=>setReload(n=>n+1)}>{hr?'Učitaj ponovno':'Reload preparation'}</button></>:null}
   {view?view.current?<>
    {view.prepared?<><p>{hr?'Paket je pripremljen za kontrolora.':'Package prepared for the controller.'}</p><details><summary>{hr?'Dokaz paketa':'Package evidence'}</summary><p style={{overflowWrap:'anywhere'}}>{view.prepared.packageHash}</p></details></>:<button className={p.primary} disabled={busy} onClick={()=>void act('upload')}>{hr?'Provjeri uplatu i pripremi paket':'Verify funding and prepare package'}</button>}
-   {handoff?.current?handoff.publication?<><p>{hr?'Predaja rezultata je potvrđena. Nastavite u prostoru kontrolora.':'Results handoff confirmed. Continue in the controller workspace.'}</p><Link className={p.secondary} href="/rewards/control">{hr?'Otvori kontrolora':'Open controller workspace'}</Link></>:<button className={p.primary} disabled={busy} onClick={()=>void act('handoff')}>{hr?'Potvrdi predaju rezultata':'Confirm results handoff'}</button>:null}
+   {handoff?.current?handoff.publication?<><p>{hr?'Predaja rezultata je potvrđena. Nastavite u prostoru kontrolora.':'Results handoff confirmed. Continue in the controller workspace.'}</p><Link className={p.secondary} href={rewardsControlLink(id,slot)}>{hr?'Otvori kontrolora':'Open controller workspace'}</Link></>:<button className={p.primary} disabled={busy} onClick={()=>void act('handoff')}>{hr?'Potvrdi predaju rezultata':'Confirm results handoff'}</button>:null}
   </>:<p>{hr?'Ova odluka više nije važeća. Učitajte trenutačni pregled.':'This award decision is no longer current. Reload the review.'}</p>:null}
  </section>;
 }

@@ -5,7 +5,7 @@ import {controllerDeploymentFromEnv} from "../../features/rewards/sponsor-creati
 import type {SponsorCreationDeps} from "../../features/rewards/sponsor-creation-service.js";
 import type {IncomingMessage,ServerResponse} from "node:http";
 import {z} from "zod";
-import {rewardControllerResultDisplay,rewardControllerFacts,decodeSponsorLifecycleFactsV4,copyRewardLedgerDocument as copy} from "@raceson/db/rewards";
+import {rewardControllerResultDisplay,rewardControllerFacts,decodeSponsorLifecycleFactsV4,copyRewardLedgerDocument as copy,type RewardLedgerRpc} from "@raceson/db/rewards";
 import {decodeSponsorExecutionRecord} from "@raceson/domain/rewards/sponsor-execution";
 import {observeSponsorProgramme} from "@raceson/rewards-chain/sponsor-v4";
 import {observeSponsorLifecycleV4,verifySponsorActionReceiptV4,sponsorLifecycleDataV4,sponsorLifecycleCommitmentV4} from "@raceson/rewards-chain/sponsor-lifecycle-v4";
@@ -18,7 +18,8 @@ import type {SponsorCreationSigner} from "../../features/rewards/sponsor-creatio
 
 const uuid=z.string().uuid(), hash=z.string().regex(/^0x[0-9a-f]{64}$/);
 const receipt=z.object({requestId:uuid,transactionHash:hash,operation:z.enum(["deployment","upload","stage","activate"]),start:z.number().int().min(0).max(10000),end:z.number().int().min(0).max(10000)}).strict();
-type Deps=Omit<OrganizerRewardRouteDependencies,"requireIdentity"> & {controllerPolicy:(token?:string)=>ControllerPolicy|null|Promise<ControllerPolicy|null>; requireToken:(r:IncomingMessage)=>Promise<string>; reader?:SponsorCreationDeps["reader"];creationSigner?:SponsorCreationSigner|null};
+type Deps=Omit<OrganizerRewardRouteDependencies,"requireIdentity"> & {controllerPolicy:(token?:string)=>ControllerPolicy|null|Promise<ControllerPolicy|null>; requireToken:(r:IncomingMessage)=>Promise<string>; reader?:SponsorCreationDeps["reader"];creationSigner?:SponsorCreationSigner|null;
+ resolveRpc?:(actor:{subject:string;wallet:string})=>RewardLedgerRpc};
 export async function dispatchRewardController(req:IncomingMessage,res:ServerResponse,url:URL,deps:Deps) {
   const m=/^\/api\/v1\/rewards\/control(?:\/(access|session|campaigns|transactions)(?:\/([0-9a-f-]+)(?:\/allocations\/([0-9a-f-]+))?)?)?$/.exec(url.pathname);
   if(!m)return false;
@@ -31,6 +32,7 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
     const token=await deps.requireToken(req);
     const config=await deps.controllerPolicy(token);if(!config)throw Error("controller_not_configured");
     const actor=await authenticateController(token,config);
+    const rpc=deps.resolveRpc?deps.resolveRpc(actor):deps.rpc;
     const assertActive=async()=>{
       const current=await deps.controllerPolicy(token);
       if(!current||canonical(current)!==canonical(config))throw Error("controller_auth_required");
@@ -38,7 +40,7 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
     };
     if(m[1]==="transactions"&&!m[2]){
       if(!deps.reader)throw Error("controller_chain_unavailable");
-      const d={actor,reader:deps.reader,rpc:deps.rpc,assertActive};
+      const d={actor,reader:deps.reader,rpc,assertActive};
       deps.sendSuccess(res,req.method==="GET"?await controllerTransactionStatus(d):await advanceControllerTransaction(d,await deps.readJsonBody(req)));return true;
     }
     if(m[1]==="access"&&!m[2]&&req.method==="GET") {
@@ -60,7 +62,7 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
     const scope:{setupId?:string;approvalId?:string}=m[2]?{setupId:uuid.parse(m[2]),...(m[3]?{approvalId:uuid.parse(m[3])}:{})}:{};
     if(req.method==="POST"&&!scope.setupId)throw Error("controller_invalid_request");
     const change=req.method==="POST"?receipt.parse(await deps.readJsonBody(req)):undefined;
-    let raw=await rewardControllerFacts(actor,scope,undefined,deps.rpc);
+    let raw=await rewardControllerFacts(actor,scope,undefined,rpc);
     if(!scope.setupId){await assertActive();deps.sendSuccess(res,raw);return true;}
     if(!scope.approvalId){
       let record=decodeSponsorExecutionRecord(raw);if(!record||record.plan.operator!==actor.wallet)throw Error("controller_scope_required");
@@ -70,10 +72,10 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
       if(change){
         if(!observation)throw Error("controller_chain_unavailable");
         await assertActive();
-        raw=await rewardControllerFacts(actor,scope,{requestId:change.requestId,receipt:{action:"deployment",transactionHash:change.transactionHash}},deps.rpc);
+        raw=await rewardControllerFacts(actor,scope,{requestId:change.requestId,receipt:{action:"deployment",transactionHash:change.transactionHash}},rpc);
         record=decodeSponsorExecutionRecord(raw);
       }
-      await assertActive();await rewardControllerFacts(actor,scope,undefined,deps.rpc);
+      await assertActive();await rewardControllerFacts(actor,scope,undefined,rpc);
       deps.sendSuccess(res,{enabled:true,record,observation});return true;
     }
     if(change?.operation==="deployment")throw Error("controller_invalid_request");
@@ -87,11 +89,11 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
     if(change){
       const body=await verifySponsorActionReceiptV4(deps.reader,binding,{action:change.operation as "upload"|"stage"|"activate",start:change.start,end:change.end},change.transactionHash as Hex);
       await assertActive();
-      raw=await rewardControllerFacts(actor,scope,{requestId:change.requestId,receipt:copy(body)},deps.rpc);
+      raw=await rewardControllerFacts(actor,scope,{requestId:change.requestId,receipt:copy(body)},rpc);
       facts=decodeSponsorLifecycleFactsV4(raw,selected);
     }
     const observed=await observeSponsorLifecycleV4(deps.reader,binding);
-    const fresh=decodeSponsorLifecycleFactsV4(await rewardControllerFacts(actor,scope,undefined,deps.rpc),selected);
+    const fresh=decodeSponsorLifecycleFactsV4(await rewardControllerFacts(actor,scope,undefined,rpc),selected);
     if(canonical(fresh.upload)!==canonical(facts.upload)||canonical(fresh.publication)!==canonical(facts.publication))throw Error("controller_source_not_ready");
     await assertActive();
     const transaction=observed.next?{binding,chainId:10143,from:actor.wallet,to:binding.campaignAddress,value:"0",action:observed.next,
@@ -99,7 +101,7 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
     let results;
     if(fresh.upload.document.schema==='podium-copy-allocation-document-v1')results=hostedCopyResultDisplay(fresh.upload.document);
     else{
-      const display=await rewardControllerResultDisplay(actor,{setupId:scope.setupId,approvalId:scope.approvalId},deps.rpc);
+      const display=await rewardControllerResultDisplay(actor,{setupId:scope.setupId,approvalId:scope.approvalId},rpc);
       if(display.documentHash!==fresh.upload.documentHash)throw Error('controller_source_not_ready');
       results=rewardResultDisplay(fresh.upload.document,display.snapshot);
     }

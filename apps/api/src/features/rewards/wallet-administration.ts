@@ -124,7 +124,8 @@ export async function resolveControllerPolicy(env:Env,token:string,requestedWall
  const base=controllerPolicyFromEnv(env);if(!base)return null;
  if(requestedWallet&&!address.safeParse(requestedWallet).success)throw Error('controller_auth_required');
  const runtime=await walletRuntime(env,rpc);
- for(const c of runtime.controllers){if(requestedWallet&&c.wallet!==requestedWallet)continue;
+ const hosted=hostedWalletEnvironment(env);if(hosted&&runtime.revision===0)return null;
+ for(const c of runtime.controllers){if(hosted&&c.wallet===base.wallet)continue;if(requestedWallet&&c.wallet!==requestedWallet)continue;
   const p={...base,subject:c.subject,wallet:c.wallet};try{await authenticateController(token,p);return p;}catch{/* Try another retained controller belonging to this verified token subject. */}
  }
  throw Error('controller_auth_required');

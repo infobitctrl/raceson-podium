@@ -14,7 +14,7 @@ it('requires explicit funding preparation and results handoff before linking to 
  await screen.findByText('Package prepared for the controller.');expect(mocks.handoff).toHaveBeenCalledTimes(1);
  expect(mocks.upload.mock.calls[1][1]).toEqual({requestId:expect.any(String),contextHash:props.contextHash,documentHash:props.documentHash});
  expect(screen.queryByRole('link',{name:'Open controller workspace'})).not.toBeInTheDocument();
- fireEvent.click(screen.getByRole('button',{name:'Confirm results handoff'}));await screen.findByRole('link',{name:'Open controller workspace'});
+ fireEvent.click(screen.getByRole('button',{name:'Confirm results handoff'}));expect(await screen.findByRole('link',{name:'Open controller workspace'})).toHaveAttribute('href','/rewards/control?campaign=setup&pot=0');
  expect(mocks.handoff.mock.calls[1][1]).toEqual({action:'publication',requestId:expect.any(String),documentHash:handoff.publicationHash});
  expect(JSON.stringify(mocks.upload.mock.calls[1][1])).not.toMatch(/funding|amount|wallet|source/);
 });

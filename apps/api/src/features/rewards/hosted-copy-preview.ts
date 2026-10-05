@@ -34,6 +34,9 @@ const allowed = new Map([
  * registration/recovery delivery, auto-bootstrap, provider tokens and signing stay closed. */
 export function hostedCopyRequestAllowed(method: string | undefined, url: URL, mode = "preview-v1",operations=false) {
   if (mode === "sponsor-drafts-v1" && [...url.searchParams].length === 0) {
+    if(operations&&/^\/api\/v1\/rewards\/control\/(access|session)$/.test(url.pathname))return method==='GET';
+    if(operations&&url.pathname==='/api/v1/rewards/control/transactions')return method==='GET'||method==='POST';
+    if(operations&&/^\/api\/v1\/rewards\/control\/campaigns(?:\/[0-9a-f-]{36}(?:\/allocations\/[0-9a-f-]{36})?)?$/.test(url.pathname))return method==='GET'||method==='POST'&&url.pathname!=='/api/v1/rewards/control/campaigns';
     if(operations&&url.pathname==='/api/v1/rewards/admin/wallets')return method==='GET'||method==='POST';
     if(operations&&/^\/api\/v1\/rewards\/demo-copy\/reviews(?:\/[0-9a-f-]{36})?$/.test(url.pathname))return method==='GET';
     if(operations&&/^\/api\/v1\/rewards\/demo-copy\/reviews\/[0-9a-f-]{36}\/allocations\/[0-5]$/.test(url.pathname))return method==='GET'||method==='POST';

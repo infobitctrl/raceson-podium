@@ -6,7 +6,7 @@ import {dispatchRewardOperations} from './routes/rewards/operations.js';
 import { dispatchHostedCopyPreview } from './routes/rewards/hosted-copy-preview.js';
 import { hostedCopyPreviewEnabled, hostedCopyRequestAllowed,hostedCopyOperationsEnabled,hostedCopyPin } from './features/rewards/hosted-copy-preview.js';
 import {dispatchHostedCopyLaunch} from './routes/rewards/hosted-copy-launch.js';
-import {hostedCopySponsor,hostedCopySponsorExecutionRpc,type RewardLedgerRpc} from '@raceson/db/rewards';
+import {hostedCopySponsor,hostedCopySponsorExecutionRpc,hostedCopyControllerRpc,type RewardLedgerRpc} from '@raceson/db/rewards';
 import {dispatchCampaignBranding} from './routes/rewards/campaign-branding.js';
 import {dispatchWalletAdministration} from './routes/rewards/wallet-administration.js';
 import {walletRuntime,resolveControllerPolicy} from './features/rewards/wallet-administration.js';
@@ -73,6 +73,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   if (await dispatchWalletAdministration(req,res,url,deps)) return true;
   if (await dispatchRewardOperations(req,res,url,deps)) return true;
   if (url.pathname.startsWith('/api/v1/rewards/control') && await dispatchRewardController(req,res,url,{...deps,requireToken:async request=>{const token=/^Bearer ([^\s]+)$/i.exec(request.headers.authorization??"")?.[1];if(!token)throw Error("Missing bearer token");return token;},
+    ...(hostedCopyOperationsEnabled(process.env,boundary.env)?{resolveRpc:(actor:{subject:string;wallet:string})=>hostedCopyControllerRpc(actor,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}:{}),
     controllerPolicy:token=>resolveControllerPolicy(process.env,token??'',typeof req.headers['x-podium-controller-wallet']==='string'?req.headers['x-podium-controller-wallet']:undefined),creationSigner:await resolveDeploymentSigner(process.env),reader:config?.chainId===10143?controllerPublicClient:undefined})) return true;
   if (await dispatchCampaignBranding(req,res,url,deps)) return true;
   if (await dispatchPublicDirectory(req,res,url,{...deps,sponsorReader:config?.chainId===10143?controllerPublicClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;

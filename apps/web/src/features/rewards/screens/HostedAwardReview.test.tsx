@@ -13,6 +13,10 @@ it('shows exact amounts and submits only the reviewed digest and decision',async
  const c=mocks.read.mock.calls[1][2];expect(c).toEqual({requestId:expect.any(String),expectedApprovalId:null,contextHash:base.contextHash,documentHash:base.documentHash,decision:'approved'});
  expect(JSON.stringify(c)).not.toMatch(/amountWei|wallet|beneficiary|source/);
 });
+it('requested pot is a bounded navigation hint and does not modify the decision',async()=>{
+ mocks.read.mockResolvedValue(base);render(<HostedAwardReview id="setup" hr={false} initialSlot={4}/>);
+ await screen.findByText('1.000000000000000001 test MON');expect(mocks.read.mock.calls[0]).toEqual(['setup',4]);expect(screen.getByRole('combobox')).toHaveValue('4');
+});
 it('disables approval for a source hold and leaves explicit hold available',async()=>{
  mocks.read.mockResolvedValue({...base,reasons:['duplicate_classified_finish']});render(<HostedAwardReview id="setup" hr={false}/>);
  expect(await screen.findByRole('button',{name:'Approve exact awards'})).toBeDisabled();expect(screen.getByRole('button',{name:'Hold awards'})).toBeEnabled();

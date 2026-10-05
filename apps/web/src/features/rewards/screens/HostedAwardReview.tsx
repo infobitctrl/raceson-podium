@@ -40,8 +40,8 @@ function SlotReview({id,slot,hr}:{id:string;slot:number;hr:boolean}){
   </>:null}
  </section>;
 }
-export default function HostedAwardReview({id,hr}:{id:string;hr:boolean}){
- const [slot,setSlot]=useState(0);
+export default function HostedAwardReview({id,hr,initialSlot=0}:{id:string;hr:boolean;initialSlot?:number}){
+ const [slot,setSlot]=useState(Number.isInteger(initialSlot)&&initialSlot>=0&&initialSlot<=5?initialSlot:0);
  return <><label>{hr?'Nagradni fond':'Prize pool'} <select value={slot} onChange={e=>setSlot(Number(e.target.value))}>
   {Array.from({length:6},(_,i)=><option key={i} value={i}>{i===0?(hr?'Liga':'League'):`${hr?'Kolo':'Round'} ${i}`}</option>)}</select></label><SlotReview key={`${id}:${slot}`} id={id} slot={slot} hr={hr}/></>;
 }
