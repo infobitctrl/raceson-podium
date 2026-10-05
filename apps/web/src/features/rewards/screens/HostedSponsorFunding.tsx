@@ -2,6 +2,8 @@ import {useEffect,useState} from 'react';
 import {Link,useParams} from 'react-router-dom';
 import {Check,RefreshCw} from 'lucide-react';
 import {useAuth} from '@/lib/auth';
+import {publicEnv} from '@/lib/public-env';
+import HostedSponsorExecution from './HostedSponsorExecution';
 import {useI18n} from '@/shared/i18n/I18nContext';
 import {ApiError} from '@/lib/api';
 import {previewRewardSetup,setupId} from '@raceson/domain/rewards/distribution-setup';
@@ -23,7 +25,7 @@ export default function HostedSponsorFunding(){
  if(auth.isLoading)return <p className={d.page} role="status">{hr?'Učitavanje…':'Loading…'}</p>;
  if(!auth.user||!auth.session||auth.account?.userId!==auth.user.id)return <article className={d.page}><h1>{hr?'Financiranje kampanje':'Campaign funding'}</h1><p>{hr?'Prijavite se računom kojim ste spremili kampanju.':'Sign in with the account that saved this campaign.'}</p><Link className={s.primary} to={`/auth?next=${encodeURIComponent(`/rewards/campaigns/${id}`)}`}>{hr?'Prijava':'Sign in'}</Link></article>;
  if(!setupId(id))return <article className={d.page}><h1>{hr?'Kampanja nije pronađena':'Campaign not found'}</h1><Link to="/rewards/manage">{hr?'Moje kampanje':'My campaigns'}</Link></article>;
- return <Workspace key={`${auth.user.id}:${epoch}:${id}`} id={id} hr={hr}/>;
+ return publicEnv.hostedOperations?<HostedSponsorExecution key={`${auth.user.id}:${epoch}:${id}`} id={id} hr={hr}/>:<Workspace key={`${auth.user.id}:${epoch}:${id}`} id={id} hr={hr}/>;
 }
 
 function Workspace({id,hr}:{id:string;hr:boolean}){

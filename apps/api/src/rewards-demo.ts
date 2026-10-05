@@ -3,7 +3,9 @@ import { dispatchHostedCopyAllocation } from "./routes/rewards/hosted-copy-alloc
 import { dispatchHostedCopySponsor } from "./routes/rewards/hosted-copy-sponsor.js";
 import {dispatchRewardOperations} from './routes/rewards/operations.js';
 import { dispatchHostedCopyPreview } from './routes/rewards/hosted-copy-preview.js';
-import { hostedCopyPreviewEnabled, hostedCopyRequestAllowed } from './features/rewards/hosted-copy-preview.js';
+import { hostedCopyPreviewEnabled, hostedCopyRequestAllowed,hostedCopyOperationsEnabled,hostedCopyPin } from './features/rewards/hosted-copy-preview.js';
+import {dispatchHostedCopyLaunch} from './routes/rewards/hosted-copy-launch.js';
+import {hostedCopySponsor,hostedCopySponsorExecutionRpc,type RewardLedgerRpc} from '@raceson/db/rewards';
 import {dispatchCampaignBranding} from './routes/rewards/campaign-branding.js';
 import {dispatchWalletAdministration} from './routes/rewards/wallet-administration.js';
 import {walletRuntime,resolveControllerPolicy} from './features/rewards/wallet-administration.js';
@@ -24,7 +26,7 @@ import { dispatchTestProgrammes } from "./routes/rewards/test-programmes.js";
 import { dispatchPublicRewardReport, type PublicRewardReportReader } from "./routes/rewards/public-report.js";
 import { dispatchWorkflowV3, type WorkflowHostV3, type WorkflowEndpointV3 } from "./routes/rewards/workflow-v3.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { loadServerEnv } from "@raceson/db";
+import { loadServerEnv,createAdminSupabaseClient } from "@raceson/db";
 import { handleApiRequest, type ApiRouteExtension } from "./server.js";
 import { dispatchAthleteRewardRoutes } from "./routes/rewards/athlete.js";
 import { dispatchAthleteReadinessV3 } from "./routes/rewards/athlete-readiness-v3.js";
@@ -64,6 +66,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   if (await dispatchHostedCopyCatalogue(req, res, url, deps)) return true;
   if (await dispatchHostedCopyAllocation(req, res, url, deps)) return true;
   if (await dispatchHostedCopySponsor(req, res, url, deps)) return true;
+  if (await dispatchHostedCopyLaunch(req,res,url,deps))return true;
   if (await dispatchHostedCopyPreview(req, res, url, deps)) return true;
   if (await dispatchWalletAdministration(req,res,url,deps)) return true;
   if (await dispatchRewardOperations(req,res,url,deps)) return true;
@@ -79,9 +82,16 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   if (await dispatchSponsorAllocationV4(req, res, url, {...deps, sponsorReader: config?.chainId === 10143 ? canaryPublicClient : config?.chainId === 31337 ? programmeLocalReader : undefined})) return true;
   if (await dispatchSponsorLaunch(req, res, url, deps)) return true;
   if (await dispatchSponsorExecution(req, res, url, {...deps, sponsorPolicy: () => sponsorExecutionPolicyFromEnv(process.env),
-    resolveSponsorPolicy:async()=>{const base=sponsorExecutionPolicyFromEnv(process.env);if(!base||config?.chainId!==10143)return base;const r=await walletRuntime(process.env);return r.settings?{...base,operator:r.settings.controller.wallet}:base;},
+    resolveSponsorPolicy:async()=>{const base=sponsorExecutionPolicyFromEnv(process.env);if(!base||config?.chainId!==10143)return base;const r=await walletRuntime(process.env);
+      if(hostedCopyOperationsEnabled(process.env,boundary.env)&&(r.revision===0||r.settings?.controller.wallet===base.operator))return null;
+      return r.settings?{...base,operator:r.settings.controller.wallet}:base;},
     sponsorReader: config?.chainId === 10143 ? canaryPublicClient : config?.chainId === 31337 ? programmeLocalReader : undefined,
-    ...(config?.chainId===10143?{resolveCreation:async(identity,id)=>({reader:canaryPublicClient,signer:await resolveDeploymentSigner(process.env,identity,id)})}:{})})) return true;
+    ...(hostedCopyOperationsEnabled(process.env,boundary.env)?{resolveRpc:async(identity,id)=>{
+      const rpc:RewardLedgerRpc=(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args);
+      const preflight=await hostedCopySponsor(identity,'read',id,undefined,hostedCopyPin,rpc);
+      return hostedCopySponsorExecutionRpc(identity,id,rpc,preflight.sourceFingerprint);
+    }}:{}),
+    ...(config?.chainId===10143?{resolveCreation:async(identity,id,rpc)=>({reader:canaryPublicClient,signer:await resolveDeploymentSigner(process.env,identity,id,rpc,undefined)})}:{})})) return true;
   if (await dispatchDistributionSetups(req, res, url, deps)) return true;
   if (await dispatchProgrammeCreation(req, res, url, deps)) return true;
   if (await dispatchTestProgrammes(req, res, url, deps)) return true;
@@ -112,7 +122,8 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
 export async function handleRewardDemoApiRequest(req: IncomingMessage, res: ServerResponse<IncomingMessage>, localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpointV3, publicReport?: PublicRewardReportReader) {
   try {
     if (!rewardPortalConfig(process.env, loadServerEnv())) throw new Error("demo_not_configured");
-    if (hostedCopyPreviewEnabled(process.env, loadServerEnv()) && !hostedCopyRequestAllowed(req.method, new URL(req.url ?? "/", "https://podium.invalid"), process.env.RACESON_REWARD_HOSTED_COPY_MODE)) {
+    const hostedOperations=hostedCopyOperationsEnabled(process.env,loadServerEnv());
+    if (hostedCopyPreviewEnabled(process.env, loadServerEnv()) && !hostedCopyRequestAllowed(req.method, new URL(req.url ?? "/", "https://podium.invalid"), process.env.RACESON_REWARD_HOSTED_COPY_MODE,hostedOperations)) {
       res.statusCode = 403;
       res.setHeader("Cache-Control", "private, no-store");
       res.setHeader("Content-Type", "application/json; charset=utf-8");

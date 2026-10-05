@@ -7,6 +7,7 @@ import {canonicalRewardJson as canonical} from "@raceson/rewards-chain";
 import {canaryPublicClient} from "@raceson/rewards-chain/canary-public-client";
 import {getAddress,type Hex} from "viem";
 import type {SponsorCreationSigner} from "./sponsor-creation-service.js";
+import {hostedCopyOperationsEnabled} from './hosted-copy-preview.js';
 
 const address=z.string().regex(/^0x[0-9a-f]{40}$/);
 export const controllerDeploymentConfig=z.object({version:z.literal(1),appId:z.string(),walletId:z.string(),address,
@@ -21,7 +22,7 @@ export function controllerDeploymentRules(factory:string,_controller:string){ret
  ]}];}
 export const controllerDeploymentDigest=(c:ControllerDeploymentConfig)=>createHash("sha256").update(canonical({config:c,rules:controllerDeploymentRules(c.factory,c.address)})).digest("hex");
 export function controllerDeploymentFromEnv(env:Record<string,string|undefined>){
- if(env.RACESON_REWARD_PORTAL_MODE!=="local-testnet"||!env.RACESON_CONTROLLER_DEPLOYMENT)return null;
+ if(env.RACESON_REWARD_PORTAL_MODE!=="local-testnet"&&!hostedCopyOperationsEnabled(env,{supabaseUrl:env.SUPABASE_URL??''})||!env.RACESON_CONTROLLER_DEPLOYMENT)return null;
  try{const c=controllerDeploymentConfig.parse(JSON.parse(env.RACESON_CONTROLLER_DEPLOYMENT));
  const owner=JSON.parse(env.RACESON_REWARD_CONTROLLER??"null");
  if(c.appId!==env.RACESON_REWARD_PRIVY_APP_ID||!owner?.wallet||!env.RACESON_SPONSOR_DEPLOYMENT_APP_SECRET||!env.RACESON_CONTROLLER_DEPLOYMENT_AUTH_KEY)return null;

@@ -34,5 +34,5 @@ export async function hostedCopySponsor(identity: RewardAccountIdentity, action:
  const result = action === 'template' ? decodeRewardSetup(value.result) : action === 'list'
   ? (() => { if (!Array.isArray(value.result) || value.result.length > 100) throw Error('hosted_copy_unavailable'); return value.result.map(r => decodeSavedRewardSetup(r, 10143)); })()
   : decodeSavedRewardSetup(value.result, 10143, id!);
- return { result, source: value.source };
+ return { result, source: value.source, sourceFingerprint: value.fingerprint };
 }

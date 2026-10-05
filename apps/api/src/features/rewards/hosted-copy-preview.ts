@@ -21,6 +21,12 @@ export function hostedCopyPreviewEnabled(values: Record<string, string | undefin
     || env.supabaseUrl !== "https://niklhlmljiikwbkrmapw.supabase.co") throw Error("hosted_copy_configuration_required");
   return true;
 }
+export function hostedCopyOperationsEnabled(values:Record<string,string|undefined>,env:Pick<ServerEnv,'supabaseUrl'>){
+ if(!values.RACESON_REWARD_HOSTED_OPERATIONS)return false;
+ if(values.RACESON_REWARD_HOSTED_OPERATIONS!=='testnet-v1'||values.RACESON_REWARD_HOSTED_COPY_MODE!=='sponsor-drafts-v1'
+  ||!hostedCopyPreviewEnabled(values,env))throw Error('hosted_copy_configuration_required');
+ return true;
+}
 const allowed = new Map([
   ["/api/v1/public/auth/sign-in", "POST"], ["/api/v1/public/auth/sign-out", "POST"],
   ["/api/v1/public/auth/session", "POST"], ["/api/v1/public/auth/refresh", "POST"],
@@ -29,8 +35,11 @@ const allowed = new Map([
 ]);
 /** First hosted slice permits ordinary sessions and this read only. In particular,
  * registration/recovery delivery, auto-bootstrap, provider tokens and signing stay closed. */
-export function hostedCopyRequestAllowed(method: string | undefined, url: URL, mode = "preview-v1") {
+export function hostedCopyRequestAllowed(method: string | undefined, url: URL, mode = "preview-v1",operations=false) {
   if (mode === "sponsor-drafts-v1" && [...url.searchParams].length === 0) {
+    if(operations&&url.pathname==='/api/v1/rewards/admin/wallets')return method==='GET'||method==='POST';
+    if(operations&&url.pathname==='/api/v1/rewards/admin/wallets/creation')return method==='POST';
+    if(operations&&/^\/api\/v1\/rewards\/(?:demo-copy\/sponsor-setups\/[0-9a-f-]{36}\/launch|distribution-setups\/[0-9a-f-]{36}\/execution)$/.test(url.pathname))return method==='GET'||method==='POST';
     if (["/api/v1/rewards/demo-copy/sponsor-source", "/api/v1/rewards/demo-copy/sponsor-setups"].includes(url.pathname)) return method === "GET";
     if (/^\/api\/v1\/rewards\/demo-copy\/sponsor-setups\/[0-9a-f-]{36}\/allocation\/[1-9][0-9]{0,9}(?:\/handoff)?$/.test(url.pathname)) return method === "GET";
     if (/^\/api\/v1\/rewards\/demo-copy\/sponsor-setups\/[0-9a-f-]{36}$/.test(url.pathname)) return method === "GET" || method === "PATCH";

@@ -5,6 +5,7 @@ import {useEffect, useId, useRef, useState, type ReactNode} from "react";
 import {ArrowRight, Check, RefreshCw} from "lucide-react";
 import {ApiError} from "@/lib/api";
 import {sponsorLaunchSourcesReady, type SponsorLaunch} from "@raceson/domain/rewards/sponsor-launch";
+import {decodeCopySponsorLaunchBinding,type CopySponsorLaunchBinding} from '@raceson/domain/rewards/copy-sponsor-launch';
 import {sponsorTxHash} from "@raceson/domain/rewards/sponsor-execution";
 import {sponsorExecution, type SponsorExecutionAction, type SponsorExecutionView} from "../data/sponsorExecution";
 import {checkSponsorTransaction, sendSponsorTransaction, sponsorTransactionGasLimit, type SponsorReadiness} from "../data/sponsorTransaction";
@@ -17,7 +18,7 @@ import s from "./SponsorLaunch.module.css";
 import d from "./SponsorDashboard.module.css";
 
 export type SponsorFundingSummary = {launchId: string; view: SponsorExecutionView | null; walletConnected: boolean; balanceWei: string | null};
-type Props={allocation?: ReactNode; onSummary?: (summary: SponsorFundingSummary) => void; launch: SponsorLaunch; hr: boolean; published?:boolean; onFunded?: (funded: boolean) => void};
+type Props={copyBinding?:CopySponsorLaunchBinding; allocation?: ReactNode; onSummary?: (summary: SponsorFundingSummary) => void; launch: SponsorLaunch; hr: boolean; published?:boolean; onFunded?: (funded: boolean) => void};
 type ReceiptIssue="pending"|"reverted"|"mismatch"|"unavailable";
 // Check promptly after broadcast, then back off. One verification at a time;
 // none of these checks can send a wallet transaction.
@@ -42,9 +43,10 @@ function creationCheckAction(view:SponsorExecutionView):SponsorExecutionAction|u
 export default function SponsorFunding(props:Props){
   return <FundingWorkspace key={sponsorReceiptKey(props.launch)} {...props}/>;
 }
-function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, published=false}: Props) {
+function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, published=false,copyBinding}: Props) {
   const journeyId = useId();
-  const sourcesReady = sponsorLaunchSourcesReady(launch.setup);
+  let copyReady=false;try{copyReady=Boolean(copyBinding&&decodeCopySponsorLaunchBinding(copyBinding,launch));}catch{/* A stale display binding cannot enable a new deposit. */}
+  const sourcesReady = sponsorLaunchSourcesReady(launch.setup)||copyReady;
   const [view, setView] = useState<SponsorExecutionView | null>(null), [wallet, setWallet] = useState<{wallet: DetectedRewardWallet; address: string} | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [pending, setPending] = useState<Pending | null>(null);
   const [recovery, setRecovery] = useState("");

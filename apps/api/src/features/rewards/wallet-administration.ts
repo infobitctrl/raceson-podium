@@ -1,6 +1,8 @@
 import {z} from 'zod';
 import {PrivyClient} from '@privy-io/node';
-import {rewardWalletSettings,rewardWalletRuntime,type RewardAccountIdentity,type RewardLedgerRpc} from '@raceson/db/rewards';
+import {rewardWalletSettings,rewardWalletRuntime,hostedCopyWalletRpc,type RewardAccountIdentity,type RewardLedgerRpc} from '@raceson/db/rewards';
+import {createAdminSupabaseClient,loadServerEnv} from '@raceson/db';
+import {hostedCopyOperationsEnabled} from './hosted-copy-preview.js';
 import {controllerDeploymentConfig,controllerDeploymentFromEnv,controllerDeploymentDigest,verifyControllerDelegation,sponsorCreationSignerFromEnv} from './sponsor-creation-privy.js';
 import {controllerPolicyFromEnv,authenticateController,type ControllerPolicy} from './controller-auth.js';
 import {verifySponsorFactory} from '@raceson/rewards-chain/sponsor-v4';
@@ -16,16 +18,20 @@ export type WalletSettings=z.infer<typeof walletSettingsSchema>;
 const stored=z.object({revision:z.number().int().min(0),settings:walletSettingsSchema.nullable(),history:z.array(z.object({revision:z.number().int(),settings:walletSettingsSchema,changed_by:z.string().uuid(),reason:z.string(),changed_at:z.string()}))});
 const runtimeSchema=z.object({revision:z.number().int().min(0),settings:walletSettingsSchema.nullable(),controllers:z.array(controllerWalletSchema),deployments:z.array(controllerDeploymentConfig)}).strict();
 type Env=Record<string,string|undefined>;
+export function hostedWalletEnvironment(env:Env){
+ return hostedCopyOperationsEnabled(env,{supabaseUrl:env.SUPABASE_URL??''});
+}
+const walletRpc=(env:Env,rpc?:RewardLedgerRpc)=>hostedWalletEnvironment(env)?hostedCopyWalletRpc(rpc??((name,args)=>createAdminSupabaseClient(loadServerEnv(env)).rpc(name,args))):rpc;
 export function initialWalletSettings(env:Env):WalletSettings|null{
  const deployment=controllerDeploymentFromEnv(env),controller=controllerPolicyFromEnv(env);
  return deployment&&controller?{deployment,controller:{subject:controller.subject,wallet:controller.wallet,...(deployment.address===controller.wallet?{walletId:deployment.walletId,ownerId:deployment.ownerId}:{})}}:null;
 }
 export async function walletRuntime(env:Env,rpc?:RewardLedgerRpc){
- const r=runtimeSchema.parse(await rewardWalletRuntime(rpc)),initial=initialWalletSettings(env),base=controllerPolicyFromEnv(env);
+ const r=runtimeSchema.parse(await rewardWalletRuntime(walletRpc(env,rpc))),initial=initialWalletSettings(env),base=controllerPolicyFromEnv(env);
  return {...r,settings:r.settings??initial,controllers:[...(r.settings?[r.settings.controller]:[]),...r.controllers,...(initial?[initial.controller]:base?[{subject:base.subject,wallet:base.wallet}]:[])],deployments:[...(r.settings?[r.settings.deployment]:[]),...r.deployments,...(initial?[initial.deployment]:[])]};
 }
 export async function readWalletAdministration(identity:RewardAccountIdentity,env:Env,rpc?:RewardLedgerRpc){
- const r=stored.parse(await rewardWalletSettings(identity,undefined,rpc)),settings=r.settings??initialWalletSettings(env);return {...r,settings,fingerprint:walletSettingsFingerprint(settings)};
+ const r=stored.parse(await rewardWalletSettings(identity,undefined,walletRpc(env,rpc))),settings=r.settings??initialWalletSettings(env);return {...r,settings,fingerprint:walletSettingsFingerprint(settings)};
 }
 export const walletSettingsFingerprint=(v:WalletSettings|null)=>createHash('sha256').update(canonical(v)).digest('hex');
 export type WalletCandidateVerifier=(role:'deployment'|'controller',walletId:string,current:WalletSettings)=>Promise<WalletSettings['deployment']|WalletSettings['controller']>;
@@ -35,7 +41,7 @@ export function verifyControllerOwner(user:unknown,walletId:string,walletAddress
  return value.id;
 }
 export function privyWalletVerifier(env:Env):WalletCandidateVerifier{return async(role,walletId,current)=>{
- if(env.RACESON_REWARD_PORTAL_MODE!=='local-testnet'||!env.RACESON_REWARD_PRIVY_APP_ID||!env.RACESON_SPONSOR_DEPLOYMENT_APP_SECRET)throw Error('reward_wallet_provider_unavailable');
+ if(env.RACESON_REWARD_PORTAL_MODE!=='local-testnet'&&!hostedWalletEnvironment(env)||!env.RACESON_REWARD_PRIVY_APP_ID||!env.RACESON_SPONSOR_DEPLOYMENT_APP_SECRET)throw Error('reward_wallet_provider_unavailable');
  const client=new PrivyClient({appId:env.RACESON_REWARD_PRIVY_APP_ID,appSecret:env.RACESON_SPONSOR_DEPLOYMENT_APP_SECRET,maxRetries:0,timeout:15000});
  const w=await client.wallets().get(walletId);
  if(w.chain_type!=='ethereum'||!w.owner_id||w.archived_at||w.imported_at||w.exported_at)throw Error('reward_wallet_unverified');
@@ -92,7 +98,7 @@ export async function changeWalletAdministration(identity:RewardAccountIdentity,
  if(!r.reason||r.candidateFingerprint!==fingerprint)throw Error('reward_wallet_review_required');
  const verifiedDeployment=await verify('deployment',next.deployment.walletId,next);
  if(canonical(verifiedDeployment)!==canonical(next.deployment))throw Error('reward_wallet_unverified');
- const saved=stored.parse(await rewardWalletSettings(identity,{expectedRevision:r.expectedRevision,settings:next,previousSettings:before.settings,reason:r.reason},rpc));return {...saved,fingerprint:walletSettingsFingerprint(saved.settings)};
+ const saved=stored.parse(await rewardWalletSettings(identity,{expectedRevision:r.expectedRevision,settings:next,previousSettings:before.settings,reason:r.reason},walletRpc(env,rpc)));return {...saved,fingerprint:walletSettingsFingerprint(saved.settings)};
 }
 export async function resolveControllerPolicy(env:Env,token:string,requestedWallet?:string,rpc?:RewardLedgerRpc):Promise<ControllerPolicy|null>{
  const base=controllerPolicyFromEnv(env);if(!base)return null;

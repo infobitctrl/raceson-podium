@@ -46,6 +46,7 @@ export const publicEnv = {
   ...configuredEnv,
   rewardDemo,
   hostedCopy: process.env.NEXT_PUBLIC_RACESON_REWARD_HOSTED_COPY_MODE === "sponsor-drafts-v1",
+  hostedOperations: process.env.NEXT_PUBLIC_RACESON_REWARD_HOSTED_OPERATIONS === 'testnet-v1',
   rewardPortalEnabled: rewardDemo !== null && process.env.NEXT_PUBLIC_RACESON_REWARDS_ENABLED === "true",
 } as const;
 

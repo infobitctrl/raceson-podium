@@ -27,6 +27,9 @@ rewardPrivyConfiguration(process.env.NEXT_PUBLIC_RACESON_REWARD_PRIVY_APP_ID, de
 if ((process.env.RACESON_REWARD_HOSTED_COPY_MODE ?? "") !== (process.env.NEXT_PUBLIC_RACESON_REWARD_HOSTED_COPY_MODE ?? "")
  || (process.env.RACESON_REWARD_HOSTED_COPY_MODE && (process.env.RACESON_REWARD_HOSTED_COPY_MODE !== "sponsor-drafts-v1" || demo.mode !== "testnet" || demo.supabaseUrl !== "https://niklhlmljiikwbkrmapw.supabase.co")))
  throw new Error("hosted_copy_configuration_required");
+if((process.env.RACESON_REWARD_HOSTED_OPERATIONS??'')!==(process.env.NEXT_PUBLIC_RACESON_REWARD_HOSTED_OPERATIONS??'')
+ ||process.env.RACESON_REWARD_HOSTED_OPERATIONS&&(process.env.RACESON_REWARD_HOSTED_OPERATIONS!=='testnet-v1'
+  ||process.env.RACESON_REWARD_HOSTED_COPY_MODE!=='sponsor-drafts-v1'||demo.mode!=='testnet'))throw new Error('hosted_copy_configuration_required');
 
 const config: NextConfig = {
   devIndicators: false,

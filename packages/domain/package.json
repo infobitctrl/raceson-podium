@@ -66,6 +66,7 @@
     "./rewards/programme-creation": "./dist/rewards/programme-creation.js",
     "./rewards/setup-event": "./dist/rewards/setup-event.js",
     "./rewards/sponsor-launch": "./dist/rewards/sponsor-launch.js",
+    "./rewards/copy-sponsor-launch": "./dist/rewards/copy-sponsor-launch.js",
     "./rewards/sponsor-source": "./dist/rewards/sponsor-source.js",
     "./rewards/sponsor-execution": "./dist/rewards/sponsor-execution.js",
     "./rewards/sponsor-allocation": "./dist/rewards/sponsor-allocation.js",

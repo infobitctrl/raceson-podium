@@ -1,6 +1,6 @@
 import type {IncomingMessage, ServerResponse} from "node:http";
 import {z} from "zod";
-import {rewardSponsorExecution, rewardSponsorLaunch} from "@raceson/db/rewards";
+import {rewardSponsorExecution, rewardSponsorLaunch,type RewardLedgerRpc,type RewardAccountIdentity} from "@raceson/db/rewards";
 import {createSponsorExecutionPlan, decodeSponsorExecutionPolicy, type SponsorExecutionPolicy} from "@raceson/domain/rewards/sponsor-execution";
 import {observeSponsorProgramme, SponsorReceiptError, type SponsorChainReader, type SponsorChainObservation} from "@raceson/rewards-chain/sponsor-v4";
 import type {Hex} from "viem";
@@ -14,7 +14,7 @@ const command = z.discriminatedUnion("action", [
   z.object({action: z.literal("prepare"), launchId: uuid, funder: z.string().regex(/^0x[0-9a-fA-F]{40}$/)}).strict(),
   z.object({action: z.literal("deployment"), hash}).strict(), z.object({action: z.literal("funding"), hash}).strict(),
 ]);
-export type SponsorExecutionDependencies = OrganizerRewardRouteDependencies & {sponsorPolicy?: () => SponsorExecutionPolicy | null; sponsorReader?: SponsorChainReader; creation?:SponsorCreationDeps;resolveCreation?: (identity:Parameters<typeof advanceSponsorCreation>[0],id:string)=>Promise<SponsorCreationDeps>;resolveSponsorPolicy?:()=>Promise<SponsorExecutionPolicy|null>};
+export type SponsorExecutionDependencies = OrganizerRewardRouteDependencies & {sponsorPolicy?: () => SponsorExecutionPolicy | null; sponsorReader?: SponsorChainReader; creation?:SponsorCreationDeps;resolveCreation?: (identity:Parameters<typeof advanceSponsorCreation>[0],id:string,rpc?:RewardLedgerRpc)=>Promise<SponsorCreationDeps>;resolveSponsorPolicy?:()=>Promise<SponsorExecutionPolicy|null>;resolveRpc?:(identity:RewardAccountIdentity,id:string)=>Promise<RewardLedgerRpc>};
 
 /** Explicit server configuration is an execution gate; no wallet addresses or
  * review policy are guessed from historical pilots. No operator key is loaded. */
@@ -33,6 +33,7 @@ export async function dispatchSponsorExecution(req: IncomingMessage, res: Server
     const config = deps.config(); if (!config) return false;
     const identity = await deps.requireIdentity(req), id = uuid.parse(match[1]);
     if ([...url.searchParams].length) throw Error("invalid_sponsor_execution");
+    if(deps.resolveRpc)deps={...deps,rpc:await deps.resolveRpc(identity,id)};
     const action = req.method === "POST" ? command.parse(await deps.readJsonBody(req)) : null;
     if (action?.action === "deployment" || action?.action === "funding") submittedReceiptHash = action.hash;
     const policy = deps.resolveSponsorPolicy?await deps.resolveSponsorPolicy():deps.sponsorPolicy?.() ?? null;
@@ -49,7 +50,7 @@ export async function dispatchSponsorExecution(req: IncomingMessage, res: Server
     if(action?.action==="launch"&&!record)throw Error("invalid_sponsor_execution");
     // A confirmed account is observed from its immutable plan and chain receipt.
     // Creation-provider outages must not block its status or prize deposit.
-    if(!record?.deploymentHash&&deps.resolveCreation)deps={...deps,creation:await deps.resolveCreation(identity,id)};
+    if(!record?.deploymentHash&&deps.resolveCreation)deps={...deps,creation:await deps.resolveCreation(identity,id,deps.rpc)};
     let creationReady=false;try{if(!record?.deploymentHash&&deps.creation?.signer){await deps.creation.signer.verifyReady?.();creationReady=true;}}catch{/* Fail closed until the actual provider grant and factory are verified. */}
     let creation=(deps.creation||record?.deploymentHash)&&config.chainId===10143?await sponsorCreationStatus(identity,id,record,creationReady,deps.rpc,deps.creation?.signer?.address):undefined;
     if(action?.action==="launch"&&!record?.deploymentHash){
@@ -81,8 +82,10 @@ export async function dispatchSponsorExecution(req: IncomingMessage, res: Server
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : error instanceof Error ? error.message : "";
     if (["reward_account_session_required", "Unauthorized", "Missing bearer token"].includes(code)) deps.sendError(res, 401, "reward_auth_required", "Sign in to the isolated demo.");
     else if (code === "Untrusted browser origin") deps.sendError(res, 403, "forbidden", "This browser request is not allowed.");
+    else if(['reward_demo_account_required','reward_demo_sponsor_required'].includes(code))deps.sendError(res,403,'reward_demo_sponsor_required','Use the sponsor account that saved this campaign.');
     else if (code === "reward_setup_not_found") deps.sendError(res, 404, code, "Campaign not found.");
     else if (code === "reward_setup_conflict") deps.sendError(res, 409, code, "A different version or transaction is already saved. Reload this campaign.");
+    else if(['reward_launch_sources_required','copy_scope_changed','copy_projection_changed'].includes(code))deps.sendError(res,409,'reward_launch_sources_required','The saved event source could not be verified. Reload the campaign before continuing.');
     else if (code === "sponsor_execution_not_configured") deps.sendError(res, 409, code, "The demo operator and return treasury must be configured before deployment.");
     else if (code === "invalid_sponsor_execution" || error instanceof z.ZodError) deps.sendError(res, 400, "invalid_sponsor_execution", "Check the execution request.");
     else if (submittedReceiptHash && error instanceof SponsorReceiptError && error.transactionHash === submittedReceiptHash) {
