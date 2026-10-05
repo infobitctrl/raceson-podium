@@ -47,3 +47,33 @@ it('updates only supported return destinations and the claim window',()=>{
  expect(current.policy).toMatchObject({claimWindowDays:30,treasuryReturn:'original_sender',fewerFinishers:'selected_return'});
  expect(current.root).toEqual(initial.root);
 });
+
+it('links league amounts and sliders and recalculates amounts when the pool changes',()=>{
+ const initial=splitSponsorSections(fresh(),5000);initial.budgetMon='1';render(<Harness initial={initial}/>);
+ fireEvent.change(screen.getByRole('textbox',{name:'League · test MON'}),{target:{value:'0.7'}});
+ fireEvent.blur(screen.getByRole('textbox',{name:'League · test MON'}));
+ expect(screen.getByRole('slider',{name:'League prize share'})).toHaveValue('7000');
+ expect(screen.getByLabelText('League %')).toHaveValue(70);
+ expect(screen.getByRole('textbox',{name:'Round 1 · test MON'})).toHaveValue('0.06');
+ fireEvent.change(screen.getByLabelText('Total budget · test MON'),{target:{value:'2'}});
+ expect(screen.getByRole('textbox',{name:'League · test MON'})).toHaveValue('1.4');
+ expect(screen.getByRole('textbox',{name:'Round 1 · test MON'})).toHaveValue('0.12');
+ expect(screen.getByLabelText('League %')).toHaveValue(70);
+ fireEvent.change(screen.getByRole('slider',{name:'Round 1 prize share'}),{target:{value:'2000'}});
+ expect(screen.getByLabelText('Round 1 %')).toHaveValue(20);
+ expect(screen.getByRole('textbox',{name:'Round 1 · test MON'})).toHaveValue('0.4');
+ const current=JSON.parse(screen.getByLabelText('Saved configuration').textContent!);
+ expect(current.root.children.reduce((sum:number,n:{shareBps:number})=>sum+n.shareBps,0)).toBe(10000);
+ expect(current.root.children[0].shareBps).toBe(7000);
+ fireEvent.change(screen.getByRole('textbox',{name:'Round 1 · test MON'}),{target:{value:'0.8'}});
+ expect(screen.getByRole('alert')).toBeVisible();
+ expect(JSON.parse(screen.getByLabelText('Saved configuration').textContent!)).toEqual(current);
+});
+it('disables amount inputs without a valid pool and all linked inputs for saved rules',()=>{
+ const initial=splitSponsorSections(fresh(),5000);initial.budgetMon='0';const {unmount}=render(<Harness initial={initial}/>);
+ expect(screen.getByRole('textbox',{name:'League · test MON'})).toBeDisabled();
+ expect(screen.getByRole('slider',{name:'League prize share'})).toBeEnabled();
+ unmount();initial.budgetMon='1';render(<Harness initial={initial} disabled/>);
+ expect(screen.getByRole('textbox',{name:'League · test MON'})).toBeDisabled();
+ expect(screen.getByRole('slider',{name:'League prize share'})).toBeDisabled();
+});

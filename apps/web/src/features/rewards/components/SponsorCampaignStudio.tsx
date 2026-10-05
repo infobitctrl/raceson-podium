@@ -1,4 +1,4 @@
-import {lazy,Suspense,useEffect,useState} from "react";
+import {lazy,Suspense,useEffect,useId,useState} from "react";
 import {useAuth} from "@/lib/auth";
 import {sponsorConfigurationSourcesReady} from "@raceson/domain/rewards/sponsor-launch";
 import {addSponsorDraftCategory,sponsorDraftCategoryName,matchesSponsorDraftCategory,sponsorDraftCategories,type SponsorDraftCategory} from "../model/sponsorDraftCategories";
@@ -20,7 +20,9 @@ import SponsorBulkCategories from "./SponsorBulkCategories";
 import {applySponsorCategorySettings} from "../model/applySponsorCategorySettings";
 import {sponsorSetupComplete} from "../model/sponsorSetupComplete";
 import SponsorTrackAllocation from "./SponsorTrackAllocation";
-import type {SponsorTrack} from "../model/sponsorTrackAllocation";
+import {trackContains,type SponsorTrack} from "../model/sponsorTrackAllocation";
+import {sponsorTrackRulesComplete} from '../model/sponsorTrackRules';
+import SponsorTrackTabs from './SponsorTrackTabs';
 import SponsorFundingWorkspace from "./SponsorFundingWorkspace";
 import {useSponsorSource} from "../model/useSponsorSource";
 import SponsorSourceStatus from "./SponsorSourceStatus";
@@ -36,10 +38,11 @@ export default function SponsorCampaignStudio(props:GuidedRewardSetupProps){
  const auth=useAuth();
  const {configuration:c,hr,selection,onChange}=props,meta=c.guided!,t=(en:string,local:string)=>hr?local:en;
  const [search]=useSearchParams(),intent=sponsorIntent(search.get("opportunity"),hr);
+ const trackPanelId=useId(),[activeTrackId,setActiveTrackId]=useState<string|null>(null);
  const [activeRound,setActiveRound]=useState(Number(search.get("round"))>=1&&Number(search.get("round"))<=5?Number(search.get("round")):intent?.round||1);
  const roundQuery=search.get("round");
  useEffect(()=>{const round=Number(roundQuery);if(round>=1&&round<=5)setActiveRound(round);},[roundQuery]);
- const [bulkEditing,setBulkEditing]=useState(false);
+ const [bulkEditing,setBulkEditing]=useState(false),[newCategoryId,setNewCategoryId]=useState<string|null>(null);
  const [error,setError]=useState(""),[reviewUnsaved,setReviewUnsaved]=useState(false);
  const disabled=props.disabled||reviewUnsaved||Boolean(props.sourceLocked);
  const resolvedSource=useSponsorSource(c,search,{enabled:!props.copySource,setupId:props.setupId,locked:disabled||Boolean(props.sourceLocked)||Boolean(props.copySource),onChange});
@@ -64,7 +67,7 @@ export default function SponsorCampaignStudio(props:GuidedRewardSetupProps){
  const categories=catalogue?guidedCategories(catalogue,pot.roundId,"athlete_standings"):[];
  const clubs=catalogue?guidedCategories(catalogue,pot.roundId,"club_standings"):[];
  const sum=(node:RewardSetupNode)=>node.children.reduce((sum,n)=>sum+n.shareBps,0);
- const go=(next:number,round?:number)=>{if(!reviewUnsaved){setPreviewChoice(null);props.onStep(next,round);}};
+ const go=(next:number,round?:number)=>{if(!reviewUnsaved){setPreviewChoice(null);setNewCategoryId(null);props.onStep(next,round);}};
  const safely=(action:()=>RewardDistributionSetup)=>{if(disabled)return false;try{props.onChange(props.copySource?action():normalizeSponsorCategories(action()));setError("");return true;}catch{setError(t("Check the current budget and category settings.","Provjerite fond i postavke kategorije."));return false;}};
  const editNode=(id:string,update:(node:RewardSetupNode)=>RewardSetupNode)=>safely(()=>({...c,root:updateSetupNode(c.root,id,update)}));
  useEffect(()=>{
@@ -85,17 +88,21 @@ export default function SponsorCampaignStudio(props:GuidedRewardSetupProps){
   setPreviewChoice(null);
   const existing=potNode.children.find(n=>category?n.rule?.source?.categoryId===category.id:meta.groups.some(g=>g.nodeId===n.id&&g.type===type));
   if(existing){removeCategory(existing.id);return;}
-  safely(()=>{const next=allocateAddedSponsorCategory(addGuidedGroup(c,pot.nodeId,type,()=>crypto.randomUUID(),category,hr),pot.nodeId);return next;});
+  let addedId:string|null=null;
+  const added=safely(()=>{const next=allocateAddedSponsorCategory(addGuidedGroup(c,pot.nodeId,type,()=>crypto.randomUUID(),category,hr),pot.nodeId);addedId=next.root.children.find(p=>p.id===pot.nodeId)?.children.find(n=>!potNode.children.some(old=>old.id===n.id))?.id??null;return next;});
+  if(added)setNewCategoryId(addedId);
  }
  function chooseDraft(category:SponsorDraftCategory){
   setPreviewChoice(null);
   const existing=potNode.children.find(n=>matchesSponsorDraftCategory(n,category));
   if(existing){removeCategory(existing.id);return;}
-  safely(()=>{const next=allocateAddedSponsorCategory(addSponsorDraftCategory(c,pot.nodeId,category,()=>crypto.randomUUID(),hr),pot.nodeId);return next;});
+  let addedId:string|null=null;
+  const added=safely(()=>{const next=allocateAddedSponsorCategory(addSponsorDraftCategory(c,pot.nodeId,category,()=>crypto.randomUUID(),hr),pot.nodeId);addedId=next.root.children.find(p=>p.id===pot.nodeId)?.children.find(n=>!potNode.children.some(old=>old.id===n.id))?.id??null;return next;});
+  if(added)setNewCategoryId(addedId);
  }
  function navigatePot(target:"pot"|"rounds"|number){
   if(reviewUnsaved)return;
-  setPreviewChoice(null);
+  setPreviewChoice(null);setNewCategoryId(null);
   if(target==="pot"){go(1);return;}
   if(target==="rounds"){go(1);document.getElementById("funding-inspector")?.scrollIntoView?.({block:"start"});return;}
   setActiveRound(target||1);go(target?3:4,target||undefined);
@@ -109,8 +116,14 @@ export default function SponsorCampaignStudio(props:GuidedRewardSetupProps){
  const detailHref=`/rewards/events?${detailQuery}`;
  const isSitrail=!c.context||/šib|siben|šitrail|sitrail/i.test(sourceName);
  const organization=props.copySource?"":selection?.record.organizationName??(isSitrail?"BK Faust Vrančić":"");
- const editor=(node:RewardSetupNode)=>{const group=meta.groups.find(g=>g.nodeId===node.id);return group?<SponsorInlineCategory fixedStructure={Boolean(props.copySource)} key={node.id} node={node} group={group} configuration={c} catalogue={catalogue} roundId={pot.roundId} row={preview?.rows.find(r=>r.id===node.id)} hr={hr} disabled={disabled} onNode={update=>{const next=update(node);if(next.shareBps!==node.shareBps)changeShare(node.id,next.shareBps);else editNode(node.id,()=>next);}} onGroup={patch=>editGroup(node.id,patch)} onMethod={method=>safely(()=>changeGuidedMethod(c,node.id,method))} onConnect={id=>{if(catalogue)safely(()=>connectGuidedGroup(c,node.id,id,catalogue));}} onRemove={()=>removeCategory(node.id)}/>:null;};
+ const editor=(node:RewardSetupNode)=>{const group=meta.groups.find(g=>g.nodeId===node.id);return group?<SponsorInlineCategory fixedStructure={Boolean(props.copySource)} initialExpanded={newCategoryId===node.id} key={node.id} node={node} group={group} configuration={c} catalogue={catalogue} roundId={pot.roundId} row={preview?.rows.find(r=>r.id===node.id)} hr={hr} disabled={disabled} onNode={update=>{const next=update(node);if(next.shareBps!==node.shareBps)changeShare(node.id,next.shareBps);else editNode(node.id,()=>next);}} onGroup={patch=>editGroup(node.id,patch)} onMethod={method=>safely(()=>changeGuidedMethod(c,node.id,method))} onConnect={id=>{if(catalogue)safely(()=>connectGuidedGroup(c,node.id,id,catalogue));}} onRemove={()=>removeCategory(node.id)}/>:null;};
  const available=props.copySource?[]:[...categories.map(category=>({name:`${category.competitionName} · ${category.name}`,type:'athlete_standings' as GuidedRewardType,category})),...(!sourceState.selectedRaceId?clubs.map(category=>({name:category.name,type:'club_standings' as GuidedRewardType,category})):[]),...(unbound?[{name:t("Club standings","Klupski poredak"),type:"club_standings" as GuidedRewardType,category:null}]:[]),...(pot.slot===0?[{name:t('Completed rounds','Završena kola'),type:'athlete_finishes' as GuidedRewardType,category:null},{name:t('Athlete kilometres','Kilometri sportaša'),type:'athlete_metres' as GuidedRewardType,category:null},{name:t('Club kilometres','Klupski kilometri'),type:'club_metres' as GuidedRewardType,category:null}]:[])];
+ const activeTrack=raceTracks.length>1?(raceTracks.find(track=>track.id===activeTrackId)??raceTracks[0]):null;
+ const trackCategoryIds=new Set(raceTracks.flatMap(track=>track.categoryIds));
+ const optionCard=(option:typeof available[number])=><section className={exact.category} key={option.category?.id??option.type}><label className={exact.categoryHeader}><input type="checkbox" checked={false} disabled={disabled||Boolean(option.category&&pot.slot>0&&!pot.roundId)} onChange={()=>choose(option.type,option.category)}/>{option.name}<small>{option.type.startsWith('club')?t('Club','Klub'):t('Individual','Pojedinac')}</small></label></section>;
+ const unused=available.filter(option=>!potNode.children.some(n=>option.category?n.rule?.source?.categoryId===option.category.id:meta.groups.some(g=>g.nodeId===n.id&&g.type===option.type)));
+ const otherNodes=activeTrack?potNode.children.filter(visible).filter(n=>!raceTracks.some(track=>trackContains(track,n))):[];
+ const otherOptions=activeTrack?unused.filter(option=>!option.category||!trackCategoryIds.has(option.category.id)):[];
  return <article className={exact.studio}>
   <header className={exact.header}><p>{t('Sponsor setup','Postavljanje sponzorstva')}</p><h1>{t('Set up your rewards','Postavite svoje nagrade')}</h1></header>
   <div className={exact.event}><div><h2>{sourceName}</h2><p>{organization?`${organization} · `:''}{raceSlot?t('Race sponsorship','Sponzorstvo utrke'):`${meta.pots.filter(p=>p.slot>0).length} ${t('rounds','kola')}`}</p></div><Link to={detailHref}>{t('Event details','Detalji događaja')}</Link></div>
@@ -122,8 +135,11 @@ export default function SponsorCampaignStudio(props:GuidedRewardSetupProps){
   <div className={exact.layout}><div className={exact.main}>
   {step===1?<><SponsorFundingWorkspace configuration={c} onChange={props.onChange} hr={hr} disabled={disabled} readOnly={Boolean(props.sourceLocked)} stage="pot" allocation={racePot&&raceTracks.length?<SponsorTrackAllocation configuration={c} potId={racePot.nodeId} tracks={raceTracks} catalogue={props.copySource?null:catalogue} onChange={props.onChange} disabled={disabled} hr={hr}/>:undefined} raceSlot={raceSlot||undefined} onNavigate={navigatePot}/>{!props.copySource&&auth.account?.hasOrganizerAccess&&catalogue&&selection?<details className={exact.advanced}><summary>{t('Review results','Pregled rezultata')}</summary><Suspense fallback={<p>{t('Loading…','Učitavanje…')}</p>}><Metrics selection={selection} hr={hr} onReviewUnsavedChange={setReviewUnsaved}/></Suspense></details>:null}</>:null}
   {step===3||step===4?<>{!raceSlot?<label className={exact.potSelect}>{t('Editing rules for','Uređivanje pravila za')}<select aria-label={t('Reward pot','Fond nagrada')} value={pot.slot} disabled={reviewUnsaved} onChange={e=>navigatePot(Number(e.target.value))}>{allocatedPots.map(p=><option value={p.slot} key={p.nodeId}>{c.root.children.find(n=>n.id===p.nodeId)!.name}</option>)}{!allocatedPots.some(p=>p.nodeId===pot.nodeId)?<option value={pot.slot}>{potNode.name}</option>:null}</select></label>:null}<div className={exact.potBanner}><strong>{potName(potNode)}</strong><strong>{amount(potNode.id)} <small>test MON</small></strong></div>
-   {potNode.children.filter(visible).map(editor)}
-   {!props.sourceLocked?available.filter(option=>!potNode.children.some(n=>option.category?n.rule?.source?.categoryId===option.category.id:meta.groups.some(g=>g.nodeId===n.id&&g.type===option.type))).map(option=><section className={exact.category} key={option.category?.id??option.type}><label className={exact.categoryHeader}><input type="checkbox" checked={false} disabled={disabled||Boolean(option.category&&pot.slot>0&&!pot.roundId)} onChange={()=>choose(option.type,option.category)}/>{option.name}<small>{option.type.startsWith('club')?t('Club','Klub'):t('Individual','Pojedinac')}</small></label></section>):null}
+   {activeTrack?<><SponsorTrackTabs tracks={raceTracks.map(track=>({...track,complete:sponsorTrackRulesComplete(c,pot.nodeId,track)}))} activeId={activeTrack.id} panelId={trackPanelId} hr={hr} onSelect={setActiveTrackId}/><section key={activeTrack.id} role="tabpanel" id={trackPanelId} aria-labelledby={`${trackPanelId}-tab-${activeTrack.id}`}>
+    {potNode.children.filter(visible).filter(n=>trackContains(activeTrack,n)).map(editor)}
+    {!props.sourceLocked?unused.filter(option=>option.category&&activeTrack.categoryIds.includes(option.category.id)).map(optionCard):null}
+   </section>{otherNodes.length||!props.sourceLocked&&otherOptions.length?<section aria-label={t('Other reward categories','Ostale kategorije nagrada')}><h2 className={exact.otherRewards}>{t('Other reward categories','Ostale kategorije nagrada')}</h2>{otherNodes.map(editor)}{!props.sourceLocked?otherOptions.map(optionCard):null}</section>:null}</>:<>{potNode.children.filter(visible).map(editor)}{!props.sourceLocked?unused.map(optionCard):null}</>}
+
    {!props.sourceLocked&&unbound?<details className={exact.advanced}><summary>{t('Draft reward categories','Nacrt kategorija nagrada')}</summary>{sponsorDraftCategories.filter(cat=>!potNode.children.some(n=>matchesSponsorDraftCategory(n,cat))).map(cat=><label className={exact.categoryHeader} key={cat.key}><input type="checkbox" checked={false} disabled={disabled} onChange={()=>chooseDraft(cat)}/>{sponsorDraftCategoryName(cat,hr)}</label>)}</details>:null}
    {!potNode.children.length&&!available.length?<SponsorPreparedCategoryPreview selection={c.sponsorSelection} status={sourceState.status} hr={hr}/>:null}
    <div className={exact.balance} data-complete={sum(potNode)===10000}><strong>{t('Categories total','Ukupno kategorije')} {sum(potNode)/100}%</strong><button className={exact.outline} disabled={disabled||!potNode.children.length} onClick={()=>editNode(potNode.id,n=>({...n,children:n.children.map(child=>balanceSponsorCategories(n.children.filter(visible),true).find(a=>a.id===child.id)??child)}))}>{t('Balance shares','Uskladi udjele')}</button></div>

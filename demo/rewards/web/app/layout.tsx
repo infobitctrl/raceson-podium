@@ -20,6 +20,7 @@ import "../../../../apps/web/src/features/rewards/components/RewardLeagueMetrics
 import "../../../../apps/web/src/features/rewards/components/RewardWorkspace.module.css";
 import "../../../../apps/web/src/features/rewards/components/SponsorProgress.module.css";
 import "../../../../apps/web/src/features/rewards/components/SponsorStudio.module.css";
+import "../../../../apps/web/src/features/rewards/components/SponsorExact.module.css";
 import "../../../../apps/web/src/features/rewards/components/SponsorFunding.module.css";
 import "../../../../apps/web/src/features/rewards/components/SponsorLaunch.module.css";
 import "../../../../apps/web/src/features/rewards/components/SponsorCategoryAllocation.module.css";

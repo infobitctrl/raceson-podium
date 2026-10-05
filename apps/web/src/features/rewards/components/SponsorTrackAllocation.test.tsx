@@ -36,3 +36,37 @@ it('selects one track without silently selecting the other',()=>{
  expect(screen.getByRole('spinbutton',{name:'Mala %'})).toHaveValue(50);
  expect(screen.getByRole('spinbutton',{name:'Velika %'})).toHaveValue(50);
 });
+
+it('links sliders, percentages and test MON while preserving the pool and category rules',()=>{
+ render(<Harness/>);fireEvent.click(screen.getByRole('button',{name:'Split evenly'}));
+ const initial=JSON.parse(screen.getByTestId('config').textContent!) as RewardDistributionSetup;
+ fireEvent.change(screen.getByRole('slider',{name:'Velika prize share'}),{target:{value:'7000'}});
+ expect(screen.getByRole('spinbutton',{name:'Velika %'})).toHaveValue(70);
+ expect(screen.getByRole('textbox',{name:'Velika · test MON'})).toHaveValue('70');
+ expect(screen.getByRole('textbox',{name:'Mala · test MON'})).toHaveValue('30');
+ fireEvent.change(screen.getByRole('textbox',{name:'Mala · test MON'}),{target:{value:'45.125'}});
+ expect(screen.getByRole('slider',{name:'Mala prize share'})).toHaveValue('4513');
+ expect(screen.getByRole('spinbutton',{name:'Velika %'})).toHaveValue(54.87);
+ fireEvent.blur(screen.getByRole('textbox',{name:'Mala · test MON'}));
+ expect(screen.getByRole('textbox',{name:'Mala · test MON'})).toHaveValue('45.13');
+ const current=JSON.parse(screen.getByTestId('config').textContent!) as RewardDistributionSetup;
+ expect(current.budgetMon).toBe('100');expect(current.guided).toEqual(initial.guided);
+ expect(current.root.children[5].children.map(({id,rule})=>({id,rule}))).toEqual(initial.root.children[5].children.map(({id,rule})=>({id,rule})));
+ expect(current.root.children[5].children.reduce((sum,n)=>sum+n.shareBps,0)).toBe(10000);
+});
+it('rejects invalid or oversized amounts without changing track allocation',()=>{
+ render(<Harness/>);fireEvent.click(screen.getByRole('button',{name:'Split evenly'}));
+ const initial=screen.getByTestId('config').textContent;
+ for(const value of ['101','-1','1e2','oops']){
+  fireEvent.change(screen.getByRole('textbox',{name:'Velika · test MON'}),{target:{value}});
+  expect(screen.getByRole('alert')).toHaveTextContent('Enter a valid test MON amount');
+  expect(screen.getByTestId('config').textContent).toBe(initial);
+ }
+ fireEvent.change(screen.getByRole('textbox',{name:'Velika · test MON'}),{target:{value:'0.5'}});
+ expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+ expect(screen.getByRole('spinbutton',{name:'Velika %'})).toHaveValue(0.5);
+ fireEvent.change(screen.getByRole('textbox',{name:'Velika · test MON'}),{target:{value:'101'}});
+ fireEvent.blur(screen.getByRole('textbox',{name:'Velika · test MON'}));
+ expect(screen.getByRole('textbox',{name:'Velika · test MON'})).toHaveValue('0.5');
+ expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});

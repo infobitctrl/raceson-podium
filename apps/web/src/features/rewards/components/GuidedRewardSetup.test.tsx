@@ -19,7 +19,7 @@ function fixture(){let seq=2000;const next=()=>id(seq++),catalogue=decodeStoredR
  const setup=bindGuidedSeason(createGuidedSetup(next),context,catalogue);
  return {next,catalogue,setup,selection:{record:{draftId:context.draftId},workspace:{catalogueHash:context.catalogueHash,catalogue}} as SetupEventSelection};
 }
-function Harness({initial,initialStep=1,campaign=false,copySource}:{initial:ReturnType<typeof fixture>;initialStep?:number;campaign?:boolean;copySource?:{name:string;slot:number}}){
+function Harness({initial,initialStep=1,campaign=false,copySource}:{initial:ReturnType<typeof fixture>;initialStep?:number;campaign?:boolean;copySource?:{name:string;slot:number;tracks?:import('../model/sponsorTrackAllocation').SponsorTrack[]}}){
  const [configuration,setConfiguration]=useState(initial.setup),[step,setStep]=useState(initialStep);
  return <MemoryRouter><GuidedRewardSetup campaign={campaign} copySource={copySource} configuration={configuration} onChange={setConfiguration} step={step} onStep={setStep} disabled={false} hr={false} selection={initial.selection} onLoaded={()=>{}} initialProgramme={null}
  saveAction={<button>Save draft</button>} saveStatus="Unsaved changes" error={null} onFinish={()=>onFinish(finishRewardSetup(configuration))} canSave busy={false} revision={null}/><output data-testid="configuration">{JSON.stringify(configuration)}</output></MemoryRouter>;
@@ -158,4 +158,73 @@ it.each([1,5])('presents a single race independently through budget, rules and r
   expect(studio.getAllByText(name).length).toBeGreaterThan(1);
  }
  expect(current()).toEqual({...initial.setup,budgetMon:'123.456'});
+});
+
+it('starts included categories collapsed and expands headers without changing economics',()=>{
+ const initial=fixture();initial.setup=addGuidedGroup(initial.setup,initial.setup.guided!.pots[0].nodeId,'athlete_standings',initial.next,initial.catalogue.categories[0]);
+ initial.setup.root.children[0].children[0].shareBps=10000;
+ render(<Harness campaign initial={initial} initialStep={4}/>);
+ const before=current(),header=screen.getByRole('button',{name:'Synthetic short · Female Individual'});
+ expect(header).toHaveAttribute('aria-expanded','false');
+ expect(screen.queryByRole('spinbutton',{name:'Synthetic short · Female prize positions'})).not.toBeInTheDocument();
+ fireEvent.click(header);
+ expect(header).toHaveAttribute('aria-expanded','true');
+ expect(screen.getByRole('spinbutton',{name:'Synthetic short · Female prize positions'})).toBeVisible();
+ expect(current()).toEqual(before);
+ fireEvent.change(screen.getByRole('spinbutton',{name:'Synthetic short · Female prize positions'}),{target:{value:'3'}});
+ const edited=current();fireEvent.click(header);
+ expect(screen.queryByRole('spinbutton',{name:'Synthetic short · Female prize positions'})).not.toBeInTheDocument();
+ fireEvent.click(header);
+ expect(screen.getByRole('spinbutton',{name:'Synthetic short · Female prize positions'})).toHaveValue(3);
+ expect(current()).toEqual(edited);
+});
+it('expands a retained zero-share category when checked and collapses it when unchecked',()=>{
+ const initial=fixture(),pot=initial.setup.guided!.pots[1];
+ initial.setup=addGuidedGroup(initial.setup,pot.nodeId,'athlete_standings',initial.next,initial.catalogue.categories[0]);
+ initial.setup.root.children=initial.setup.root.children.map(n=>({...n,shareBps:n.id===pot.nodeId?10000:0}));
+ render(<Harness campaign initial={initial} initialStep={3} copySource={{name:'Synthetic race',slot:1}}/>);
+ const include=screen.getByRole('checkbox',{name:'Include Synthetic short · Female'});
+ expect(include).not.toBeChecked();
+ expect(screen.queryByRole('spinbutton',{name:'Synthetic short · Female prize positions'})).not.toBeInTheDocument();
+ fireEvent.click(include);
+ expect(include).toBeChecked();
+ expect(screen.getByRole('spinbutton',{name:'Synthetic short · Female prize positions'})).toBeVisible();
+ expect(current().root.children[1].children[0].shareBps).toBe(10000);
+ const rule=current().root.children[1].children[0].rule;
+ fireEvent.click(include);
+ expect(include).not.toBeChecked();
+ expect(screen.queryByRole('spinbutton',{name:'Synthetic short · Female prize positions'})).not.toBeInTheDocument();
+ expect(current().root.children[1].children[0].shareBps).toBe(0);
+ expect(current().root.children[1].children[0].rule).toEqual(rule);
+});
+
+
+it('separates track categories, preserves manual rules when switching, and updates completion checks',()=>{
+ const initial=fixture(),potId=initial.setup.guided!.pots[1].nodeId;
+ for(let i=0;i<2;i++)initial.setup=addGuidedGroup(initial.setup,potId,'athlete_standings',initial.next,null);
+ initial.setup=addGuidedGroup(initial.setup,potId,'club_standings',initial.next,null);
+ const nodes=initial.setup.root.children[1].children;
+ nodes[0].name='Long women';nodes[1].name='Short men';nodes[0].shareBps=5000;nodes[1].shareBps=5000;
+ initial.setup.root.children.forEach(p=>{p.shareBps=p.id===potId?10000:0;});initial.setup.budgetMon='1';
+ const tracks=[{id:'long',name:'Long track',categoryIds:[],nodeIds:[nodes[0].id]},{id:'short',name:'Short track',categoryIds:[],nodeIds:[nodes[1].id]}];
+ render(<Harness campaign initial={initial} initialStep={3} copySource={{name:'Race',slot:1,tracks}}/>);
+ const long=screen.getByRole('tab',{name:'Long track · Complete'}),short=screen.getByRole('tab',{name:'Short track · Complete'});
+ expect(long).toHaveAttribute('aria-selected','true');expect(screen.queryByRole('button',{name:'Short men Individual'})).not.toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'Club standings Club'})).toBeVisible();
+ fireEvent.click(screen.getByRole('button',{name:'Long women Individual'}));
+ fireEvent.change(screen.getByLabelText('Long women prize positions'),{target:{value:'3'}});
+ const category=within(screen.getByRole('region',{name:'Long women'}));
+ fireEvent.click(category.getByRole('button',{name:'Top heavy'}));expect(category.getByRole('button',{name:'Top heavy'})).toHaveAttribute('aria-pressed','true');
+ fireEvent.change(screen.getByLabelText('Long women #1 weight'),{target:{value:'90'}});
+ expect(category.getByRole('button',{name:'Custom'})).toHaveAttribute('aria-pressed','true');
+ const edited=current(),shares=edited.root.children[1].children[0].rule!.sharesBps;
+ expect(shares.reduce((a,b)=>a+b,0)).toBe(10000);
+ fireEvent.keyDown(long,{key:'ArrowRight'});expect(short).toHaveFocus();expect(short).toHaveAttribute('aria-selected','true');
+ expect(screen.getByRole('button',{name:'Short men Individual'})).toBeVisible();expect(screen.queryByRole('button',{name:'Long women Individual'})).not.toBeInTheDocument();expect(current()).toEqual(edited);
+ fireEvent.click(long);fireEvent.click(screen.getByRole('button',{name:'Long women Individual'}));
+ expect(screen.getByRole('region',{name:'Long women prize distribution'})).toBeVisible();
+ expect(screen.getByRole('group',{name:'Long women distribution'}).querySelector('[aria-pressed="true"]')).toHaveTextContent('Custom');
+ expect(current().root.children[1].children[0].rule!.sharesBps).toEqual(shares);
+ fireEvent.click(screen.getByRole('checkbox',{name:'Include Long women'}));
+ expect(screen.getByRole('tab',{name:'Long track'})).not.toHaveTextContent('Complete');expect(screen.getByRole('tab',{name:'Short track · Complete'})).toBeVisible();
 });
