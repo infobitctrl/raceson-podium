@@ -2,6 +2,7 @@ import {fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedAwardReview from './HostedAwardReview';
 const mocks=vi.hoisted(()=>({read:vi.fn()}));
+vi.mock('./HostedAwardUpload',()=>({default:()=>null}));
 vi.mock('../data/hostedAwardReview',()=>({readHostedAwardReview:mocks.read}));
 const base={historicalAcknowledgement:false,contextHash:'c'.repeat(64),documentHash:'d'.repeat(64),approval:null,recorded:null,proposedWei:'1000000000000000001',retainedWei:'2',reasons:[],recipientCounts:{athletes:1,clubs:0}};
 beforeEach(()=>mocks.read.mockReset());

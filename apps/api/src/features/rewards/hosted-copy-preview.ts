@@ -1,14 +1,11 @@
 import { hostedCopySelections, hostedCopyReviewNote } from "./hosted-copy-review.js";
 import { createAdminSupabaseClient, type ServerEnv } from "@raceson/db";
-import { readFiveRoundCopyV1, type FiveRoundCopyPinV1 } from "@raceson/db/rewards";
+import { readFiveRoundCopyV1 } from "@raceson/db/rewards";
 import { previewFiveRoundCopyV1 } from "@raceson/domain/rewards/five-round-copy-v1";
 import type { RewardAccountIdentity } from "@raceson/db/rewards";
 
-export const hostedCopyPin: FiveRoundCopyPinV1 = Object.freeze({
-  batchSha256: "073a68cf7703e72af9954d5b05c77bf1e7519a1e7c47b56ec57e07a3655f1644",
-  projectionSha256: "7043cf919edd4dc3bdf40d022c60d0fc40036f2e4093b33b57dfc040bda3975d",
-  leagueId: "ba81ced7-b2c5-4d51-95b6-d95d8c04fa36", seasonId: "323d55fc-a396-4ff4-a17e-eb7152c8f8f1",
-});
+export {hostedCopySourcePin as hostedCopyPin} from '@raceson/db/rewards';
+import {hostedCopySourcePin as hostedCopyPin} from '@raceson/db/rewards';
 // Public display labels from this exact frozen copy, keyed by original sporting
 // competition IDs. These are not new classifications or a scoring policy.
 const competitionNames: Readonly<Record<string, string>> = Object.freeze({
@@ -40,6 +37,7 @@ export function hostedCopyRequestAllowed(method: string | undefined, url: URL, m
     if(operations&&url.pathname==='/api/v1/rewards/admin/wallets')return method==='GET'||method==='POST';
     if(operations&&/^\/api\/v1\/rewards\/demo-copy\/reviews(?:\/[0-9a-f-]{36})?$/.test(url.pathname))return method==='GET';
     if(operations&&/^\/api\/v1\/rewards\/demo-copy\/reviews\/[0-9a-f-]{36}\/allocations\/[0-5]$/.test(url.pathname))return method==='GET'||method==='POST';
+    if(operations&&/^\/api\/v1\/rewards\/demo-copy\/reviews\/[0-9a-f-]{36}\/allocations\/[0-5]\/[0-9a-f-]{36}\/(upload|handoff)$/.test(url.pathname))return method==='GET'||method==='POST';
     if(operations&&url.pathname==='/api/v1/rewards/admin/support')return method==='GET'||method==='POST';
     if(operations&&url.pathname==='/api/v1/rewards/admin/wallets/creation')return method==='POST';
     if(operations&&/^\/api\/v1\/rewards\/(?:demo-copy\/sponsor-setups\/[0-9a-f-]{36}\/launch|distribution-setups\/[0-9a-f-]{36}\/execution)$/.test(url.pathname))return method==='GET'||method==='POST';

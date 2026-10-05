@@ -1,4 +1,5 @@
-import {sponsorLifecycleFactsV4,sponsorAllocationFactsV4,sponsorAllocationDocumentHashV4 as digest,decodeLeaguePublicationFactsV3,
+import {hostedCopyPublicationEvidence} from './hosted-copy-publication.js';
+import {sponsorLifecycleFactsV4,sponsorAllocationFactsV4,composeHostedCopyAwardDocument,sponsorAllocationDocumentHashV4 as digest,decodeLeaguePublicationFactsV3,
  copyRewardLedgerDocument as copy,RewardLedgerStoreError,type RewardAccountIdentity,type RewardLedgerRpc,type SponsorUploadScopeV4} from "@raceson/db/rewards";
 import {buildFinalPublicationEvidenceV3} from "@raceson/domain/rewards/final-publication-v3";
 import {canonicalRewardJson as canonical} from "@raceson/rewards-chain";
@@ -22,10 +23,12 @@ export function sponsorLifecycleInputV4(f:Facts):SponsorLifecycleInputV4 {
 }
 export async function composeSponsorPublicationV4(actor:RewardAccountIdentity,scope:SponsorUploadScopeV4,f:Facts,rpc?:RewardLedgerRpc){
  check(f.upload.current&&f.upload.prepared);
- const state=await sponsorAllocationFactsV4(actor,scope,undefined,rpc),d=sponsorAllocationDocumentV4(actor,scope,state);
+ const state=await sponsorAllocationFactsV4(actor,scope,undefined,rpc),d=f.upload.document.schema==='podium-copy-allocation-document-v1'?composeHostedCopyAwardDocument(state,scope.slot):sponsorAllocationDocumentV4(actor,scope,state);
  check(state.approval?.id===scope.approvalId&&state.approval.current&&state.approval.decision==="approved"&&digest(d)===f.upload.documentHash);
  let evidence:unknown,timing:Omit<SponsorPublicationV4,"publicationEvidenceHash">;
- if(scope.slot>=1&&scope.slot<=4){
+ if(d.schema==='podium-copy-allocation-document-v1'){
+  ({evidence,timing}=hostedCopyPublicationEvidence(d,scope.approvalId,f.upload.prepared.packageHash,f.upload.documentHash));
+ }else if(scope.slot>=1&&scope.slot<=4){
   // Imported historical results have no platform review start. Only an explicitly
   // configured zero policy can bind those original official publication times.
   check(d.plan.reviewPeriods[scope.slot]===0,"reward_sponsor_historical_review_unavailable");

@@ -1,16 +1,21 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {createAdminSupabaseClient,loadServerEnv} from '@raceson/db';
-import {hostedCopyReviewSources,composeHostedCopyAllocation} from '@raceson/db/rewards';
+import {hostedCopyReviewSources,composeHostedCopyAllocation,hostedCopyLifecycleRpc} from '@raceson/db/rewards';
 import {setupId} from '@raceson/domain/rewards/distribution-setup';
 import {hostedCopyOperationsEnabled,hostedCopyPin} from '../../features/rewards/hosted-copy-preview.js';
 import {hostedCopySelections,hostedCopyUnaffiliatedReview,hostedCopyReviewNote} from '../../features/rewards/hosted-copy-review.js';
 import type {OrganizerRewardRouteDependencies} from './organizer.js';
 import {z} from 'zod';
 import {hostedCopyAwardReview} from '../../features/rewards/hosted-copy-approval-service.js';
+import {sponsorUploadV4} from '../../features/rewards/sponsor-upload-v4-service.js';
+import {sponsorLifecycleV4} from '../../features/rewards/sponsor-lifecycle-v4-service.js';
+import type {SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
 const uuid=z.string().uuid().refine(v=>!!setupId(v)),hash=z.string().regex(/^[0-9a-f]{64}$/);
 const decision=z.object({requestId:uuid,expectedApprovalId:uuid.nullable(),contextHash:hash,documentHash:hash,decision:z.enum(['approved','held'])}).strict();
-export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerResponse,url:URL,deps:OrganizerRewardRouteDependencies){
- const match=/^\/api\/v1\/rewards\/demo-copy\/reviews(?:\/([^/]+)(?:\/allocations\/([0-5]))?)?$/.exec(url.pathname);
+const upload=z.object({requestId:uuid,contextHash:hash,documentHash:hash}).strict();
+const publication=z.object({action:z.literal('publication'),requestId:uuid,documentHash:hash}).strict();
+export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerResponse,url:URL,deps:OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader}){
+ const match=/^\/api\/v1\/rewards\/demo-copy\/reviews(?:\/([^/]+)(?:\/allocations\/([0-5])(?:\/([^/]+)\/(upload|handoff))?)?)?$/.exec(url.pathname);
  if(!match)return false;deps.applyPrivateSessionHeaders(res);
  try{
   const env=loadServerEnv();
@@ -19,6 +24,12 @@ export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerRe
   if([...url.searchParams].length||match[1]&&!setupId(match[1]))throw Error('invalid_reward_setup');
   const actor=await deps.requireIdentity(req),id=match[1]??null;
   const rpc=deps.rpc??((name:string,args:Record<string,unknown>)=>createAdminSupabaseClient(env).rpc(name,args));
+  if(match[3]){
+   const scope={chainId:10143 as const,setupId:id!,slot:Number(match[2]),approvalId:uuid.parse(match[3])},transport=hostedCopyLifecycleRpc(actor,rpc);
+   if(match[4]==='upload')deps.sendSuccess(res,await sponsorUploadV4(actor,scope,req.method==='POST'?upload.parse(await deps.readJsonBody(req)):undefined,{rpc:transport,reader:deps.sponsorReader}));
+   else deps.sendSuccess(res,await sponsorLifecycleV4(actor,scope,req.method==='POST'?publication.parse(await deps.readJsonBody(req)):undefined,{rpc:transport,view:'handoff'}));
+   return true;
+  }
   if(match[2]){deps.sendSuccess(res,await hostedCopyAwardReview(actor,id!,Number(match[2]),rpc,req.method==='POST'?decision.parse(await deps.readJsonBody(req)):undefined));return true;}
   const records=await hostedCopyReviewSources(actor,id,hostedCopyPin,rpc);
   if(id===null){deps.sendSuccess(res,{version:'podium-copy-review-queue-v1',items:records.map(r=>r.summary)});return true;}
@@ -35,8 +46,9 @@ export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerRe
   else if(['reward_demo_account_required','reward_demo_reviewer_required'].includes(code))deps.sendError(res,403,'reward_demo_reviewer_required','An active results-team or master-administrator account is required.');
   else if(code==='reward_setup_not_found')deps.sendError(res,404,code,'No source-bound campaign is available.');
   else if(code==='reward_setup_conflict')deps.sendError(res,409,code,'Reload the current contract version before reviewing.');
-  else if(['reward_planning_revision_changed','reward_sponsor_approval_conflict','reward_sponsor_source_not_ready'].includes(code))deps.sendError(res,409,code,'Reload the exact saved awards before recording a decision.');
-  else if(code==='invalid_sponsor_allocation'||error instanceof z.ZodError)deps.sendError(res,400,'invalid_sponsor_allocation','Check the award review request.');
+  else if(['reward_planning_revision_changed','reward_sponsor_approval_conflict','reward_sponsor_source_not_ready','reward_sponsor_upload_conflict','reward_sponsor_funding_not_ready','reward_sponsor_upload_required','reward_sponsor_lifecycle_not_ready','reward_sponsor_lifecycle_conflict','reward_sponsor_historical_review_unavailable'].includes(code))deps.sendError(res,409,code,'Reload the exact saved awards and confirmed funding before continuing.');
+  else if(code==='reward_sponsor_approval_not_found')deps.sendError(res,404,code,'No approved award version is available.');
+  else if(['invalid_sponsor_allocation','invalid_sponsor_upload','invalid_sponsor_lifecycle'].includes(code)||error instanceof z.ZodError)deps.sendError(res,400,'invalid_sponsor_allocation','Check the award review request.');
   else if(code==='invalid_reward_setup')deps.sendError(res,400,code,'Select a source-bound campaign.');
   else deps.sendError(res,503,'hosted_copy_unavailable','The verified review sources could not be loaded.');
  }

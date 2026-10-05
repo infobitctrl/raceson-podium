@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {formatUnits} from 'viem';
 import {readHostedAwardReview,type HostedAwardDecision} from '../data/hostedAwardReview';
+import HostedAwardUpload from './HostedAwardUpload';
 import p from '../components/Podium.module.css';
 type View=Awaited<ReturnType<typeof readHostedAwardReview>>;
 function SlotReview({id,slot,hr}:{id:string;slot:number;hr:boolean}){
@@ -34,6 +35,7 @@ function SlotReview({id,slot,hr}:{id:string;slot:number;hr:boolean}){
     <details><summary>{hr?'Dokaz verzije':'Version evidence'}</summary><p style={{overflowWrap:'anywhere'}}>{view.documentHash}</p></details>
     <button className={p.primary} disabled={busy||view.reasons.length>0||view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash} onClick={()=>void save('approved')}>{hr?'Odobri točne nagrade':'Approve exact awards'}</button>{' '}
     <button className={p.secondary} disabled={busy||view.approval?.current&&view.approval.decision==='held'&&view.approval.documentHash===view.documentHash} onClick={()=>void save('held')}>{hr?'Zadrži nagrade':'Hold awards'}</button>
+   {view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash?<HostedAwardUpload key={view.approval.id} id={id} slot={slot} approvalId={view.approval.id} contextHash={view.contextHash} documentHash={view.documentHash} hr={hr}/>:null}
    </>}
   </>:null}
  </section>;

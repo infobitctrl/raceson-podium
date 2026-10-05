@@ -64,7 +64,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   sendError: boundary.sendError, applyPrivateSessionHeaders: boundary.applyPrivateSessionHeaders,
   };
   const config = deps.config();
-  if (await dispatchHostedCopyReviews(req,res,url,deps))return true;
+  if (await dispatchHostedCopyReviews(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if (await dispatchHostedCopyCatalogue(req, res, url, deps)) return true;
   if (await dispatchHostedCopyAllocation(req, res, url, deps)) return true;
   if (await dispatchHostedCopySponsor(req, res, url, deps)) return true;

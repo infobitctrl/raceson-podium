@@ -10,7 +10,7 @@ export async function sponsorLifecycleFactsV4(actor:RewardAccountIdentity,s:Spon
  const args={p_actor_user_id:uuid(actor.userId),p_actor_session_id:uuid(actor.sessionId),p_chain_id:s.chainId,p_setup_id:uuid(s.setupId),p_slot:s.slot,p_approval_id:uuid(s.approvalId),
   p_request_id:write?uuid(write.requestId):null,p_kind:write?.kind??null,p_body_text:write?canonical(copy(write.body)):null};
  const r=await(rpc??((name,args)=>createAdminSupabaseClient().rpc(name,args)))("service_reward_sponsor_lifecycle_v4",args);
- if(r.error){const m=String((r.error as {message?:unknown}).message);throw new RewardLedgerStoreError(new Set(["reward_account_session_required","reward_planning_not_found","reward_setup_not_found","reward_sponsor_upload_required","reward_sponsor_source_not_ready","reward_planning_revision_changed","reward_sponsor_lifecycle_conflict","invalid_sponsor_lifecycle"]).has(m)?m:"reward_ledger_unavailable");}
+ if(r.error){const m=String((r.error as {message?:unknown}).message);throw new RewardLedgerStoreError(new Set(["reward_account_session_required","reward_planning_not_found","reward_setup_not_found","reward_sponsor_upload_required","reward_sponsor_source_not_ready","reward_planning_revision_changed","reward_sponsor_lifecycle_conflict","invalid_sponsor_lifecycle", "reward_demo_account_required", "reward_demo_reviewer_required"]).has(m)?m:"reward_ledger_unavailable");}
  return decodeSponsorLifecycleFactsV4(r.data,s);
 }
 export function decodeSponsorLifecycleFactsV4(value:unknown,s:SponsorUploadScopeV4) {

@@ -1,3 +1,4 @@
+import {hostedCopyResultDisplay} from '../../features/rewards/hosted-copy-result-display.js';
 import {rewardResultDisplay} from "../../features/rewards/result-review-display.js";
 import {advanceControllerTransaction,controllerTransactionStatus} from "../../features/rewards/controller-transactions.js";
 import {controllerDeploymentFromEnv} from "../../features/rewards/sponsor-creation-privy.js";
@@ -95,10 +96,14 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
     await assertActive();
     const transaction=observed.next?{binding,chainId:10143,from:actor.wallet,to:binding.campaignAddress,value:"0",action:observed.next,
       start:observed.start,end:observed.end,data:sponsorLifecycleDataV4(binding,observed.next,observed.start,observed.end),allocationDigest:sponsorLifecycleCommitmentV4(binding).allocationDigest}:null;
-    const display=await rewardControllerResultDisplay(actor,{setupId:scope.setupId,approvalId:scope.approvalId},deps.rpc);
-    if(display.documentHash!==fresh.upload.documentHash)throw Error("controller_source_not_ready");
+    let results;
+    if(fresh.upload.document.schema==='podium-copy-allocation-document-v1')results=hostedCopyResultDisplay(fresh.upload.document);
+    else{
+      const display=await rewardControllerResultDisplay(actor,{setupId:scope.setupId,approvalId:scope.approvalId},deps.rpc);
+      if(display.documentHash!==fresh.upload.documentHash)throw Error('controller_source_not_ready');
+      results=rewardResultDisplay(fresh.upload.document,display.snapshot);
+    }
     await assertActive();
-    const results=rewardResultDisplay(fresh.upload.document,display.snapshot);
     const labels=new Map<string,string>();
     const labelNodes=(node:typeof fresh.upload.document.launch.setup.configuration.root)=>{labels.set(node.id,node.name);node.children.forEach(labelNodes);};
     labelNodes(fresh.upload.document.launch.setup.configuration.root);
@@ -107,7 +112,7 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
       observedBlock:{number:observed.observation.blockNumber,hash:observed.observation.blockHash,timestamp:observed.observation.blockTimestamp},
       review:{results,budgetWei:fresh.upload.document.calculation.budgetWei,allocatedWei:fresh.upload.document.calculation.proposedWei,
         retainedWei:fresh.upload.document.calculation.retainedWei,recipientCount:fresh.upload.recipients.length,documentHash:fresh.upload.documentHash,
-        groups:fresh.upload.document.calculation.groups.map(g=>({id:g.groupId,name:labels.get(g.groupId)??g.type,amountWei:g.proposedWei,recipientCount:g.awards.length}))}}));
+        groups:fresh.upload.document.calculation.groups.map(g=>{const id='nodeId' in g?g.nodeId:g.groupId;return {id,name:labels.get(id)??g.type,amountWei:g.proposedWei,recipientCount:g.awards.length};})}}));
   } catch(error){
     const code=error instanceof Error?error.message:"";
     if(["controller_auth_required","Missing bearer token","Unauthorized"].includes(code))deps.sendError(res,401,"controller_auth_required","Sign in with the designated controller Privy account.");

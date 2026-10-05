@@ -17,7 +17,11 @@ export type FiveRoundCopyPinV1 = { batchSha256: string; projectionSha256: string
  * Reader is operator-injected: no default service-role client, broad grant or route. */
 export async function readFiveRoundCopyV1(pin: FiveRoundCopyPinV1, read: (batchSha256: string) => Promise<unknown>): Promise<FiveRoundCopyV1> {
   if (!/^[0-9a-f]{64}$/.test(pin.batchSha256) || !/^[0-9a-f]{64}$/.test(pin.projectionSha256)) throw new Error("invalid_copy_pin");
-  const value = await read(pin.batchSha256);
+  return verifyFiveRoundCopyV1(pin,await read(pin.batchSha256));
+}
+/** The same independent frozen-source check for stored approved documents. */
+export function verifyFiveRoundCopyV1(pin:FiveRoundCopyPinV1,value:unknown):FiveRoundCopyV1 {
+  if (!/^[0-9a-f]{64}$/.test(pin.batchSha256) || !/^[0-9a-f]{64}$/.test(pin.projectionSha256)) throw new Error("invalid_copy_pin");
   const digest = fiveRoundCopyProjectionHashV1(value);
   if (!timingSafeEqual(Buffer.from(digest, "hex"), Buffer.from(pin.projectionSha256, "hex"))) throw new Error("copy_projection_changed");
   const source = decodeFiveRoundCopyV1(value);

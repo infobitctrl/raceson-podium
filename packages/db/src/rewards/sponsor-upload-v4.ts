@@ -1,3 +1,4 @@
+import {decodeHostedCopyAwardDocument} from './hosted-copy-document.js';
 import {decodeSponsorLaunchView} from "@raceson/domain/rewards/sponsor-launch";
 import {decodeSponsorExecutionPlan, decodeSponsorExecutionRecord} from "@raceson/domain/rewards/sponsor-execution";
 import {decodeRewardAllocationSourceV3} from "@raceson/domain/rewards/allocation-preview-v3";
@@ -13,10 +14,11 @@ const check = (v: unknown): void => {if (!v) throw new RewardLedgerStoreError("i
 const hash = (v: unknown) => {check(typeof v === "string" && /^[0-9a-f]{64}$/.test(v)); return v as string;};
 const opaque = (v: unknown) => {check(typeof v === "string" && /^0x[0-9a-f]{64}$/.test(v) && BigInt(v) !== 0n); return v as `0x${string}`;};
 const safe = new Set(["reward_account_session_required", "reward_setup_not_found", "reward_planning_not_found", "reward_planning_revision_changed",
-  "reward_sponsor_source_not_ready", "reward_sponsor_approval_not_found", "reward_sponsor_upload_conflict", "reward_sponsor_funding_not_ready", "invalid_sponsor_upload"]);
+  "reward_sponsor_source_not_ready", "reward_sponsor_approval_not_found", "reward_sponsor_upload_conflict", "reward_sponsor_funding_not_ready", "invalid_sponsor_upload", "reward_demo_account_required", "reward_demo_reviewer_required"]);
 /** Reconstruct saved economics instead of trusting a stored calculation field. */
 export function decodeSponsorAllocationDocumentV4(value: unknown, scope: SponsorUploadScopeV4) {
   const d = object(copy(value), ["schema", "launch", "plan", "binding", "source", "slot", "contextHash", "calculation"]);
+  if(d.schema==='podium-copy-allocation-document-v1')return decodeHostedCopyAwardDocument(d,scope);
   check(d.schema === "raceson-sponsor-allocation-document-v4" && d.slot === scope.slot);
   const l = object(d.launch, ["id", "state", "setup", "configurationHash", "createdAt"]);
   const launch = decodeSponsorLaunchView({setup: l.setup, launch: l}, scope.chainId, scope.setupId).launch!;

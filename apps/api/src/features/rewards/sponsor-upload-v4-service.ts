@@ -1,5 +1,5 @@
 import {getContractAddress, getAddress, type Hex} from "viem";
-import {sponsorUploadFactsV4, sponsorAllocationFactsV4, sponsorAllocationDocumentHashV4 as digest,
+import {sponsorUploadFactsV4, sponsorAllocationFactsV4, composeHostedCopyAwardDocument, sponsorAllocationDocumentHashV4 as digest,
   RewardLedgerStoreError, type SponsorUploadScopeV4, type RewardAccountIdentity, type RewardLedgerRpc} from "@raceson/db/rewards";
 import {canonicalRewardJson as canonical, commitPrivateRewardDocument, rewardUploadDigest, type RewardPublicAward} from "@raceson/rewards-chain";
 import {observeSponsorProgrammePot, sponsorContractConfiguration, type SponsorChainReader} from "@raceson/rewards-chain/sponsor-v4";
@@ -57,7 +57,7 @@ export async function sponsorUploadV4(identity: RewardAccountIdentity, input: Sp
       check(facts.current, "reward_sponsor_source_not_ready");
       const state = await sponsorAllocationFactsV4(actor, scope, undefined, rpc);
       check(state.approval?.id === scope.approvalId && state.approval.current && state.approval.decision === "approved"
-        && digest(sponsorAllocationDocumentV4(actor, scope, state)) === facts.documentHash, "reward_planning_revision_changed");
+        && digest(facts.document.schema==='podium-copy-allocation-document-v1'?composeHostedCopyAwardDocument(state,scope.slot):sponsorAllocationDocumentV4(actor, scope, state)) === facts.documentHash, "reward_planning_revision_changed");
       const e = facts.execution;
       check(reader && e.deploymentHash && e.fundingHash, "reward_sponsor_funding_not_ready");
       const observation = await observeSponsorProgrammePot(reader, e.plan, e.deploymentHash as Hex, e.fundingHash as Hex, scope.slot);
@@ -76,7 +76,7 @@ export async function sponsorUploadV4(identity: RewardAccountIdentity, input: Sp
   const after = await sponsorUploadFactsV4(actor, scope, undefined, rpc);
   check(canonical(after.prepared) === canonical(facts.prepared) && after.current === facts.current, "reward_planning_revision_changed");
   return {schema: "raceson-sponsor-upload-view-v4", approvalId: scope.approvalId, slot: scope.slot, contextHash: after.contextHash,
-    documentHash: after.documentHash, current: after.current, sourceKind: after.document.source.kind,
+    documentHash: after.documentHash, current: after.current, sourceKind: after.document.schema==='podium-copy-allocation-document-v1'?'historical_copy':after.document.source.kind,
     budgetWei: after.document.calculation.budgetWei.toString(), allocatedWei: after.document.calculation.proposedWei.toString(),
     unallocatedWei: after.document.calculation.retainedWei.toString(), recipientCount: after.recipients.length,
     campaignAddress: package_?.campaignAddress ?? null,

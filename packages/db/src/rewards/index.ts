@@ -112,3 +112,9 @@ export { composeHostedCopyAllocation,readHostedCopyAllocation, readHostedCopyAll
 
 export {hostedCopyReviewSources} from "./hosted-copy-review-sources.js";
 export {hostedCopyApprovalRpc} from "./hosted-copy-approval.js";
+export {hostedCopySourcePin,hostedCopyCombinedReview,hostedCopySelections,hostedCopyUnaffiliatedReview,hostedCopyReviewNote} from './hosted-copy-policy.js';
+export {hostedCopyUnaffiliatedDecision} from './hosted-copy-unaffiliated-review.js';
+export {composeHostedCopyAwardDocument,decodeHostedCopyAwardDocument,hostedCopyDocumentPolicy} from './hosted-copy-document.js';
+export {hostedCopyUploadRpc} from './hosted-copy-upload.js';
+
+export {hostedCopyLifecycleRpc} from './hosted-copy-lifecycle.js';
