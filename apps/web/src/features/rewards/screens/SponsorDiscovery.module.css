@@ -23,3 +23,29 @@
 .page{max-width:1152px;padding:32px 24px 64px;background:#faf8f4;font-size:14px;line-height:1.5}.heading{display:block;margin:0 0 24px}.heading h1,.detailHeading h1{font:700 36px/1.12 var(--font-outfit),sans-serif;letter-spacing:-.025em;margin:8px 0 10px;white-space:normal}.eyebrow{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#b94309}.description{font-size:16px;line-height:1.5;color:#62584f;margin:10px 0 24px}.searchBand{display:flex;gap:12px;margin-bottom:12px}.search{max-width:none;min-height:40px;border-radius:8px;background:transparent}.filters{margin-bottom:8px}.tabs button{min-height:36px;padding:7px 14px}.directoryControls{margin:8px 0 24px}.directoryControls select{background:transparent;min-height:40px}.grid{gap:24px}.photo,.leaguePhoto{height:176px;min-height:176px}.tileBody,.leagueBody{padding:20px}.tileBody h2,.leagueBody h2{font-size:20px}.tileBody .primary,.tileBody .secondary{min-height:32px;padding:6px 12px;font-size:12px}.tileBody .secondary{align-self:flex-start}.primary{background:#f56617;color:#201c19}.back{display:flex;align-items:center;gap:8px;font-size:14px;color:#62584f;margin-bottom:20px;min-height:36px}.detailHeading{margin-bottom:32px}.detailHeading p{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;color:#62584f;font-size:14px}.detailLayout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:32px}.detailLayout h2{font:700 24px var(--font-outfit),sans-serif}.detailLayout .description{font-size:14px}.structure{border:1px solid #e5dfd6;background:white;border-radius:16px;overflow:hidden}.structure h3{display:flex;justify-content:space-between;gap:12px;padding:16px;font-weight:600;background:#eee9e1}.structure h3 small{font-size:12px;font-weight:400;color:#62584f}.structure ul{list-style:none;margin:0;padding:8px 16px}.structure li{padding:12px 0;border-bottom:1px solid #eee9e1;font-size:14px}.structure li:last-child{border:0}.sponsorAside{align-self:start;padding:24px;border:1px solid #e5dfd6;background:#fff;border-radius:16px}.sponsorAside h2{font-size:18px}.sponsorAside p{font-size:14px;color:#62584f;margin:12px 0 20px}.sponsorAside .primary{width:100%;font-size:14px;min-height:40px}.sponsorAside .description{border-top:1px solid #e5dfd6;padding-top:20px;margin-bottom:0}.page :is(a,button,input,select):focus-visible{outline-color:#f56617}@media(max-width:767px){.detailLayout{grid-template-columns:minmax(0,1fr);gap:24px}.structure h3{flex-wrap:wrap}}@media(max-width:639px){.page{padding:24px 16px 40px}.heading h1,.detailHeading h1{font-size:30px}.description{font-size:14px}.photo,.leaguePhoto{height:192px;min-height:192px}}
 
 .sponsorshipPill{display:inline-flex;align-items:center;align-self:flex-start;width:fit-content;max-width:100%;gap:6px;padding:5px 10px;border:1px solid #cfded6;border-radius:999px;background:#edf5ef;color:#315e45;font-size:12px;font-weight:600;line-height:1.4}.sponsorshipPill svg{flex-shrink:0}.listView .sponsorshipPill{grid-column:1;justify-self:start}
+
+
+/* One card structure for every sponsorship event, independent of legacy tiles. */
+.eventGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr;gap:24px}
+.eventCard{display:flex;flex-direction:column;min-width:0;overflow:hidden;border:1px solid #e6e0d7;border-radius:16px;background:#fff}
+.eventImage{position:relative;display:block;flex:none;width:100%;height:192px;padding:0;overflow:hidden;text-align:left}
+.eventImage>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .25s}
+.eventImage:hover>img:first-child{transform:scale(1.025)}
+.eventImage>.eventLogo{inset:24% 20% auto;width:60%;height:52%;object-fit:contain}
+.eventBody{display:flex;flex:1;flex-direction:column;gap:12px;min-width:0;padding:20px}
+.eventBody h2{min-height:2.4em;margin:0;font:700 20px/1.2 var(--font-outfit),sans-serif;letter-spacing:-.02em;overflow-wrap:anywhere}
+.eventInfo{display:grid;gap:8px;color:#6b6258;font-size:13px;line-height:20px}
+.eventInfo p{display:flex;align-items:flex-start;gap:8px;min-height:20px;margin:0}
+.eventInfo svg{flex:none;margin-top:1px;color:#f05a24}
+.eventInfo .eventCategories{min-height:36px;font-size:12px;line-height:18px}
+.eventActions{display:grid;grid-template-columns:1fr 1.25fr;gap:10px;margin-top:auto;padding-top:4px}
+.eventActions :is(.primary,.secondary){align-self:stretch;min-height:40px;padding:8px 10px;gap:8px;font-size:12px;line-height:18px;text-align:center}
+.eventActions svg{flex:none}
+.eventList{grid-template-columns:minmax(0,1fr)}
+.eventList .eventCard{display:grid;grid-template-columns:240px minmax(0,1fr)}
+.eventList .eventImage{height:100%;min-height:240px}
+.eventList .eventBody h2{min-height:0}
+.eventList .eventActions{grid-template-columns:1fr 1.25fr;align-self:flex-end;width:min(100%,320px)}
+@media(max-width:1000px){.eventGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.eventList{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.eventGrid{grid-template-columns:minmax(0,1fr)}.eventList .eventCard{display:flex}.eventList .eventImage{height:192px;min-height:192px}.eventList .eventBody h2{min-height:2.4em}.eventList .eventActions{width:100%}}
+@media(prefers-reduced-motion:reduce){.eventImage>img{transition:none}}
