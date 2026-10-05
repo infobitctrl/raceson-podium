@@ -1,3 +1,5 @@
+import type {DirectoryCampaign} from "@raceson/domain/rewards/public-directory";
+import type {RewardSponsorSelection} from "@raceson/domain/rewards/distribution-setup";
 import valley from "../assets/sitrail-valley.jpeg";
 import wordmark from "../assets/sitrail-wordmark.png";
 import subicevac from "../assets/subicevac.jpeg";
@@ -29,3 +31,8 @@ export function buildSponsorCatalogue(source:CatalogueSource):SponsorCatalogueIt
 });}
 export const sponsorCatalogue=buildSponsorCatalogue(source);
 export const sponsorColors=["#ff5b15","#ad7563","#c8ac69","#8fa681","#c98d80","#aa8c9f","#e8a273"];
+
+/** Count published campaigns at their selected league or parent race, never by label. */
+export function countEventSponsorships(items:readonly DirectoryCampaign[],event:RewardSponsorSelection):number {
+ return items.filter(({selection})=>selection!==null&&selection.sourceLeagueId===event.sourceLeagueId&&selection.sourceSeasonId===event.sourceSeasonId&&selection.eventEditionId===event.eventEditionId).length;
+}
