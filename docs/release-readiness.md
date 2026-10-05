@@ -1,6 +1,6 @@
 # Source release verification — 5 October 2026
 
-The full local Podium application is included in this release. The existing Vercel project is connected to this repository's `main` branch and configured to build `demo/rewards/web` with the root lockfile.
+The full local Podium application is included in this release. Build dependencies are installed explicitly with `--include=dev` because the production environment sets `NODE_ENV=production`. The existing Vercel project is connected to this repository's `main` branch and configured to build `demo/rewards/web` with the root lockfile.
 
 Verified before publication:
 
