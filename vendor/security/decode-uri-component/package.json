@@ -1,0 +1,14 @@
+{
+  "name": "@raceson/decode-uri-component",
+  "version": "0.5.0-podium.1",
+  "private": true,
+  "description": "Upstream decode-uri-component 0.5.0 with CommonJS and legacy plus decoding",
+  "license": "MIT",
+  "main": "index.js",
+  "type": "commonjs",
+  "files": [
+    "index.js",
+    "license",
+    "UPSTREAM.json"
+  ]
+}

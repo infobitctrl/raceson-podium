@@ -29,3 +29,10 @@ coverage/
 *.sqlite
 *.sqlite3
 .DS_Store
+
+# Provider metadata, private evidence and contract tool caches
+.vercel/
+*.private.*
+contracts/.toolchain/
+contracts/lib/
+contracts/cache/

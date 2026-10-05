@@ -1,0 +1,24 @@
+import clubsHeroAsset from "./clubs-hero.webp";
+import homeHeroAlternateDesktopAsset from "./home-hero-alternate-desktop.webp";
+import homeHeroAlternateMobileAsset from "./home-hero-alternate-mobile.webp";
+import homeHeroDesktopAsset from "./home-hero-desktop.webp";
+import homeHeroMobileAsset from "./home-hero-mobile.webp";
+import leaguesHeroAsset from "./leagues-hero.webp";
+import organizerCheckInHeroAsset from "./organizer-check-in.jpg";
+import resultsHeroAsset from "./results-hero.webp";
+import { brandLandscapes } from "../../brand-landscapes";
+import { staticAssetUrl } from "../../../lib/static-asset";
+
+export const athletesHero = brandLandscapes.uplandMeadow;
+export const clubsHero = staticAssetUrl(clubsHeroAsset);
+export const eventsHero = brandLandscapes.coastHighRidge;
+export const homeHeroAlternateDesktop = staticAssetUrl(homeHeroAlternateDesktopAsset);
+export const homeHeroAlternateMobile = staticAssetUrl(homeHeroAlternateMobileAsset);
+export const homeHeroDesktop = staticAssetUrl(homeHeroDesktopAsset);
+export const homeHeroMobile = staticAssetUrl(homeHeroMobileAsset);
+export const leaguesHero = staticAssetUrl(leaguesHeroAsset);
+export const organizerCheckInHero = staticAssetUrl(organizerCheckInHeroAsset);
+export const rankingsHero = brandLandscapes.highRidgePath;
+export const resultsHero = staticAssetUrl(resultsHeroAsset);
+export const tracksHero = brandLandscapes.forestSingletrack;
+export const statisticsHero = brandLandscapes.lakeReflection;

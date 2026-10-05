@@ -1,0 +1,28 @@
+.progress{margin:0 0 16px;padding:8px 0;border-bottom:1px solid #d7ddd4;scroll-margin-top:16px}
+.progress ol{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;list-style:none;padding:0;margin:0}
+.progress li{color:#718078;font-size:13px}
+.progress li> :is(button,a,div){display:flex;align-items:center;gap:9px;min-height:44px;text-align:left;width:100%}
+.progress li span{display:grid;place-items:center;width:28px;height:28px;flex-shrink:0;border:1px solid #ccd4c8;border-radius:50%}
+.progress [aria-current=step]{color:#ce4815;font-weight:650}
+.progress [aria-current=step]> :is(button,div)>span{background:#ff5b15;color:#fff;border-color:#ff5b15}
+.progress button:disabled{opacity:.5}
+.progress :is(a,button,select):focus-visible{outline:2px solid #ff5b15;outline-offset:3px}
+.mobileSummary{display:none}
+@media(max-width:650px){
+ .progress{padding:12px 0;margin-bottom:15px}
+ .progress ol{display:none}
+ .mobileSummary{display:flex!important;flex-direction:row!important;align-items:center;justify-content:space-between;gap:12px;margin:0;font-size:13px;font-weight:650;color:#35453c}
+ .mobileSummary select{max-width:190px;width:auto!important;min-height:44px;font-size:13px!important;background:#fffdf8;border:1px solid #cdd5c9;border-radius:8px;padding:8px;color:#35453c}
+}
+@media(min-width:651px){.progress .mobileSummary{display:none!important}}
+
+
+/* Base44 step cards; mobile keeps full, selectable labels. */
+.progress{border:0;padding:0;margin:24px 0 28px}.progress ol{gap:10px}
+.progress li{border:1px solid #e4ded5;background:#fff;border-radius:12px;color:#6b6258}
+.progress li>:is(button,a,div){padding:13px 14px;min-height:64px;font-size:12px;font-weight:600;white-space:normal}
+.progress li span{width:28px;height:28px;border:0;background:#efebe3;color:#6b6258}
+.progress li[aria-current=step]{background:#201c19;border-color:#201c19;color:#fff}
+.progress li[aria-current=step]>:is(button,a,div){color:#fff}
+.progress [aria-current=step]>:is(button,div)>span{background:#f97316;color:#201c19;border:0}
+@media(max-width:650px){.progress{padding:12px 14px;margin:18px 0 22px;background:#201c19;border-radius:12px}.mobileSummary{color:#fff;font-size:12px}.mobileSummary select{max-width:200px;border-color:#ddd5c8;background:#fff;color:#201c19}}

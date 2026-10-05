@@ -1,0 +1,33 @@
+{
+  "name": "@raceson/rewards-demo-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "predev": "npm --prefix ../../.. run api:build",
+    "dev": "next dev --webpack --hostname 127.0.0.1 --port 3101",
+    "predev:testnet": "npm --prefix ../../.. run api:build",
+    "dev:testnet": "next dev --webpack --hostname 127.0.0.1 --port 3102",
+    "prebuild": "npm --prefix ../../.. run api:build",
+    "build": "next build --webpack",
+    "start": "next start --hostname 127.0.0.1 --port 3101",
+    "typecheck": "tsc --noEmit --pretty false",
+    "test:wallet": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@privy-io/react-auth": "3.42.0",
+    "@raceson/api": "0.1.0",
+    "@raceson/domain": "0.1.0",
+    "@raceson/web": "0.0.0",
+    "next": "16.3.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "styled-components": "6.5.3"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3"
+  }
+}

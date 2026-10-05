@@ -1,0 +1,23 @@
+.charts { --prize-color:var(--flow-race,#ee5c17); margin-top:20px; }
+.charts[data-tone=league] { --prize-color:var(--flow-league,#7753ca); }
+.pool { padding:20px 0; border-top:1px solid var(--rw-line); min-width:0; }
+.pool header { display:grid; gap:5px; }
+.pool h4 { font-size:15px; font-weight:600; }
+.pool header strong { font-size:20px; font-variant-numeric:tabular-nums; }
+.pool header small,.pool header>span { font-size:12px; font-weight:400; color:var(--rw-muted); }
+.category { display:grid; gap:7px; margin:15px 0; font-size:11px; color:var(--rw-muted); }
+.category select { padding:7px 5px; border:1px solid var(--rw-line); background:transparent; color:var(--rw-ink); width:100%; min-width:0; font-size:12px; border-radius:3px; }
+.bars { height:95px; display:flex; align-items:flex-end; gap:3px; margin:20px 0 12px; }
+.bars button { flex:1; min-width:0; background:var(--prize-color); border-radius:3px 3px 0 0; opacity:.55; }
+.bars button[aria-pressed=true],.bars button:hover { opacity:1; }
+.bars button:focus-visible { outline:2px solid var(--rw-ink); outline-offset:2px; }
+.selection { display:grid; gap:5px; font-size:12px; font-variant-numeric:tabular-nums; }
+.selection b { font-weight:600; }
+.pool details { margin-top:14px; font-size:12px; }
+.pool summary { cursor:pointer; text-decoration:underline; text-underline-offset:4px; }
+.slotScroll { max-height:280px; overflow:auto; margin-top:10px; }
+.pool table { width:100%; font-size:11px; border-collapse:collapse; }
+.pool th,.pool td { text-align:left; padding:8px 3px; border-bottom:1px solid var(--rw-line); font-weight:400; }
+.pool td { font-variant-numeric:tabular-nums; white-space:nowrap; }
+.note { color:var(--rw-muted); font-size:11px; line-height:1.6; margin-top:12px; }
+@media(min-width:761px) and (max-width:1100px) { .charts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; } }

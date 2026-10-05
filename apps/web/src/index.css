@@ -1,0 +1,706 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  /* One shared clearance for fixed public navigation and workspace sheets. */
+  .mobile-bottom-navigation {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.25rem);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .workspace-viewport {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /*
+   * Keep locale-fit typography anchored to each component's Tailwind text size.
+   * A relative font-size here resolves against the parent and can make Croatian
+   * labels larger than their English equivalents.
+   */
+  html[lang="hr"] [data-locale-fit="stable-pill"] {
+    line-height: 1.15;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  html[lang="hr"] [data-locale-fit="pill"] {
+    letter-spacing: 0.06em;
+    line-height: 1.15;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+    white-space: normal;
+  }
+
+  html[lang="hr"] [data-mobile-filter][data-locale-fit="pill"],
+  html[lang="hr"] [data-mobile-filter] [data-locale-fit="pill"] {
+    overflow-wrap: normal;
+    text-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  html[lang="hr"] [data-locale-fit="info-pill"] {
+    line-height: 1.2;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  html[lang="hr"] [data-locale-fit="control"] {
+    line-height: 1.2;
+    max-width: 100%;
+    /* Preserve component minimum widths, including icon-button tap targets. */
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+    white-space: normal;
+  }
+
+  html[lang="hr"] [data-locale-fit="table-heading"] {
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+}
+
+@layer base {
+  :root {
+    --mobile-navigation-height: calc(4rem + 1px + 0.25rem + env(safe-area-inset-bottom, 0px));
+  }
+  :root {
+    color-scheme: light;
+
+    /* RacesOn primary action color — restored legacy site orange. */
+    --race-orange: 24 100% 48%;
+
+    /* RacesOn Signal Terrain — Mineral field */
+    --background: 47 27% 94%;
+    --foreground: 207 33% 6%;
+
+    --card: 45 25% 98%;
+    --card-foreground: 207 33% 6%;
+
+    --popover: 45 25% 98%;
+    --popover-foreground: 207 33% 6%;
+
+    --raised: 45 25% 98%;
+    --raised-foreground: 207 33% 6%;
+
+    --primary: var(--race-orange);
+    --primary-foreground: 207 33% 6%;
+    --primary-readable: 24 100% 28%;
+
+    --secondary: 205 15% 89%;
+    --secondary-foreground: 207 33% 10%;
+
+    --muted: 45 12% 88%;
+    --muted-foreground: 205 14% 36%;
+
+    --accent: 71 100% 57%;
+    --accent-foreground: 207 33% 6%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Semantic states stay distinct from timing lime on mineral surfaces. */
+    --success: 155 55% 31%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 30%;
+    --warning-foreground: 0 0% 100%;
+    --info: 219 100% 56%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 205 15% 80%;
+    --input: 205 15% 78%;
+    --ring: var(--race-orange);
+
+    --radius: 0.375rem;
+
+    /* Sidebar */
+    --sidebar-background: 207 33% 6%;
+    --sidebar-foreground: 47 27% 94%;
+    --sidebar-primary: var(--race-orange);
+    --sidebar-primary-foreground: 207 33% 6%;
+    --sidebar-accent: 205 22% 15%;
+    --sidebar-accent-foreground: 47 27% 94%;
+    --sidebar-border: 205 22% 19%;
+    --sidebar-ring: var(--race-orange);
+    --sidebar: 207 33% 6%;
+
+    /* Trail-specific tokens */
+    --trail-orange: var(--race-orange);
+    /* Legacy portal highlights resolve to the single RacesOn brand orange. */
+    --trail-amber: var(--race-orange);
+    --trail-amber-foreground: var(--primary-foreground);
+    --trail-green: 155 55% 31%;
+    --trail-green-foreground: 0 0% 100%;
+    --trail-blue: 219 100% 56%;
+    --trail-blue-foreground: 0 0% 100%;
+    --trail-red: 0 72% 50%;
+    --trail-red-foreground: 0 0% 100%;
+    --trail-earth: 205 22% 19%;
+    --trail-moss: 78 30% 38%;
+    --trail-stone: 205 12% 49%;
+    --trail-summit: 40 95% 65%;
+    --trail-forest: 205 22% 19%;
+    --trail-sand: 47 27% 91%;
+    --trail-cream: 47 27% 94%;
+    --trail-warm-gray: 205 10% 62%;
+    --trail-surface: 45 18% 96%;
+    --trail-surface-hover: 45 14% 91%;
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(var(--race-orange) / 0.9), hsl(var(--race-orange) / 0.7));
+    --gradient-earth: linear-gradient(135deg, hsl(25 25% 30%), hsl(30 15% 18%));
+    --gradient-forest: linear-gradient(135deg, hsl(155 35% 28%), hsl(25 20% 15%));
+    --gradient-warm: linear-gradient(135deg, hsl(40 30% 96%), hsl(35 20% 93%));
+    --gradient-sunset: linear-gradient(135deg, hsl(var(--race-orange)), hsl(0 72% 51%), hsl(330 60% 40%));
+
+    /* Shadows */
+    --shadow-card: 0 1px 3px hsl(25 20% 12% / 0.04), 0 4px 16px hsl(25 20% 12% / 0.06);
+    --shadow-glow: 0 4px 24px -4px hsl(var(--race-orange) / 0.2);
+    --shadow-warm: 0 2px 12px -2px hsl(var(--race-orange) / 0.12);
+    --shadow-earth: 0 4px 20px -4px hsl(25 20% 12% / 0.1);
+    --shadow-soft: 0 1px 2px hsl(25 20% 12% / 0.03), 0 2px 8px hsl(25 20% 12% / 0.05);
+
+    /* Charts */
+    --chart-1: var(--race-orange);
+    --chart-2: 38 92% 50%;
+    --chart-3: 155 55% 38%;
+    --chart-4: 205 70% 48%;
+    --chart-5: 30 10% 55%;
+
+    /* Standard shadow scale */
+    --shadow-2xs: 0 1px 2px hsl(25 20% 12% / 0.03);
+    --shadow-xs: 0 1px 3px hsl(25 20% 12% / 0.04);
+    --shadow-sm: 0 1px 3px hsl(25 20% 12% / 0.06), 0 1px 2px hsl(25 20% 12% / 0.04);
+    --shadow: 0 1px 3px hsl(25 20% 12% / 0.06), 0 2px 6px hsl(25 20% 12% / 0.04);
+    --shadow-md: 0 2px 4px hsl(25 20% 12% / 0.06), 0 4px 12px hsl(25 20% 12% / 0.05);
+    --shadow-lg: 0 4px 8px hsl(25 20% 12% / 0.06), 0 8px 24px hsl(25 20% 12% / 0.06);
+    --shadow-xl: 0 8px 16px hsl(25 20% 12% / 0.08), 0 16px 40px hsl(25 20% 12% / 0.08);
+    --shadow-2xl: 0 16px 48px hsl(25 20% 12% / 0.12);
+
+    --spacing: 0.25rem;
+    --tracking-normal: 0em;
+
+    --font-sans: var(--font-plus-jakarta), system-ui, sans-serif;
+    --font-serif: var(--font-outfit), var(--font-plus-jakarta), sans-serif;
+    --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+    font-family: var(--font-plus-jakarta), system-ui, sans-serif;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    /* RacesOn Signal Terrain — Race Ink field */
+    --background: 207 33% 6%;
+    --foreground: 47 27% 94%;
+
+    --card: 205 31% 9%;
+    --card-foreground: 47 27% 94%;
+
+    --popover: 205 25% 12%;
+    --popover-foreground: 47 27% 94%;
+
+    --raised: 205 22% 15%;
+    --raised-foreground: 47 27% 94%;
+
+    /* Bright orange stays legible on charcoal; ink text keeps solid CTAs AA. */
+    --primary: var(--race-orange);
+    --primary-foreground: 207 33% 6%;
+    --primary-readable: var(--race-orange);
+
+    --secondary: 222 8% 16%;
+    --secondary-foreground: 38 15% 88%;
+
+    --muted: 220 8% 18%;
+    --muted-foreground: 218 11% 70%;
+
+    --accent: 71 100% 57%;
+    --accent-foreground: 207 33% 6%;
+
+    --destructive: 2 82% 63%;
+    --destructive-foreground: 0 50% 9%;
+
+    --success: 153 56% 54%;
+    --success-foreground: 155 55% 8%;
+    --warning: 39 95% 62%;
+    --warning-foreground: 32 70% 8%;
+    --info: 219 100% 66%;
+    --info-foreground: 207 33% 6%;
+
+    --border: 205 22% 24%;
+    --input: 205 22% 27%;
+    --ring: var(--race-orange);
+
+    /* Sidebar */
+    --sidebar-background: 207 42% 4%;
+    --sidebar-foreground: 47 27% 94%;
+    --sidebar-primary: var(--race-orange);
+    --sidebar-primary-foreground: 207 33% 6%;
+    --sidebar-accent: 205 25% 12%;
+    --sidebar-accent-foreground: 47 27% 94%;
+    --sidebar-border: 205 22% 19%;
+    --sidebar-ring: var(--race-orange);
+    --sidebar: 207 42% 4%;
+
+    /* Trail tokens — dark variants */
+    --trail-orange: var(--race-orange);
+    --trail-amber: var(--race-orange);
+    --trail-amber-foreground: var(--primary-foreground);
+    --trail-green: 153 58% 58%;
+    --trail-green-foreground: 155 55% 8%;
+    --trail-blue: 219 100% 66%;
+    --trail-blue-foreground: 207 33% 6%;
+    --trail-red: 2 84% 67%;
+    --trail-red-foreground: 0 50% 9%;
+    --trail-earth: 47 12% 68%;
+    --trail-moss: 71 42% 54%;
+    --trail-stone: 205 12% 61%;
+    --trail-summit: 40 95% 65%;
+    --trail-forest: 83 48% 41%;
+    --trail-sand: 205 22% 15%;
+    --trail-cream: 205 31% 9%;
+    --trail-warm-gray: 205 10% 59%;
+    --trail-surface: 205 25% 12%;
+    --trail-surface-hover: 205 23% 16%;
+
+    /* Gradients — dark */
+    --gradient-hero: linear-gradient(135deg, hsl(var(--race-orange) / 0.92), hsl(var(--race-orange) / 0.72));
+    --gradient-earth: linear-gradient(135deg, hsl(222 9% 15%), hsl(225 10% 7%));
+    --gradient-forest: linear-gradient(135deg, hsl(154 30% 15%), hsl(225 10% 7%));
+    --gradient-warm: linear-gradient(135deg, hsl(222 10% 13%), hsl(225 10% 8%));
+    --gradient-sunset: linear-gradient(135deg, hsl(var(--race-orange)), hsl(2 82% 63%), hsl(334 62% 50%));
+
+    /* Shadows — dark */
+    --shadow-card: inset 0 1px 0 hsl(0 0% 100% / 0.025), 0 1px 2px hsl(0 0% 0% / 0.42), 0 14px 36px -24px hsl(0 0% 0% / 0.88);
+    --shadow-glow: 0 8px 30px -12px hsl(var(--race-orange) / 0.42);
+    --shadow-warm: 0 6px 22px -12px hsl(var(--race-orange) / 0.35);
+    --shadow-earth: 0 18px 44px -28px hsl(0 0% 0% / 0.92);
+    --shadow-soft: inset 0 1px 0 hsl(0 0% 100% / 0.02), 0 8px 24px -20px hsl(0 0% 0% / 0.9);
+
+    /* Charts */
+    --chart-1: var(--race-orange);
+    --chart-2: 38 92% 55%;
+    --chart-3: 155 50% 45%;
+    --chart-4: 205 65% 55%;
+    --chart-5: 30 8% 50%;
+
+    --shadow-2xs: 0 1px 2px hsl(0 0% 0% / 0.15);
+    --shadow-xs: 0 1px 3px hsl(0 0% 0% / 0.2);
+    --shadow-sm: 0 1px 3px hsl(0 0% 0% / 0.25), 0 1px 2px hsl(0 0% 0% / 0.2);
+    --shadow: 0 1px 3px hsl(0 0% 0% / 0.25), 0 2px 6px hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 2px 4px hsl(0 0% 0% / 0.25), 0 4px 12px hsl(0 0% 0% / 0.2);
+    --shadow-lg: 0 4px 8px hsl(0 0% 0% / 0.25), 0 8px 24px hsl(0 0% 0% / 0.2);
+    --shadow-xl: 0 8px 16px hsl(0 0% 0% / 0.3), 0 16px 40px hsl(0 0% 0% / 0.25);
+    --shadow-2xl: 0 16px 48px hsl(0 0% 0% / 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-delay: 0ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+@layer base {
+  html {
+    scrollbar-gutter: stable;
+    background: hsl(var(--background));
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+    min-height: 100dvh;
+    font-feature-settings: 'cv01', 'cv02', 'cv03';
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-outfit), var(--font-plus-jakarta), sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.28);
+    color: hsl(var(--foreground));
+  }
+}
+
+@layer components {
+  .home-hero-picture {
+    opacity: 0;
+  }
+
+  .home-hero-shell[data-home-hero='green-ridge'] .home-hero-picture[data-hero-image='green-ridge'],
+  .home-hero-shell[data-home-hero='golden-ridge'] .home-hero-picture[data-hero-image='golden-ridge'] {
+    opacity: 1;
+  }
+
+  .track-shell-card {
+    @apply rounded-[24px] border border-border/80 bg-card shadow-soft;
+  }
+
+  .track-shell-card-warm {
+    border-color: hsl(var(--primary) / 0.16);
+    background: linear-gradient(180deg, hsl(40 45% 98%), hsl(35 38% 96%));
+  }
+
+  .dark .track-shell-card-warm {
+    border-color: hsl(var(--primary) / 0.24);
+    background: linear-gradient(180deg, hsl(var(--raised)), hsl(var(--card)));
+  }
+
+  .track-shell-muted-panel {
+    @apply rounded-[18px] border border-border/70 bg-background/80;
+  }
+
+  .track-overview-tab {
+    @apply relative inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-semibold text-muted-foreground transition-all;
+  }
+
+  .track-overview-tab[data-active='true'] {
+    @apply bg-primary/10 text-primary shadow-warm;
+  }
+
+  .track-overview-tab[data-active='true']::after {
+    content: '';
+    position: absolute;
+    left: 0.875rem;
+    right: 0.875rem;
+    bottom: -0.4rem;
+    height: 2px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--trail-amber)));
+  }
+
+  .track-overview-tab[data-active='false']:hover {
+    @apply bg-raised/80 text-foreground;
+  }
+
+  .surface-raised {
+    @apply border border-border/80 bg-raised text-raised-foreground shadow-soft;
+  }
+
+  .auth-surface {
+    background: hsl(var(--background));
+  }
+
+  .dark .auth-surface {
+    background: linear-gradient(145deg, hsl(var(--background)), hsl(var(--card)));
+  }
+
+  .status-success {
+    @apply border border-success/30 bg-success/10 text-success;
+  }
+
+  .status-warning {
+    @apply border border-warning/30 bg-warning/10 text-warning;
+  }
+
+  .status-info {
+    @apply border border-info/30 bg-info/10 text-info;
+  }
+
+  .status-danger {
+    @apply border border-destructive/30 bg-destructive/10 text-destructive;
+  }
+
+  .track-detail-row {
+    @apply flex items-start justify-between gap-4 py-2.5;
+  }
+
+  .track-detail-row + .track-detail-row {
+    @apply border-t border-border/60;
+  }
+
+  .table-zebra-orange :where(tbody > tr:nth-child(even)) {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary) / 0.05),
+      hsl(var(--trail-amber) / 0.025)
+    );
+  }
+
+  .dark .table-zebra-orange :where(tbody > tr:nth-child(even)) {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary) / 0.12),
+      hsl(var(--trail-amber) / 0.06)
+    );
+  }
+}
+
+/* Topographic contour pattern — subtle on light */
+.topo-pattern {
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 10c22 0 40 18 40 40s-18 40-40 40S10 72 10 50 28 10 50 10z' fill='none' stroke='%23000000' stroke-width='0.4' opacity='0.03'/%3E%3Cpath d='M50 20c16.5 0 30 13.5 30 30s-13.5 30-30 30S20 66.5 20 50 33.5 20 50 20z' fill='none' stroke='%23000000' stroke-width='0.3' opacity='0.025'/%3E%3Cpath d='M50 30c11 0 20 9 20 20s-9 20-20 20-20-9-20-20 9-20 20-20z' fill='none' stroke='%23000000' stroke-width='0.25' opacity='0.02'/%3E%3C/svg%3E");
+}
+
+/* Mountain ridge texture */
+.ridge-pattern {
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='120' height='60' viewBox='0 0 120 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 60 L20 20 L40 45 L60 10 L80 40 L100 15 L120 60' fill='none' stroke='%23000000' stroke-width='0.4' opacity='0.03'/%3E%3Cpath d='M0 60 L30 30 L50 50 L70 20 L90 48 L120 60' fill='none' stroke='%23000000' stroke-width='0.3' opacity='0.02'/%3E%3C/svg%3E");
+}
+
+/* Repeating route-line pattern for richer premium surfaces */
+.route-pattern {
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='240' height='120' viewBox='0 0 240 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-10 92C19 78 26 34 58 42C87 49 100 91 131 84C166 77 171 24 204 24C228 24 239 55 252 62' fill='none' stroke='%23000000' stroke-width='1.25' opacity='0.045' stroke-linecap='round'/%3E%3Ccircle cx='58' cy='42' r='3.2' fill='%23f56200' opacity='0.09'/%3E%3Ccircle cx='131' cy='84' r='3.2' fill='%23f56200' opacity='0.08'/%3E%3Ccircle cx='204' cy='24' r='3.2' fill='%23f56200' opacity='0.08'/%3E%3C/svg%3E");
+  background-size: 240px 120px;
+}
+
+/* Dotted grid pattern for premium sections */
+.dot-pattern {
+  background-image: radial-gradient(circle, hsl(var(--race-orange) / 0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Cross-hatch pattern */
+.crosshatch-pattern {
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0 L40 40 M40 0 L0 40' fill='none' stroke='%23000000' stroke-width='0.3' opacity='0.025'/%3E%3C/svg%3E");
+}
+
+/* Trail dash pattern */
+.trail-dash {
+  background-image: repeating-linear-gradient(
+    90deg,
+    hsl(var(--race-orange) / 0.25) 0px,
+    hsl(var(--race-orange) / 0.25) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  height: 2px;
+}
+
+/* Grain texture for premium feel */
+.grain-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
+}
+
+.leaflet-container {
+  touch-action: auto;
+  overscroll-behavior: contain;
+}
+
+.leaflet-container:focus {
+  outline: none;
+}
+
+/* Warm sand section background */
+.sand-bg {
+  background: linear-gradient(180deg, hsl(40 30% 96%), hsl(38 25% 94%));
+}
+
+/* Premium cream section */
+.cream-bg {
+  background: linear-gradient(180deg, hsl(40 25% 97%), hsl(35 20% 95%));
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(40 25% 97%);
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(35 15% 82%);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(35 15% 72%);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* RacesOn informational state pill — live, active, official, and verified. */
+.timing-lime-pill {
+  border-color: hsl(var(--accent) / 0.58);
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  box-shadow: 0 10px 24px -16px hsl(var(--accent) / 0.9);
+}
+
+/* RacesOn portal highlight — leagues, records, and race context. */
+.portal-orange-pill {
+  border-color: hsl(var(--race-orange) / 0.7);
+  background-color: hsl(var(--race-orange));
+  color: hsl(var(--primary-foreground));
+  box-shadow: 0 10px 24px -16px hsl(var(--race-orange) / 0.9);
+}
+
+/* Utility animations */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px -5px hsl(var(--race-orange) / 0.2); }
+  50% { box-shadow: 0 0 40px -5px hsl(var(--race-orange) / 0.35); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+@keyframes trail-draw {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s ease-out forwards;
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+.animate-breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+/* Glass morphism */
+.glass {
+  background: hsl(0 0% 100% / 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsl(35 15% 88% / 0.6);
+}
+.dark .glass {
+  background: hsl(220 12% 11% / 0.8);
+  border: 1px solid hsl(220 10% 18% / 0.6);
+}
+
+/* Dark mode overrides for patterns & scrollbar */
+.dark .topo-pattern {
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 10c22 0 40 18 40 40s-18 40-40 40S10 72 10 50 28 10 50 10z' fill='none' stroke='%23ffffff' stroke-width='0.4' opacity='0.03'/%3E%3Cpath d='M50 20c16.5 0 30 13.5 30 30s-13.5 30-30 30S20 66.5 20 50 33.5 20 50 20z' fill='none' stroke='%23ffffff' stroke-width='0.3' opacity='0.025'/%3E%3Cpath d='M50 30c11 0 20 9 20 20s-9 20-20 20-20-9-20-20 9-20 20-20z' fill='none' stroke='%23ffffff' stroke-width='0.25' opacity='0.02'/%3E%3C/svg%3E");
+}
+.dark .route-pattern {
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='240' height='120' viewBox='0 0 240 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-10 92C19 78 26 34 58 42C87 49 100 91 131 84C166 77 171 24 204 24C228 24 239 55 252 62' fill='none' stroke='%23ffffff' stroke-width='1.25' opacity='0.05' stroke-linecap='round'/%3E%3Ccircle cx='58' cy='42' r='3.2' fill='%23f56200' opacity='0.13'/%3E%3Ccircle cx='131' cy='84' r='3.2' fill='%23f56200' opacity='0.11'/%3E%3Ccircle cx='204' cy='24' r='3.2' fill='%23f56200' opacity='0.11'/%3E%3C/svg%3E");
+}
+.dark .ridge-pattern {
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='120' height='60' viewBox='0 0 120 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 60 L20 20 L40 45 L60 10 L80 40 L100 15 L120 60' fill='none' stroke='%23ffffff' stroke-width='0.4' opacity='0.04'/%3E%3Cpath d='M0 60 L30 30 L50 50 L70 20 L90 48 L120 60' fill='none' stroke='%23ffffff' stroke-width='0.3' opacity='0.03'/%3E%3C/svg%3E");
+}
+.dark .crosshatch-pattern {
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0 L40 40 M40 0 L0 40' fill='none' stroke='%23ffffff' stroke-width='0.3' opacity='0.035'/%3E%3C/svg%3E");
+}
+.dark .sand-bg {
+  background: linear-gradient(180deg, hsl(220 12% 10%), hsl(220 12% 9%));
+}
+.dark .cream-bg {
+  background: linear-gradient(180deg, hsl(220 15% 8%), hsl(220 12% 7%));
+}
+.dark .dot-pattern {
+  background-image: radial-gradient(circle, hsl(var(--race-orange) / 0.1) 1px, transparent 1px);
+}
+.dark ::-webkit-scrollbar-track {
+  background: hsl(220 15% 8%);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(220 10% 22%);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(220 10% 30%);
+}
+
+/* Trail line accent */
+.trail-accent {
+  position: relative;
+}
+.trail-accent::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, hsl(var(--race-orange)), hsl(var(--race-orange)));
+}
+
+/* Keep one stable hero bitmap through SPA hydration so the early LCP candidate survives. */
+body:has([data-homepage-ready]) [data-homepage-server-shell] {
+  display: none;
+}
+
+body:has([data-event-detail-ready]) [data-event-server-shell] {
+  z-index: 1;
+  min-height: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+body:has([data-event-detail-ready]) main > div:has(> [data-event-detail-ready]) {
+  position: relative;
+  z-index: 2;
+}
+
+body:has([data-event-detail-ready]) [data-event-server-shell] > header {
+  visibility: hidden;
+}
+
+body:has([data-event-detail-ready]) [data-event-server-hero] {
+  border-color: transparent;
+  background: transparent;
+}
+
+body:has([data-event-detail-ready]) [data-event-client-hero] {
+  z-index: 2;
+  border-color: transparent;
+  background: transparent;
+}
+
+body:has([data-event-detail-ready]) [data-event-server-hero] > :not(img),
+body:has([data-event-detail-ready]) [data-event-server-shell] main > div {
+  display: none;
+}

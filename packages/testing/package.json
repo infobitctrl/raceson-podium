@@ -1,0 +1,41 @@
+{
+  "name": "@raceson/testing",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Shared testing utilities for RacesOn.",
+  "scripts": {
+    "check:browser-boundary": "node scripts/browser-data-boundary.mjs",
+    "check:public-db": "node ./scripts/public-db-integrity.mjs",
+    "smoke:phase0-integrity": "node ./scripts/phase0-integrity-smoke.mjs",
+    "smoke:public-counts": "node ./scripts/public-count-reconciliation.mjs",
+    "smoke:public-guest": "node ./scripts/public-guest-smoke.mjs",
+    "smoke:site-wide-phase1": "node ./scripts/site-wide-phase1-reconcile.mjs",
+    "smoke:organizer-public-contract": "node ./scripts/organizer-public-contract-reconcile.mjs",
+    "smoke:site-wide:operations:preflight": "node ./scripts/site-wide-operations-preflight.mjs",
+    "smoke:site-wide:local-operations:preflight": "node ./scripts/site-wide-local-operations-preflight.mjs",
+    "smoke:site-wide:operations:reconcile": "node ./scripts/site-wide-operations-reconcile.mjs",
+    "smoke:site-wide:track-snapshot": "node ./scripts/site-wide-track-snapshot-reconcile.mjs",
+    "check:site-wide-phase1-fixtures": "node ./scripts/site-wide-phase1-reconcile.mjs --fixtures-only",
+    "test:site-wide": "node ./scripts/site-wide-suite.mjs",
+    "test:site-wide:browser": "playwright test --config ./playwright.config.mjs --project public-desktop --project public-mobile --project public-unavailable-desktop --project public-unavailable-mobile --project roles",
+    "test:site-wide:browser:public": "playwright test --config ./playwright.config.mjs --project public-desktop --project public-mobile --project public-unavailable-desktop --project public-unavailable-mobile",
+    "test:site-wide:browser:unavailable": "playwright test --config ./playwright.config.mjs --project public-unavailable-desktop --project public-unavailable-mobile",
+    "test:site-wide:browser:roles": "playwright test --config ./playwright.config.mjs --project roles",
+    "test:site-wide:browser:provision-admin": "playwright test --config ./playwright.config.mjs --project provision-organization-admin",
+    "test:site-wide:browser:organizer-assets": "playwright test --config ./playwright.config.mjs --project organizer-assets",
+    "test:site-wide:browser:organizer-events": "playwright test --config ./playwright.config.mjs --project organizer-events",
+    "test:site-wide:browser:organizer-league": "playwright test --config ./playwright.config.mjs --project organizer-league",
+    "test:site-wide:browser:propagation-stale": "playwright test --config ./playwright.config.mjs --project propagation-stale",
+    "test:site-wide:browser:propagation-refresh": "playwright test --config ./playwright.config.mjs --project propagation-refresh",
+    "test:site-wide:browser:athlete-operations": "playwright test --config ./playwright.config.mjs --project athlete-operations",
+    "test:site-wide:browser:race-lifecycle": "playwright test --config ./playwright.config.mjs --project race-lifecycle",
+    "test:site-wide:browser:operations-public": "playwright test --config ./playwright.config.mjs --project operations-public-desktop --project operations-public-mobile",
+    "smoke:race-ops": "node ./scripts/race-ops-smoke.mjs",
+    "smoke:race-ops:local": "node ./scripts/run-local-race-ops-smoke.mjs",
+    "serve:stripe-fixture": "node ./scripts/local-stripe-fixture.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "axe-core": "4.11.1"
+  }
+}

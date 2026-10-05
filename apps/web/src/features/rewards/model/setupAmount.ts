@@ -1,0 +1,1 @@
+export function setupAmount(wei:bigint|null,hr=false){if(wei===null)return "—";if(wei>0n&&wei<10n**14n)return "<0.0001";return new Intl.NumberFormat(hr?"hr":"en",{maximumFractionDigits:4}).format(Number(wei/10n**14n)/10000);}

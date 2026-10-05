@@ -1,0 +1,88 @@
+.eyebrow { font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--rw-muted); margin-bottom:12px; }
+.grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; margin:24px 0; }
+.card { display:block; border:1px solid var(--rw-line); border-radius:12px; padding:24px; background:var(--rw-paper); transition:border-color .15s; }
+.card:hover { border-color:var(--rw-race); }
+.card h2,.card h3 { font-size:21px; font-weight:550; margin:20px 0 8px; }
+.card strong { display:block; font-size:32px; font-weight:500; letter-spacing:-.03em; margin:22px 0 0; }
+.card small { color:var(--rw-muted); font-size:12px; }
+.pill { display:inline-block; padding:4px 9px; border-radius:20px; background:color-mix(in srgb,var(--rw-league),transparent 91%); color:var(--rw-league); font-size:11px; }
+.hero { display:grid; grid-template-columns:1.2fr 1fr; gap:48px; align-items:center; padding:32px 0 46px; border-bottom:1px solid var(--rw-line); margin-bottom:32px; }
+.hero h2 { font-size:clamp(26px,3vw,38px); line-height:1.15; letter-spacing:-.03em; margin:16px 0; }
+.metrics { display:grid; grid-template-columns:repeat(4,1fr); border-block:1px solid var(--rw-line); margin:24px 0; padding:24px 0; gap:20px; }
+.metrics dt { font-size:12px; color:var(--rw-muted); }
+.metrics dd { font-size:24px; font-weight:500; margin-top:6px; font-variant-numeric:tabular-nums; }
+.filters { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:24px 0; }
+.filters input,.filters select { background:var(--rw-paper); border:1px solid var(--rw-line); padding:10px 12px; border-radius:6px; }
+.filters input { flex:1; min-width:160px; }
+.tabs { display:flex; gap:24px; margin:32px 0 24px; border-bottom:1px solid var(--rw-line); }
+.tabs button { padding:12px 0; border-bottom:2px solid transparent; color:var(--rw-muted); }
+.tabs button[aria-pressed=true] { border-color:var(--rw-race); color:var(--rw-ink); }
+.table th,.table td { padding:15px 12px; }
+.empty { padding:32px 16px; text-align:center; color:var(--rw-muted); font-size:13px; }
+.branch { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; position:relative; padding-top:24px; }
+.branch::before { content:""; position:absolute; left:25%; right:25%; top:10px; border-top:1px solid var(--rw-line); }
+.branch > div { border:1px solid var(--rw-line); border-radius:8px; padding:18px; text-align:center; }
+.branch b { display:block; font-size:20px; margin:6px 0; }
+@media(max-width:700px) { .grid { grid-template-columns:1fr; }.hero { grid-template-columns:1fr; gap:24px; padding-top:0; }.metrics { grid-template-columns:repeat(2,1fr); }.tabs { gap:18px; }.card { padding:20px; } }
+
+.filtersGroup { flex-wrap:wrap; max-width:100%; }
+.filtersGroup button { min-width:72px; padding-inline:12px; }
+
+.reportHero { padding:28px; border:1px solid var(--rw-line); border-radius:12px; background:var(--rw-paper); margin:28px 0; }
+.reportHero h2 { font-size:clamp(24px,3vw,34px); letter-spacing:-.035em; margin:14px 0 8px; }
+.reportBudget { display:block; font-size:48px; font-weight:550; letter-spacing:-.05em; line-height:1.15; }
+.paymentBar { height:9px; display:flex; overflow:hidden; border-radius:5px; background:var(--rw-line); }
+.paymentBar span:nth-child(1) { background:var(--rw-league); }
+.paymentBar span:nth-child(2) { background:var(--rw-race); }
+.paymentBar span:nth-child(3) { background:var(--rw-line); }
+.barLegend { display:flex; flex-wrap:wrap; gap:12px 24px; margin:12px 0 20px; font-size:12px; color:var(--rw-muted); }
+.barLegend > span::before { content:""; display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:7px; background:var(--rw-line); }
+.barLegend > span:nth-child(1)::before { background:var(--rw-league); }
+.barLegend > span:nth-child(2)::before { background:var(--rw-race); }
+.barLegend span span { color:var(--rw-ink); margin-left:6px; font-variant-numeric:tabular-nums; }
+.reportFooter { display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; align-items:center; }
+.reportFooter small { color:var(--rw-muted); font-size:11px; }
+.cardMetrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; border-top:1px solid var(--rw-line); padding-top:18px; margin-top:24px; }
+.cardMetrics dt { color:var(--rw-muted); font-size:10px; }.cardMetrics dd { margin-top:7px; font-size:16px; font-variant-numeric:tabular-nums; }
+.reportNotice { border:1px solid var(--rw-line); border-radius:8px; padding:16px; margin:24px 0; font-size:13px; }
+.reportNotice button { text-decoration:underline; margin-left:10px; }
+.potBranches { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; margin-top:32px; padding-top:20px; position:relative; }
+.potBranches::before { content:""; position:absolute; inset:0 8% auto; border-top:1px solid var(--rw-line); }
+.potBranches a { border:1px solid var(--rw-line); border-radius:8px; padding:18px 12px; text-align:center; position:relative; background:var(--rw-paper); }
+.potBranches a::before { content:""; position:absolute; top:-21px; left:50%; height:20px; border-left:1px solid var(--rw-line); }
+.potBranches a:hover { border-color:var(--rw-race); }.potBranches strong { display:block; font-size:24px; margin:8px 0 4px; }
+.potBranches span { font-size:12px; }.potBranches small { font-size:10px; color:var(--rw-muted); }
+.tableCaption { text-align:left; font-size:12px; color:var(--rw-muted); padding:0 12px 16px; }
+.table th[scope=row] { font-weight:500; white-space:nowrap; }
+.table th[scope=row],.table thead th:first-child { position:sticky; left:0; z-index:1; background:var(--rw-paper); }
+.table td { white-space:nowrap; font-variant-numeric:tabular-nums; }.total { font-weight:650; }
+.paid,.pending { border-radius:20px; padding:4px 8px; font-size:11px; display:inline-block; }
+.paid { color:var(--rw-league); background:color-mix(in srgb,var(--rw-league),transparent 92%); }
+.pending { color:var(--rw-muted); background:color-mix(in srgb,var(--rw-muted),transparent 93%); }
+.pool { display:flex; justify-content:space-between; gap:16px; padding:12px 0; border-top:1px solid var(--rw-line); font-size:13px; }
+.history { list-style:none; }.history li { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px 0; border-bottom:1px solid var(--rw-line); }
+.history strong { font-size:14px; font-weight:500; }.history p { font-size:12px; color:var(--rw-muted); margin-top:6px; }
+@media(max-width:700px) { .reportHero { padding:20px; }.reportBudget { font-size:36px; }.potBranches { grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding-top:0; }.potBranches::before,.potBranches a::before { display:none; }.reportHero .metrics dd { font-size:22px; } }
+.distributionPage.distributionPage { --rw-paper:#f7f5ef; --rw-league:#7753ca; --rw-race:#ee5c17; padding:28px max(40px,calc((100vw - 1320px)/2)) 48px; }
+.distributionPage h1 { font-size:clamp(34px,4.1vw,56px); letter-spacing:-.045em; }
+.compactStats { display:flex; flex-wrap:wrap; gap:22px 40px; padding:20px 0 4px; }
+.compactStats div { display:flex; align-items:baseline; gap:10px; }
+.compactStats dt { font-size:12px; color:var(--rw-muted); }
+.compactStats dd { font-size:17px; font-variant-numeric:tabular-nums; }
+:global(.dark) .distributionPage.distributionPage { --rw-paper:#101a21; }
+@media(max-width:760px) { .distributionPage.distributionPage { padding:24px 20px 36px; } .compactStats { gap:10px 24px; } }
+
+.splitHeading { margin:24px 0 18px; }
+.splitHeading h2 { font:600 25px/1.3 var(--font-outfit),sans-serif; }
+.splitHeading p { font-size:13px; color:var(--rw-muted); max-width:720px; margin-top:8px; line-height:1.6; }
+.awardBar { display:block; width:100px; height:4px; background:var(--rw-line); margin-top:8px; border-radius:2px; overflow:hidden; }
+.awardBar>span { display:block; height:100%; background:var(--rw-league,#7753ca); }
+
+.sortHeader { display:inline-flex; gap:8px; align-items:center; text-align:left; white-space:nowrap; min-height:36px; }
+.sortHeader span { opacity:.6; font-size:12px; }
+.sortHeader:focus-visible { outline:2px solid var(--rw-ink); outline-offset:3px; }
+.allocationTable { min-width:1460px; }
+.allocationTable td { font-variant-numeric:tabular-nums; }
+.allocationTable tbody th { min-width:140px; }
+.allocationTable thead th:first-child { position:static; }
+.allocationTable thead th:nth-child(2) { position:sticky; left:0; z-index:2; background:var(--rw-paper); }

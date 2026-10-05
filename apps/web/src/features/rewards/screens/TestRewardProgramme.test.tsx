@@ -1,0 +1,30 @@
+import {fireEvent,render,screen,within} from "@testing-library/react";
+import {MemoryRouter} from "react-router-dom";
+import {expect,it} from "vitest";
+import {I18nProvider} from "@/shared/i18n/I18nProvider";
+import TestRewardProgramme from "./TestRewardProgramme";
+it("separates simulated approval, claim and payment, and retires them when the rules change",()=>{
+  render(<I18nProvider initialLocale="en"><MemoryRouter><TestRewardProgramme/></MemoryRouter></I18nProvider>);
+  expect(screen.getByText(/same 10 athletes.*20 race entries/)).toBeVisible();
+  expect(screen.queryByRole("button",{name:"Simulate claim"})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button",{name:"Approve simulated allocation"}));
+  const table=screen.getByRole("table",{name:"Simulated reward distribution"});
+  const row=within(table).getAllByRole("row")[1];
+  expect(within(row).getByText("Awarded")).toBeVisible();
+  fireEvent.click(within(row).getByRole("button",{name:"Simulate claim"}));
+  expect(within(row).getByText("Claim submitted")).toBeVisible();
+  expect(within(row).getByText("Not sent")).toBeVisible();
+  fireEvent.click(within(row).getByRole("button",{name:"Simulate payment"}));
+  expect(within(row).getByText("Paid (test)")).toBeVisible();
+  fireEvent.change(screen.getByLabelText("Distribution",{selector:"select"}),{target:{value:"equal"}});
+  expect(screen.queryByText("Paid (test)")).not.toBeInTheDocument();
+  expect(screen.getByRole("button",{name:"Approve simulated allocation"})).toBeVisible();
+});
+it("swaps athletes without duplicating a finisher and handles invalid budgets",()=>{
+  render(<I18nProvider initialLocale="en"><MemoryRouter><TestRewardProgramme/></MemoryRouter></I18nProvider>);
+  fireEvent.change(screen.getByLabelText("Athlete, round 1, rank 1"),{target:{value:"4"}});
+  expect(screen.getByLabelText("Athlete, round 1, rank 5")).toHaveValue("0");
+  fireEvent.change(screen.getByLabelText("Total pot · test MON"),{target:{value:""}});
+  expect(screen.getByRole("alert")).toHaveTextContent("Enter a whole number");
+  expect(screen.queryByRole("button",{name:"Approve simulated allocation"})).not.toBeInTheDocument();
+});

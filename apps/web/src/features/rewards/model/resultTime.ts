@@ -1,0 +1,1 @@
+export const resultTime=(ms:number|null,status:string)=>status!=='finished'?status.toUpperCase():ms===null?'—':[Math.floor(ms/3600000),Math.floor(ms/60000)%60,Math.floor(ms/1000)%60].map(v=>String(v).padStart(2,'0')).join(':');

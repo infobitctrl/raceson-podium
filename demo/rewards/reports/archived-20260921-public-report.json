@@ -1,0 +1,4925 @@
+{
+  "schema": "raceson-public-reward-report-v3",
+  "observedAt": "2026-09-16T20:44:22.641Z",
+  "programmes": [
+    {
+      "id": "monad-demo-10",
+      "name": "Monad demo · 10 athletes",
+      "host": "RacesOn demo",
+      "chainId": 10143,
+      "source": "synthetic",
+      "status": "distributing",
+      "pots": [
+        {
+          "id": "round-1",
+          "slot": 1,
+          "name": "Round 1",
+          "budgetWei": "10000000000000000000",
+          "approvedAt": "2026-09-13T19:21:51.373Z",
+          "pools": [
+            {
+              "key": "athlete_standings",
+              "budgetWei": "8000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "athlete-2",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-1"
+                },
+                {
+                  "recipientId": "athlete-3",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-2"
+                },
+                {
+                  "recipientId": "athlete-1",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-4",
+                  "amountWei": "228640000000000000",
+                  "position": 2,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-5",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-6",
+                  "amountWei": "228640000000000000",
+                  "position": 2,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-7",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-5"
+                },
+                {
+                  "recipientId": "athlete-8",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-6"
+                },
+                {
+                  "recipientId": "athlete-9",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-7"
+                },
+                {
+                  "recipientId": "athlete-10",
+                  "amountWei": "228480000000000000",
+                  "position": 2,
+                  "categoryId": "category-7"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-1",
+                  "name": "Short · Synthetic · Female U16",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-2",
+                  "name": "Short · Synthetic · Male U16",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-3",
+                  "name": "Short · Synthetic · Female",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-4",
+                  "name": "Short · Synthetic · Male",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-5",
+                  "name": "Short · Synthetic · Senior 65+",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-6",
+                  "name": "Long · Synthetic · Female",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-7",
+                  "name": "Long · Synthetic · Male",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "club_standings",
+              "budgetWei": "2000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "club-1",
+                  "amountWei": "700000000000000000",
+                  "position": 1,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-2",
+                  "amountWei": "400000000000000000",
+                  "position": 2,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-4",
+                  "amountWei": "300000000000000000",
+                  "position": 3,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-3",
+                  "amountWei": "160000000000000000",
+                  "position": 4,
+                  "categoryId": "category-8"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-8",
+                  "name": "Clubs · Synthetic · Clubs",
+                  "budgetWei": "2000000000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "700000000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "400000000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "300000000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "160000000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "120000000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "100000000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "80000000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "60000000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "50000000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "30000000000000000"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "rows": [
+            {
+              "recipientId": "athlete-1",
+              "name": "Test athlete 1",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "submitted",
+              "payment": "paid",
+              "transactionHash": "0xd14a7d9d62f74dc4ac6f9db83be5cca1cbb0c8f94fe852adc088e0ef3b7d34fd",
+              "paidAt": "2026-09-13T19:50:19.659Z"
+            },
+            {
+              "recipientId": "athlete-2",
+              "name": "Test athlete 2",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-3",
+              "name": "Test athlete 3",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-4",
+              "name": "Test athlete 4",
+              "kind": "athlete",
+              "amountWei": "228640000000000000",
+              "claim": "submitted",
+              "payment": "paid",
+              "transactionHash": "0x1137f30b1a6664a739c57fb2e9a1544a74ce0936acc2a118a0bd1ca9df693a96",
+              "paidAt": "2026-09-14T19:52:08.998Z"
+            },
+            {
+              "recipientId": "athlete-5",
+              "name": "Test athlete 5",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-6",
+              "name": "Test athlete 6",
+              "kind": "athlete",
+              "amountWei": "228640000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-7",
+              "name": "Test athlete 7",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-8",
+              "name": "Test athlete 8",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-9",
+              "name": "Test athlete 9",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-10",
+              "name": "Test athlete 10",
+              "kind": "athlete",
+              "amountWei": "228480000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-1",
+              "name": "Test club 1",
+              "kind": "club",
+              "amountWei": "700000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-2",
+              "name": "Test club 2",
+              "kind": "club",
+              "amountWei": "400000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-3",
+              "name": "Test club 3",
+              "kind": "club",
+              "amountWei": "160000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-4",
+              "name": "Test club 4",
+              "kind": "club",
+              "amountWei": "300000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            }
+          ]
+        },
+        {
+          "id": "round-2",
+          "slot": 2,
+          "name": "Round 2",
+          "budgetWei": "10000000000000000000",
+          "approvedAt": "2026-09-14T07:07:57.151Z",
+          "pools": [
+            {
+              "key": "athlete_standings",
+              "budgetWei": "8000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "athlete-2",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-1"
+                },
+                {
+                  "recipientId": "athlete-3",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-2"
+                },
+                {
+                  "recipientId": "athlete-4",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-1",
+                  "amountWei": "228640000000000000",
+                  "position": 2,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-6",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-5",
+                  "amountWei": "228640000000000000",
+                  "position": 2,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-7",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-5"
+                },
+                {
+                  "recipientId": "athlete-8",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-6"
+                },
+                {
+                  "recipientId": "athlete-10",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-7"
+                },
+                {
+                  "recipientId": "athlete-9",
+                  "amountWei": "228480000000000000",
+                  "position": 2,
+                  "categoryId": "category-7"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-1",
+                  "name": "Short · Synthetic · Female U16",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-2",
+                  "name": "Short · Synthetic · Male U16",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-3",
+                  "name": "Short · Synthetic · Female",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-4",
+                  "name": "Short · Synthetic · Male",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-5",
+                  "name": "Short · Synthetic · Senior 65+",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-6",
+                  "name": "Long · Synthetic · Female",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-7",
+                  "name": "Long · Synthetic · Male",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "club_standings",
+              "budgetWei": "2000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "club-2",
+                  "amountWei": "700000000000000000",
+                  "position": 1,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-1",
+                  "amountWei": "400000000000000000",
+                  "position": 2,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-4",
+                  "amountWei": "300000000000000000",
+                  "position": 3,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-3",
+                  "amountWei": "160000000000000000",
+                  "position": 4,
+                  "categoryId": "category-8"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-8",
+                  "name": "Clubs · Synthetic · Clubs",
+                  "budgetWei": "2000000000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "700000000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "400000000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "300000000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "160000000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "120000000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "100000000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "80000000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "60000000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "50000000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "30000000000000000"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "rows": [
+            {
+              "recipientId": "athlete-1",
+              "name": "Test athlete 1",
+              "kind": "athlete",
+              "amountWei": "228640000000000000",
+              "claim": "submitted",
+              "payment": "paid",
+              "transactionHash": "0xc87a43b3eddcba991fc9f529eb0be0ba0b5c9666abc1488525ad4a5878dce74a",
+              "paidAt": "2026-09-14T11:24:07.144Z"
+            },
+            {
+              "recipientId": "athlete-2",
+              "name": "Test athlete 2",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-3",
+              "name": "Test athlete 3",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-4",
+              "name": "Test athlete 4",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-5",
+              "name": "Test athlete 5",
+              "kind": "athlete",
+              "amountWei": "228640000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-6",
+              "name": "Test athlete 6",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-7",
+              "name": "Test athlete 7",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-8",
+              "name": "Test athlete 8",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-9",
+              "name": "Test athlete 9",
+              "kind": "athlete",
+              "amountWei": "228480000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-10",
+              "name": "Test athlete 10",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-1",
+              "name": "Test club 1",
+              "kind": "club",
+              "amountWei": "400000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-2",
+              "name": "Test club 2",
+              "kind": "club",
+              "amountWei": "700000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-3",
+              "name": "Test club 3",
+              "kind": "club",
+              "amountWei": "160000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-4",
+              "name": "Test club 4",
+              "kind": "club",
+              "amountWei": "300000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            }
+          ]
+        },
+        {
+          "id": "round-3",
+          "slot": 3,
+          "name": "Round 3",
+          "budgetWei": "10000000000000000000",
+          "approvedAt": "2026-09-13T21:10:03.442Z",
+          "pools": [
+            {
+              "key": "athlete_standings",
+              "budgetWei": "8000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "athlete-2",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-1"
+                },
+                {
+                  "recipientId": "athlete-3",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-2"
+                },
+                {
+                  "recipientId": "athlete-4",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-1",
+                  "amountWei": "228640000000000000",
+                  "position": 2,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-6",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-5",
+                  "amountWei": "228640000000000000",
+                  "position": 2,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-7",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-5"
+                },
+                {
+                  "recipientId": "athlete-8",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-6"
+                },
+                {
+                  "recipientId": "athlete-10",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-7"
+                },
+                {
+                  "recipientId": "athlete-9",
+                  "amountWei": "228480000000000000",
+                  "position": 2,
+                  "categoryId": "category-7"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-1",
+                  "name": "Short · Synthetic · Female U16",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-2",
+                  "name": "Short · Synthetic · Male U16",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-3",
+                  "name": "Short · Synthetic · Female",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-4",
+                  "name": "Short · Synthetic · Male",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-5",
+                  "name": "Short · Synthetic · Senior 65+",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-6",
+                  "name": "Long · Synthetic · Female",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-7",
+                  "name": "Long · Synthetic · Male",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "club_standings",
+              "budgetWei": "2000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "club-2",
+                  "amountWei": "700000000000000000",
+                  "position": 1,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-1",
+                  "amountWei": "400000000000000000",
+                  "position": 2,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-4",
+                  "amountWei": "300000000000000000",
+                  "position": 3,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-3",
+                  "amountWei": "160000000000000000",
+                  "position": 4,
+                  "categoryId": "category-8"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-8",
+                  "name": "Clubs · Synthetic · Clubs",
+                  "budgetWei": "2000000000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "700000000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "400000000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "300000000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "160000000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "120000000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "100000000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "80000000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "60000000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "50000000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "30000000000000000"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "rows": [
+            {
+              "recipientId": "athlete-1",
+              "name": "Test athlete 1",
+              "kind": "athlete",
+              "amountWei": "228640000000000000",
+              "claim": "submitted",
+              "payment": "paid",
+              "transactionHash": "0x65424dda46a9edfe89ee8b6bab91d75a97bfd8b8a0fe049aa37a5947ccc0b24a",
+              "paidAt": "2026-09-14T09:41:57.907Z"
+            },
+            {
+              "recipientId": "athlete-2",
+              "name": "Test athlete 2",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-3",
+              "name": "Test athlete 3",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-4",
+              "name": "Test athlete 4",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-5",
+              "name": "Test athlete 5",
+              "kind": "athlete",
+              "amountWei": "228640000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-6",
+              "name": "Test athlete 6",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-7",
+              "name": "Test athlete 7",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-8",
+              "name": "Test athlete 8",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-9",
+              "name": "Test athlete 9",
+              "kind": "athlete",
+              "amountWei": "228480000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-10",
+              "name": "Test athlete 10",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-1",
+              "name": "Test club 1",
+              "kind": "club",
+              "amountWei": "400000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-2",
+              "name": "Test club 2",
+              "kind": "club",
+              "amountWei": "700000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-3",
+              "name": "Test club 3",
+              "kind": "club",
+              "amountWei": "160000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-4",
+              "name": "Test club 4",
+              "kind": "club",
+              "amountWei": "300000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            }
+          ]
+        },
+        {
+          "id": "round-4",
+          "slot": 4,
+          "name": "Round 4",
+          "budgetWei": "10000000000000000000",
+          "approvedAt": "2026-09-14T11:37:37.680Z",
+          "pools": [
+            {
+              "key": "athlete_standings",
+              "budgetWei": "8000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "athlete-2",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-1"
+                },
+                {
+                  "recipientId": "athlete-3",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-2"
+                },
+                {
+                  "recipientId": "athlete-4",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-1",
+                  "amountWei": "228640000000000000",
+                  "position": 2,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-6",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-5",
+                  "amountWei": "228640000000000000",
+                  "position": 2,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-7",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-5"
+                },
+                {
+                  "recipientId": "athlete-8",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-6"
+                },
+                {
+                  "recipientId": "athlete-10",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-7"
+                },
+                {
+                  "recipientId": "athlete-9",
+                  "amountWei": "228480000000000000",
+                  "position": 2,
+                  "categoryId": "category-7"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-1",
+                  "name": "Short · Synthetic · Female U16",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-2",
+                  "name": "Short · Synthetic · Male U16",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-3",
+                  "name": "Short · Synthetic · Female",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-4",
+                  "name": "Short · Synthetic · Male",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-5",
+                  "name": "Short · Synthetic · Senior 65+",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-6",
+                  "name": "Long · Synthetic · Female",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-7",
+                  "name": "Long · Synthetic · Male",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "club_standings",
+              "budgetWei": "2000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "club-2",
+                  "amountWei": "700000000000000000",
+                  "position": 1,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-1",
+                  "amountWei": "400000000000000000",
+                  "position": 2,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-4",
+                  "amountWei": "300000000000000000",
+                  "position": 3,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-3",
+                  "amountWei": "160000000000000000",
+                  "position": 4,
+                  "categoryId": "category-8"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-8",
+                  "name": "Clubs · Synthetic · Clubs",
+                  "budgetWei": "2000000000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "700000000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "400000000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "300000000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "160000000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "120000000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "100000000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "80000000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "60000000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "50000000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "30000000000000000"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "rows": [
+            {
+              "recipientId": "athlete-1",
+              "name": "Test athlete 1",
+              "kind": "athlete",
+              "amountWei": "228640000000000000",
+              "claim": "submitted",
+              "payment": "paid",
+              "transactionHash": "0xb2ae0b279098ee8f47281d39e0f09aedd9435ce7823c9fbaf211fbe1e98bacd7",
+              "paidAt": "2026-09-14T12:08:16.844Z"
+            },
+            {
+              "recipientId": "athlete-2",
+              "name": "Test athlete 2",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-3",
+              "name": "Test athlete 3",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-4",
+              "name": "Test athlete 4",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-5",
+              "name": "Test athlete 5",
+              "kind": "athlete",
+              "amountWei": "228640000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-6",
+              "name": "Test athlete 6",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-7",
+              "name": "Test athlete 7",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-8",
+              "name": "Test athlete 8",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-9",
+              "name": "Test athlete 9",
+              "kind": "athlete",
+              "amountWei": "228480000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-10",
+              "name": "Test athlete 10",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-1",
+              "name": "Test club 1",
+              "kind": "club",
+              "amountWei": "400000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-2",
+              "name": "Test club 2",
+              "kind": "club",
+              "amountWei": "700000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-3",
+              "name": "Test club 3",
+              "kind": "club",
+              "amountWei": "160000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-4",
+              "name": "Test club 4",
+              "kind": "club",
+              "amountWei": "300000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            }
+          ]
+        },
+        {
+          "id": "round-5",
+          "slot": 5,
+          "name": "Round 5",
+          "budgetWei": "10000000000000000000",
+          "approvedAt": "2026-09-14T12:33:50.095Z",
+          "pools": [
+            {
+              "key": "athlete_standings",
+              "budgetWei": "8000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "athlete-2",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-1"
+                },
+                {
+                  "recipientId": "athlete-3",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-2"
+                },
+                {
+                  "recipientId": "athlete-1",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-4",
+                  "amountWei": "228640000000000000",
+                  "position": 2,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-5",
+                  "amountWei": "400120000000000000",
+                  "position": 1,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-6",
+                  "amountWei": "228640000000000000",
+                  "position": 2,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-7",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-5"
+                },
+                {
+                  "recipientId": "athlete-8",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-6"
+                },
+                {
+                  "recipientId": "athlete-9",
+                  "amountWei": "399840000000000000",
+                  "position": 1,
+                  "categoryId": "category-7"
+                },
+                {
+                  "recipientId": "athlete-10",
+                  "amountWei": "228480000000000000",
+                  "position": 2,
+                  "categoryId": "category-7"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-1",
+                  "name": "Short · Synthetic · Female U16",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-2",
+                  "name": "Short · Synthetic · Male U16",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-3",
+                  "name": "Short · Synthetic · Female",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-4",
+                  "name": "Short · Synthetic · Male",
+                  "budgetWei": "1143200000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "400120000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228640000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171480000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91456000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68592000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57160000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45728000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34296000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28580000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17148000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-5",
+                  "name": "Short · Synthetic · Senior 65+",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-6",
+                  "name": "Long · Synthetic · Female",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-7",
+                  "name": "Long · Synthetic · Male",
+                  "budgetWei": "1142400000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "399840000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "228480000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "171360000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "91392000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "68544000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "57120000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "45696000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "34272000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "28560000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "17136000000000000"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "club_standings",
+              "budgetWei": "2000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "club-1",
+                  "amountWei": "700000000000000000",
+                  "position": 1,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-2",
+                  "amountWei": "400000000000000000",
+                  "position": 2,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-4",
+                  "amountWei": "300000000000000000",
+                  "position": 3,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-3",
+                  "amountWei": "160000000000000000",
+                  "position": 4,
+                  "categoryId": "category-8"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-8",
+                  "name": "Clubs · Synthetic · Clubs",
+                  "budgetWei": "2000000000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 3500,
+                      "amountWei": "700000000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 2000,
+                      "amountWei": "400000000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 1500,
+                      "amountWei": "300000000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 800,
+                      "amountWei": "160000000000000000"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 600,
+                      "amountWei": "120000000000000000"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 500,
+                      "amountWei": "100000000000000000"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 400,
+                      "amountWei": "80000000000000000"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 300,
+                      "amountWei": "60000000000000000"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 250,
+                      "amountWei": "50000000000000000"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 150,
+                      "amountWei": "30000000000000000"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "rows": [
+            {
+              "recipientId": "athlete-1",
+              "name": "Test athlete 1",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "submitted",
+              "payment": "paid",
+              "transactionHash": "0x96c4928b03ff47e7398b955d10ff3b377d464242169f127325031f2cb2ff8bdd",
+              "paidAt": "2026-09-14T15:39:56.682Z"
+            },
+            {
+              "recipientId": "athlete-2",
+              "name": "Test athlete 2",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-3",
+              "name": "Test athlete 3",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-4",
+              "name": "Test athlete 4",
+              "kind": "athlete",
+              "amountWei": "228640000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-5",
+              "name": "Test athlete 5",
+              "kind": "athlete",
+              "amountWei": "400120000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-6",
+              "name": "Test athlete 6",
+              "kind": "athlete",
+              "amountWei": "228640000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-7",
+              "name": "Test athlete 7",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-8",
+              "name": "Test athlete 8",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-9",
+              "name": "Test athlete 9",
+              "kind": "athlete",
+              "amountWei": "399840000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-10",
+              "name": "Test athlete 10",
+              "kind": "athlete",
+              "amountWei": "228480000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-1",
+              "name": "Test club 1",
+              "kind": "club",
+              "amountWei": "700000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-2",
+              "name": "Test club 2",
+              "kind": "club",
+              "amountWei": "400000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-3",
+              "name": "Test club 3",
+              "kind": "club",
+              "amountWei": "160000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-4",
+              "name": "Test club 4",
+              "kind": "club",
+              "amountWei": "300000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            }
+          ]
+        },
+        {
+          "id": "league",
+          "slot": 6,
+          "name": "League pot",
+          "budgetWei": "50000000000000000000",
+          "approvedAt": "2026-09-14T12:34:46.965Z",
+          "pools": [
+            {
+              "key": "athlete_standings",
+              "budgetWei": "25000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "athlete-2",
+                  "amountWei": "1071750000000000000",
+                  "position": 1,
+                  "categoryId": "category-1"
+                },
+                {
+                  "recipientId": "athlete-3",
+                  "amountWei": "1071750000000000000",
+                  "position": 1,
+                  "categoryId": "category-2"
+                },
+                {
+                  "recipientId": "athlete-4",
+                  "amountWei": "1071750000000000000",
+                  "position": 1,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-1",
+                  "amountWei": "714500000000000000",
+                  "position": 2,
+                  "categoryId": "category-3"
+                },
+                {
+                  "recipientId": "athlete-6",
+                  "amountWei": "1071750000000000000",
+                  "position": 1,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-5",
+                  "amountWei": "714500000000000000",
+                  "position": 2,
+                  "categoryId": "category-4"
+                },
+                {
+                  "recipientId": "athlete-7",
+                  "amountWei": "1071000000000000000",
+                  "position": 1,
+                  "categoryId": "category-5"
+                },
+                {
+                  "recipientId": "athlete-8",
+                  "amountWei": "1071000000000000000",
+                  "position": 1,
+                  "categoryId": "category-6"
+                },
+                {
+                  "recipientId": "athlete-10",
+                  "amountWei": "1071000000000000000",
+                  "position": 1,
+                  "categoryId": "category-7"
+                },
+                {
+                  "recipientId": "athlete-9",
+                  "amountWei": "714000000000000000",
+                  "position": 2,
+                  "categoryId": "category-7"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-1",
+                  "name": "Short · Synthetic · Female U16",
+                  "budgetWei": "3572500000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 759,
+                      "amountWei": "1071750000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 506,
+                      "amountWei": "714500000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 253,
+                      "amountWei": "357250000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 88,
+                      "amountWei": "124260869565217391"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 84,
+                      "amountWei": "118612648221343874"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 80,
+                      "amountWei": "112964426877470356"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 76,
+                      "amountWei": "107316205533596838"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 72,
+                      "amountWei": "101667984189723320"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 68,
+                      "amountWei": "96019762845849802"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 64,
+                      "amountWei": "90371541501976285"
+                    },
+                    {
+                      "position": 11,
+                      "weight": 60,
+                      "amountWei": "84723320158102767"
+                    },
+                    {
+                      "position": 12,
+                      "weight": 56,
+                      "amountWei": "79075098814229249"
+                    },
+                    {
+                      "position": 13,
+                      "weight": 52,
+                      "amountWei": "73426877470355731"
+                    },
+                    {
+                      "position": 14,
+                      "weight": 48,
+                      "amountWei": "67778656126482213"
+                    },
+                    {
+                      "position": 15,
+                      "weight": 44,
+                      "amountWei": "62130434782608696"
+                    },
+                    {
+                      "position": 16,
+                      "weight": 40,
+                      "amountWei": "56482213438735178"
+                    },
+                    {
+                      "position": 17,
+                      "weight": 36,
+                      "amountWei": "50833992094861660"
+                    },
+                    {
+                      "position": 18,
+                      "weight": 32,
+                      "amountWei": "45185770750988142"
+                    },
+                    {
+                      "position": 19,
+                      "weight": 28,
+                      "amountWei": "39537549407114624"
+                    },
+                    {
+                      "position": 20,
+                      "weight": 24,
+                      "amountWei": "33889328063241107"
+                    },
+                    {
+                      "position": 21,
+                      "weight": 20,
+                      "amountWei": "28241106719367589"
+                    },
+                    {
+                      "position": 22,
+                      "weight": 16,
+                      "amountWei": "22592885375494071"
+                    },
+                    {
+                      "position": 23,
+                      "weight": 12,
+                      "amountWei": "16944664031620553"
+                    },
+                    {
+                      "position": 24,
+                      "weight": 8,
+                      "amountWei": "11296442687747036"
+                    },
+                    {
+                      "position": 25,
+                      "weight": 4,
+                      "amountWei": "5648221343873518"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-2",
+                  "name": "Short · Synthetic · Male U16",
+                  "budgetWei": "3572500000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 759,
+                      "amountWei": "1071750000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 506,
+                      "amountWei": "714500000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 253,
+                      "amountWei": "357250000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 88,
+                      "amountWei": "124260869565217391"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 84,
+                      "amountWei": "118612648221343874"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 80,
+                      "amountWei": "112964426877470356"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 76,
+                      "amountWei": "107316205533596838"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 72,
+                      "amountWei": "101667984189723320"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 68,
+                      "amountWei": "96019762845849802"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 64,
+                      "amountWei": "90371541501976285"
+                    },
+                    {
+                      "position": 11,
+                      "weight": 60,
+                      "amountWei": "84723320158102767"
+                    },
+                    {
+                      "position": 12,
+                      "weight": 56,
+                      "amountWei": "79075098814229249"
+                    },
+                    {
+                      "position": 13,
+                      "weight": 52,
+                      "amountWei": "73426877470355731"
+                    },
+                    {
+                      "position": 14,
+                      "weight": 48,
+                      "amountWei": "67778656126482213"
+                    },
+                    {
+                      "position": 15,
+                      "weight": 44,
+                      "amountWei": "62130434782608696"
+                    },
+                    {
+                      "position": 16,
+                      "weight": 40,
+                      "amountWei": "56482213438735178"
+                    },
+                    {
+                      "position": 17,
+                      "weight": 36,
+                      "amountWei": "50833992094861660"
+                    },
+                    {
+                      "position": 18,
+                      "weight": 32,
+                      "amountWei": "45185770750988142"
+                    },
+                    {
+                      "position": 19,
+                      "weight": 28,
+                      "amountWei": "39537549407114624"
+                    },
+                    {
+                      "position": 20,
+                      "weight": 24,
+                      "amountWei": "33889328063241107"
+                    },
+                    {
+                      "position": 21,
+                      "weight": 20,
+                      "amountWei": "28241106719367589"
+                    },
+                    {
+                      "position": 22,
+                      "weight": 16,
+                      "amountWei": "22592885375494071"
+                    },
+                    {
+                      "position": 23,
+                      "weight": 12,
+                      "amountWei": "16944664031620553"
+                    },
+                    {
+                      "position": 24,
+                      "weight": 8,
+                      "amountWei": "11296442687747036"
+                    },
+                    {
+                      "position": 25,
+                      "weight": 4,
+                      "amountWei": "5648221343873518"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-3",
+                  "name": "Short · Synthetic · Female",
+                  "budgetWei": "3572500000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 759,
+                      "amountWei": "1071750000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 506,
+                      "amountWei": "714500000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 253,
+                      "amountWei": "357250000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 88,
+                      "amountWei": "124260869565217391"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 84,
+                      "amountWei": "118612648221343874"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 80,
+                      "amountWei": "112964426877470356"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 76,
+                      "amountWei": "107316205533596838"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 72,
+                      "amountWei": "101667984189723320"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 68,
+                      "amountWei": "96019762845849802"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 64,
+                      "amountWei": "90371541501976285"
+                    },
+                    {
+                      "position": 11,
+                      "weight": 60,
+                      "amountWei": "84723320158102767"
+                    },
+                    {
+                      "position": 12,
+                      "weight": 56,
+                      "amountWei": "79075098814229249"
+                    },
+                    {
+                      "position": 13,
+                      "weight": 52,
+                      "amountWei": "73426877470355731"
+                    },
+                    {
+                      "position": 14,
+                      "weight": 48,
+                      "amountWei": "67778656126482213"
+                    },
+                    {
+                      "position": 15,
+                      "weight": 44,
+                      "amountWei": "62130434782608696"
+                    },
+                    {
+                      "position": 16,
+                      "weight": 40,
+                      "amountWei": "56482213438735178"
+                    },
+                    {
+                      "position": 17,
+                      "weight": 36,
+                      "amountWei": "50833992094861660"
+                    },
+                    {
+                      "position": 18,
+                      "weight": 32,
+                      "amountWei": "45185770750988142"
+                    },
+                    {
+                      "position": 19,
+                      "weight": 28,
+                      "amountWei": "39537549407114624"
+                    },
+                    {
+                      "position": 20,
+                      "weight": 24,
+                      "amountWei": "33889328063241107"
+                    },
+                    {
+                      "position": 21,
+                      "weight": 20,
+                      "amountWei": "28241106719367589"
+                    },
+                    {
+                      "position": 22,
+                      "weight": 16,
+                      "amountWei": "22592885375494071"
+                    },
+                    {
+                      "position": 23,
+                      "weight": 12,
+                      "amountWei": "16944664031620553"
+                    },
+                    {
+                      "position": 24,
+                      "weight": 8,
+                      "amountWei": "11296442687747036"
+                    },
+                    {
+                      "position": 25,
+                      "weight": 4,
+                      "amountWei": "5648221343873518"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-4",
+                  "name": "Short · Synthetic · Male",
+                  "budgetWei": "3572500000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 759,
+                      "amountWei": "1071750000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 506,
+                      "amountWei": "714500000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 253,
+                      "amountWei": "357250000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 88,
+                      "amountWei": "124260869565217391"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 84,
+                      "amountWei": "118612648221343874"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 80,
+                      "amountWei": "112964426877470356"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 76,
+                      "amountWei": "107316205533596838"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 72,
+                      "amountWei": "101667984189723320"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 68,
+                      "amountWei": "96019762845849802"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 64,
+                      "amountWei": "90371541501976285"
+                    },
+                    {
+                      "position": 11,
+                      "weight": 60,
+                      "amountWei": "84723320158102767"
+                    },
+                    {
+                      "position": 12,
+                      "weight": 56,
+                      "amountWei": "79075098814229249"
+                    },
+                    {
+                      "position": 13,
+                      "weight": 52,
+                      "amountWei": "73426877470355731"
+                    },
+                    {
+                      "position": 14,
+                      "weight": 48,
+                      "amountWei": "67778656126482213"
+                    },
+                    {
+                      "position": 15,
+                      "weight": 44,
+                      "amountWei": "62130434782608696"
+                    },
+                    {
+                      "position": 16,
+                      "weight": 40,
+                      "amountWei": "56482213438735178"
+                    },
+                    {
+                      "position": 17,
+                      "weight": 36,
+                      "amountWei": "50833992094861660"
+                    },
+                    {
+                      "position": 18,
+                      "weight": 32,
+                      "amountWei": "45185770750988142"
+                    },
+                    {
+                      "position": 19,
+                      "weight": 28,
+                      "amountWei": "39537549407114624"
+                    },
+                    {
+                      "position": 20,
+                      "weight": 24,
+                      "amountWei": "33889328063241107"
+                    },
+                    {
+                      "position": 21,
+                      "weight": 20,
+                      "amountWei": "28241106719367589"
+                    },
+                    {
+                      "position": 22,
+                      "weight": 16,
+                      "amountWei": "22592885375494071"
+                    },
+                    {
+                      "position": 23,
+                      "weight": 12,
+                      "amountWei": "16944664031620553"
+                    },
+                    {
+                      "position": 24,
+                      "weight": 8,
+                      "amountWei": "11296442687747036"
+                    },
+                    {
+                      "position": 25,
+                      "weight": 4,
+                      "amountWei": "5648221343873518"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-5",
+                  "name": "Short · Synthetic · Senior 65+",
+                  "budgetWei": "3570000000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 759,
+                      "amountWei": "1071000000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 506,
+                      "amountWei": "714000000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 253,
+                      "amountWei": "357000000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 88,
+                      "amountWei": "124173913043478261"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 84,
+                      "amountWei": "118529644268774704"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 80,
+                      "amountWei": "112885375494071146"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 76,
+                      "amountWei": "107241106719367589"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 72,
+                      "amountWei": "101596837944664032"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 68,
+                      "amountWei": "95952569169960474"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 64,
+                      "amountWei": "90308300395256917"
+                    },
+                    {
+                      "position": 11,
+                      "weight": 60,
+                      "amountWei": "84664031620553360"
+                    },
+                    {
+                      "position": 12,
+                      "weight": 56,
+                      "amountWei": "79019762845849802"
+                    },
+                    {
+                      "position": 13,
+                      "weight": 52,
+                      "amountWei": "73375494071146245"
+                    },
+                    {
+                      "position": 14,
+                      "weight": 48,
+                      "amountWei": "67731225296442688"
+                    },
+                    {
+                      "position": 15,
+                      "weight": 44,
+                      "amountWei": "62086956521739130"
+                    },
+                    {
+                      "position": 16,
+                      "weight": 40,
+                      "amountWei": "56442687747035573"
+                    },
+                    {
+                      "position": 17,
+                      "weight": 36,
+                      "amountWei": "50798418972332016"
+                    },
+                    {
+                      "position": 18,
+                      "weight": 32,
+                      "amountWei": "45154150197628458"
+                    },
+                    {
+                      "position": 19,
+                      "weight": 28,
+                      "amountWei": "39509881422924901"
+                    },
+                    {
+                      "position": 20,
+                      "weight": 24,
+                      "amountWei": "33865612648221344"
+                    },
+                    {
+                      "position": 21,
+                      "weight": 20,
+                      "amountWei": "28221343873517787"
+                    },
+                    {
+                      "position": 22,
+                      "weight": 16,
+                      "amountWei": "22577075098814229"
+                    },
+                    {
+                      "position": 23,
+                      "weight": 12,
+                      "amountWei": "16932806324110672"
+                    },
+                    {
+                      "position": 24,
+                      "weight": 8,
+                      "amountWei": "11288537549407115"
+                    },
+                    {
+                      "position": 25,
+                      "weight": 4,
+                      "amountWei": "5644268774703557"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-6",
+                  "name": "Long · Synthetic · Female",
+                  "budgetWei": "3570000000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 759,
+                      "amountWei": "1071000000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 506,
+                      "amountWei": "714000000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 253,
+                      "amountWei": "357000000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 88,
+                      "amountWei": "124173913043478261"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 84,
+                      "amountWei": "118529644268774704"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 80,
+                      "amountWei": "112885375494071146"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 76,
+                      "amountWei": "107241106719367589"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 72,
+                      "amountWei": "101596837944664032"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 68,
+                      "amountWei": "95952569169960474"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 64,
+                      "amountWei": "90308300395256917"
+                    },
+                    {
+                      "position": 11,
+                      "weight": 60,
+                      "amountWei": "84664031620553360"
+                    },
+                    {
+                      "position": 12,
+                      "weight": 56,
+                      "amountWei": "79019762845849802"
+                    },
+                    {
+                      "position": 13,
+                      "weight": 52,
+                      "amountWei": "73375494071146245"
+                    },
+                    {
+                      "position": 14,
+                      "weight": 48,
+                      "amountWei": "67731225296442688"
+                    },
+                    {
+                      "position": 15,
+                      "weight": 44,
+                      "amountWei": "62086956521739130"
+                    },
+                    {
+                      "position": 16,
+                      "weight": 40,
+                      "amountWei": "56442687747035573"
+                    },
+                    {
+                      "position": 17,
+                      "weight": 36,
+                      "amountWei": "50798418972332016"
+                    },
+                    {
+                      "position": 18,
+                      "weight": 32,
+                      "amountWei": "45154150197628458"
+                    },
+                    {
+                      "position": 19,
+                      "weight": 28,
+                      "amountWei": "39509881422924901"
+                    },
+                    {
+                      "position": 20,
+                      "weight": 24,
+                      "amountWei": "33865612648221344"
+                    },
+                    {
+                      "position": 21,
+                      "weight": 20,
+                      "amountWei": "28221343873517787"
+                    },
+                    {
+                      "position": 22,
+                      "weight": 16,
+                      "amountWei": "22577075098814229"
+                    },
+                    {
+                      "position": 23,
+                      "weight": 12,
+                      "amountWei": "16932806324110672"
+                    },
+                    {
+                      "position": 24,
+                      "weight": 8,
+                      "amountWei": "11288537549407115"
+                    },
+                    {
+                      "position": 25,
+                      "weight": 4,
+                      "amountWei": "5644268774703557"
+                    }
+                  ]
+                },
+                {
+                  "id": "category-7",
+                  "name": "Long · Synthetic · Male",
+                  "budgetWei": "3570000000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 759,
+                      "amountWei": "1071000000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 506,
+                      "amountWei": "714000000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 253,
+                      "amountWei": "357000000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 88,
+                      "amountWei": "124173913043478261"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 84,
+                      "amountWei": "118529644268774704"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 80,
+                      "amountWei": "112885375494071146"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 76,
+                      "amountWei": "107241106719367589"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 72,
+                      "amountWei": "101596837944664032"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 68,
+                      "amountWei": "95952569169960474"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 64,
+                      "amountWei": "90308300395256917"
+                    },
+                    {
+                      "position": 11,
+                      "weight": 60,
+                      "amountWei": "84664031620553360"
+                    },
+                    {
+                      "position": 12,
+                      "weight": 56,
+                      "amountWei": "79019762845849802"
+                    },
+                    {
+                      "position": 13,
+                      "weight": 52,
+                      "amountWei": "73375494071146245"
+                    },
+                    {
+                      "position": 14,
+                      "weight": 48,
+                      "amountWei": "67731225296442688"
+                    },
+                    {
+                      "position": 15,
+                      "weight": 44,
+                      "amountWei": "62086956521739130"
+                    },
+                    {
+                      "position": 16,
+                      "weight": 40,
+                      "amountWei": "56442687747035573"
+                    },
+                    {
+                      "position": 17,
+                      "weight": 36,
+                      "amountWei": "50798418972332016"
+                    },
+                    {
+                      "position": 18,
+                      "weight": 32,
+                      "amountWei": "45154150197628458"
+                    },
+                    {
+                      "position": 19,
+                      "weight": 28,
+                      "amountWei": "39509881422924901"
+                    },
+                    {
+                      "position": 20,
+                      "weight": 24,
+                      "amountWei": "33865612648221344"
+                    },
+                    {
+                      "position": 21,
+                      "weight": 20,
+                      "amountWei": "28221343873517787"
+                    },
+                    {
+                      "position": 22,
+                      "weight": 16,
+                      "amountWei": "22577075098814229"
+                    },
+                    {
+                      "position": 23,
+                      "weight": 12,
+                      "amountWei": "16932806324110672"
+                    },
+                    {
+                      "position": 24,
+                      "weight": 8,
+                      "amountWei": "11288537549407115"
+                    },
+                    {
+                      "position": 25,
+                      "weight": 4,
+                      "amountWei": "5644268774703557"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "club_standings",
+              "budgetWei": "10000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "club-2",
+                  "amountWei": "3000000000000000000",
+                  "position": 1,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-1",
+                  "amountWei": "2000000000000000000",
+                  "position": 2,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-4",
+                  "amountWei": "1000000000000000000",
+                  "position": 3,
+                  "categoryId": "category-8"
+                },
+                {
+                  "recipientId": "club-3",
+                  "amountWei": "347826086956521739",
+                  "position": 4,
+                  "categoryId": "category-8"
+                }
+              ],
+              "categories": [
+                {
+                  "id": "category-8",
+                  "name": "Clubs · Synthetic · Clubs",
+                  "budgetWei": "10000000000000000000",
+                  "slots": [
+                    {
+                      "position": 1,
+                      "weight": 759,
+                      "amountWei": "3000000000000000000"
+                    },
+                    {
+                      "position": 2,
+                      "weight": 506,
+                      "amountWei": "2000000000000000000"
+                    },
+                    {
+                      "position": 3,
+                      "weight": 253,
+                      "amountWei": "1000000000000000000"
+                    },
+                    {
+                      "position": 4,
+                      "weight": 88,
+                      "amountWei": "347826086956521739"
+                    },
+                    {
+                      "position": 5,
+                      "weight": 84,
+                      "amountWei": "332015810276679842"
+                    },
+                    {
+                      "position": 6,
+                      "weight": 80,
+                      "amountWei": "316205533596837945"
+                    },
+                    {
+                      "position": 7,
+                      "weight": 76,
+                      "amountWei": "300395256916996047"
+                    },
+                    {
+                      "position": 8,
+                      "weight": 72,
+                      "amountWei": "284584980237154150"
+                    },
+                    {
+                      "position": 9,
+                      "weight": 68,
+                      "amountWei": "268774703557312253"
+                    },
+                    {
+                      "position": 10,
+                      "weight": 64,
+                      "amountWei": "252964426877470356"
+                    },
+                    {
+                      "position": 11,
+                      "weight": 60,
+                      "amountWei": "237154150197628459"
+                    },
+                    {
+                      "position": 12,
+                      "weight": 56,
+                      "amountWei": "221343873517786561"
+                    },
+                    {
+                      "position": 13,
+                      "weight": 52,
+                      "amountWei": "205533596837944664"
+                    },
+                    {
+                      "position": 14,
+                      "weight": 48,
+                      "amountWei": "189723320158102767"
+                    },
+                    {
+                      "position": 15,
+                      "weight": 44,
+                      "amountWei": "173913043478260870"
+                    },
+                    {
+                      "position": 16,
+                      "weight": 40,
+                      "amountWei": "158102766798418972"
+                    },
+                    {
+                      "position": 17,
+                      "weight": 36,
+                      "amountWei": "142292490118577075"
+                    },
+                    {
+                      "position": 18,
+                      "weight": 32,
+                      "amountWei": "126482213438735178"
+                    },
+                    {
+                      "position": 19,
+                      "weight": 28,
+                      "amountWei": "110671936758893281"
+                    },
+                    {
+                      "position": 20,
+                      "weight": 24,
+                      "amountWei": "94861660079051383"
+                    },
+                    {
+                      "position": 21,
+                      "weight": 20,
+                      "amountWei": "79051383399209486"
+                    },
+                    {
+                      "position": 22,
+                      "weight": 16,
+                      "amountWei": "63241106719367589"
+                    },
+                    {
+                      "position": 23,
+                      "weight": 12,
+                      "amountWei": "47430830039525692"
+                    },
+                    {
+                      "position": 24,
+                      "weight": 8,
+                      "amountWei": "31620553359683794"
+                    },
+                    {
+                      "position": 25,
+                      "weight": 4,
+                      "amountWei": "15810276679841897"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "key": "participation",
+              "budgetWei": "15000000000000000000",
+              "awards": [
+                {
+                  "recipientId": "athlete-2",
+                  "amountWei": "1153846153846153846",
+                  "position": null,
+                  "categoryId": null
+                },
+                {
+                  "recipientId": "athlete-3",
+                  "amountWei": "1153846153846153846",
+                  "position": null,
+                  "categoryId": null
+                },
+                {
+                  "recipientId": "athlete-1",
+                  "amountWei": "1153846153846153846",
+                  "position": null,
+                  "categoryId": null
+                },
+                {
+                  "recipientId": "athlete-4",
+                  "amountWei": "1153846153846153846",
+                  "position": null,
+                  "categoryId": null
+                },
+                {
+                  "recipientId": "athlete-5",
+                  "amountWei": "1153846153846153846",
+                  "position": null,
+                  "categoryId": null
+                },
+                {
+                  "recipientId": "athlete-6",
+                  "amountWei": "1153846153846153846",
+                  "position": null,
+                  "categoryId": null
+                },
+                {
+                  "recipientId": "athlete-7",
+                  "amountWei": "1153846153846153846",
+                  "position": null,
+                  "categoryId": null
+                },
+                {
+                  "recipientId": "athlete-8",
+                  "amountWei": "2307692307692307693",
+                  "position": null,
+                  "categoryId": null
+                },
+                {
+                  "recipientId": "athlete-9",
+                  "amountWei": "2307692307692307693",
+                  "position": null,
+                  "categoryId": null
+                },
+                {
+                  "recipientId": "athlete-10",
+                  "amountWei": "2307692307692307692",
+                  "position": null,
+                  "categoryId": null
+                }
+              ],
+              "categories": []
+            }
+          ],
+          "rows": [
+            {
+              "recipientId": "athlete-1",
+              "name": "Test athlete 1",
+              "kind": "athlete",
+              "amountWei": "1868346153846153846",
+              "claim": "submitted",
+              "payment": "paid",
+              "transactionHash": "0xee2f6cb5e3e82f6257adce7db9d9a2511c31727cb4a81ff10846f5f992065d3a",
+              "paidAt": "2026-09-14T15:52:29.716Z"
+            },
+            {
+              "recipientId": "athlete-2",
+              "name": "Test athlete 2",
+              "kind": "athlete",
+              "amountWei": "2225596153846153846",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-3",
+              "name": "Test athlete 3",
+              "kind": "athlete",
+              "amountWei": "2225596153846153846",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-4",
+              "name": "Test athlete 4",
+              "kind": "athlete",
+              "amountWei": "2225596153846153846",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-5",
+              "name": "Test athlete 5",
+              "kind": "athlete",
+              "amountWei": "1868346153846153846",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-6",
+              "name": "Test athlete 6",
+              "kind": "athlete",
+              "amountWei": "2225596153846153846",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-7",
+              "name": "Test athlete 7",
+              "kind": "athlete",
+              "amountWei": "2224846153846153846",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-8",
+              "name": "Test athlete 8",
+              "kind": "athlete",
+              "amountWei": "3378692307692307693",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-9",
+              "name": "Test athlete 9",
+              "kind": "athlete",
+              "amountWei": "3021692307692307693",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "athlete-10",
+              "name": "Test athlete 10",
+              "kind": "athlete",
+              "amountWei": "3378692307692307692",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-1",
+              "name": "Test club 1",
+              "kind": "club",
+              "amountWei": "2000000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-2",
+              "name": "Test club 2",
+              "kind": "club",
+              "amountWei": "3000000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-3",
+              "name": "Test club 3",
+              "kind": "club",
+              "amountWei": "347826086956521739",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            },
+            {
+              "recipientId": "club-4",
+              "name": "Test club 4",
+              "kind": "club",
+              "amountWei": "1000000000000000000",
+              "claim": "not_submitted",
+              "payment": "not_paid",
+              "transactionHash": null,
+              "paidAt": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

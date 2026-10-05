@@ -1,0 +1,13 @@
+{
+  "extends": "../../../apps/web/tsconfig.json",
+  "compilerOptions": {
+    "paths": { "@/*": ["../../../apps/web/src/*"] },
+    "tsBuildInfoFile": "./.next-demo.tsbuildinfo"
+  },
+  "include": [
+    "next-env.d.ts", "app/**/*.tsx", "pages/**/*.ts", "*.ts",
+    "../../../apps/web/src/static-assets.d.ts",
+    ".next/types/**/*.ts", ".next/dev/types/**/*.ts", ".next-build/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}

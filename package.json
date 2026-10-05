@@ -1,0 +1,64 @@
+{
+  "name": "raceson-podium",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "demo/rewards/web",
+    "packages/*"
+  ],
+  "overrides": {
+    "js-yaml": "4.3.2",
+    "lodash": "4.18.1",
+    "nanoid": "3.3.18",
+    "picomatch@2.3.1": "2.3.2",
+    "picomatch@4.0.3": "4.0.5",
+    "postcss": "8.5.26",
+    "readdirp": {
+      "picomatch": "2.3.2"
+    },
+    "sharp": "0.35.5",
+    "axios": "1.20.0",
+    "ws@8": "8.22.0",
+    "brace-expansion@1": "1.1.21",
+    "uuid@<11.1.1": "11.1.1",
+    "braces": "$braces",
+    "decode-uri-component": "$decode-uri-component"
+  },
+  "scripts": {
+    "api:build": "tsc -b packages/domain packages/db apps/api --force",
+    "api:check": "tsc -b packages/domain packages/db apps/api --pretty false --force",
+    "check:rewards": "npm run api:check && node --test apps/api/test/reward-*.test.mjs",
+    "check:rewards:chain": "npm --workspace @raceson/rewards-chain run test",
+    "check:rewards:integration": "npm run api:check && npm run check:contracts && npm --workspace @raceson/rewards-chain run test:integration",
+    "check:rewards:db": "npm run api:check && node --test apps/api/test/reward-migration-isolation.test.mjs && node apps/api/test/reward-sponsor-source-db.mjs --all-rewards",
+    "check:rewards:system": "npm run check:contracts && npm run check:rewards:db && npm --workspace @raceson/rewards-chain run test:integration",
+    "check:contracts": "node contracts/scripts/check.mjs",
+    "build:rewards:web": "npm --workspace @raceson/rewards-demo-web run build",
+    "dev:rewards": "npm --workspace @raceson/rewards-demo-web run dev",
+    "rewards:release": "npm --workspace @raceson/domain run build && node demo/rewards/scripts/release.mjs",
+    "rewards:observe-providers": "npm --workspace @raceson/domain run build && node demo/rewards/scripts/observe-providers.mjs",
+    "rewards:operator": "node demo/rewards/scripts/operator.mjs",
+    "rewards:operator:v3": "node demo/rewards/scripts/programme-operator-v3.mjs",
+    "db:validate:local": "npm --workspace @raceson/db run db:validate:local",
+    "db:lint": "npm --workspace @raceson/db run db:lint",
+    "dev": "node --env-file-if-exists=demo/rewards/local/.env.sponsor-v4 demo/rewards/scripts/local-demo.mjs dev-testnet",
+    "dev:local": "node demo/rewards/scripts/local-demo.mjs dev",
+    "demo:check": "node demo/rewards/scripts/local-demo.mjs check",
+    "demo:start": "node demo/rewards/scripts/local-demo.mjs start",
+    "demo:migrate": "node demo/rewards/scripts/local-demo.mjs migrate",
+    "build": "npm run build:rewards:web",
+    "check:web": "npm --workspace @raceson/rewards-demo-web run typecheck",
+    "test:wallet": "npm --workspace @raceson/rewards-demo-web run test:wallet",
+    "test:rewards:ui": "npm --workspace @raceson/web run test -- src/features/rewards src/lib/reward-demo-runtime.test.ts",
+    "check:api": "npm run check:rewards",
+    "check": "npm run api:check && npm run check:web",
+    "check:dependencies": "node --test vendor/security/test/*.test.cjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "braces": "file:vendor/security/braces",
+    "decode-uri-component": "file:vendor/security/decode-uri-component"
+  }
+}

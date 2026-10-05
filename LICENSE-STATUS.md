@@ -1,9 +1,5 @@
 # License status
 
-A first-party software license has not yet been selected for this repository.
-No open-source license grant is implied by repository visibility.
+A project-wide first-party software license has not been selected. No new license grant is implied by public repository visibility. Existing file-level SPDX identifiers and third-party grants remain in effect.
 
-Any third-party source included in the later application import must retain its
-original license and attribution. The two reviewed dependency compatibility
-copies are based on MIT-licensed upstream packages; their notices and provenance
-will accompany those files. Media rights must be reviewed before publication.
+Third-party source copies retain their licenses and attribution. See [third-party notices](THIRD_PARTY_NOTICES.md) and the committed dependency locks. Artwork and trademarks are not covered by a blanket software license.

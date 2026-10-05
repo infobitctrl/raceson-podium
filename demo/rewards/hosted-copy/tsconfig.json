@@ -1,0 +1,9 @@
+{
+  "extends": "../../../apps/web/tsconfig.json",
+  "compilerOptions": {
+    "paths": { "@/*": ["../../../apps/web/src/*"] },
+    "incremental": false
+  },
+  "include": ["client.tsx", "styles.d.ts", "../../../apps/web/src/static-assets.d.ts"],
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,21 @@
+export type PublicClubCatalogItem = {
+  id: string;
+  clubId: string;
+  name: string;
+  iconKey: string;
+  colorKey: string;
+  logoImageUrl: string | null;
+  coverImageUrl: string | null;
+  privacyLevel: "public" | "private" | "invite_only";
+  requiresApproval: boolean;
+  region: string;
+  city: string;
+  country?: string;
+  members: number;
+  races: number;
+  totalDistanceKm: number;
+  totalElevationM: number;
+  podiums: number;
+  wins: number;
+  desc: string;
+};

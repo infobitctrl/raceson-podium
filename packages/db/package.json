@@ -1,0 +1,35 @@
+{
+  "name": "@raceson/db",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Database workflow package for RacesOn.",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./rewards": "./dist/rewards/index.js",
+    "./organizer-events": {
+      "types": "./dist/features/organizer-events.d.ts",
+      "default": "./dist/features/organizer-events.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check:prereqs": "sh ./scripts/check-prereqs.sh",
+    "db:start": "supabase start",
+    "db:start:api": "supabase start -x postgres-meta,studio,edge-runtime,logflare,vector,supavisor,imgproxy",
+    "db:start:db-only": "supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "node ../../scripts/safe-local-db-reset.mjs",
+    "db:lint": "supabase db lint",
+    "db:validate:local": "sh ./scripts/validate-migrations.sh",
+    "db:migration:new": "supabase migration new",
+    "db:push:linked": "node ../../scripts/push-linked-migrations.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.98.0",
+    "@raceson/domain": "0.1.0",
+    "@raceson/rewards-chain": "0.1.0"
+  }
+}

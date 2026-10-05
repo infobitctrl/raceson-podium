@@ -1,0 +1,36 @@
+import type { AppLocale } from "@/shared/i18n/locales";
+const en = {
+  finaleTitle: "Final round and league club awards", finaleHelp: "Inspect the existing approved allocation. This does not close the league, approve results, create awards or send a payment.",
+  noFinalUpload: "No prepared allocation is available for this pot yet.",
+  title: "Club award preparation", open: "Show club awards", refresh: "Refresh club awards", more: "More club awards",
+  help: "Club shares remain reserved without a wallet. Preparing a claim does not collect signatures or send MON.",
+  empty: "No club awards are recorded in this allocation.", unnamed: "Club name unavailable", noWallet: "No treasury nominated · share reserved",
+  withdrawn: "Treasury nomination withdrawn · share reserved", identityHold: "Club ownership needs review · share reserved",
+  stale: "Superseded allocation · history only", select: "Review treasury and claim", close: "Close review", retry: "Retry the same preparation",
+  review: "Treasury review", prepare: "Prepare exact club claim", confirm: "Prepare this exact award to the displayed club Safe. This does not approve or send a payment.",
+  ready: "Treasury reviewed · fresh checks run during preparation", held: "Preparation held. The organizer must resolve the current source, ownership or treasury review.",
+  unreviewed: "Treasury not reviewed. Open the treasury review to inspect the Safe and record club authority, key control, recovery and execution-history evidence.",
+  recorded: "Claim prepared · club-owner consent and separate approval/payment still required",
+  consent: "Club consent recorded · payment confirmation remains separate", approved: "Operator approval recorded · payment confirmation remains separate",
+  existing: "A claim already exists. Inspect its recorded status; do not prepare a duplicate.",
+  error: "Unable to verify this selection. Refresh before making a new decision.", uncertain: "Preparation was not confirmed here. Retry only this same request; do not start a replacement.",
+  network: "Network", amount: "Exact reserved award", safe: "Receiving club Safe", campaign: "Distribution contract", reference: "Claim reference",
+};
+const hr: typeof en = {
+  finaleTitle: "Klupske nagrade završnog kola i lige", finaleHelp: "Pregled postojeće odobrene raspodjele. Time se liga ne zatvara, rezultati ne odobravaju, nagrade ne stvaraju niti isplata šalje.",
+  noFinalUpload: "Za ovaj fond još nema pripremljene raspodjele.",
+  title: "Priprema klupskih nagrada", open: "Prikaži klupske nagrade", refresh: "Osvježi klupske nagrade", more: "Više klupskih nagrada",
+  help: "Klupski udjeli ostaju rezervirani i bez novčanika. Priprema zahtjeva ne prikuplja potpise niti šalje MON.",
+  empty: "U ovoj raspodjeli nema klupskih nagrada.", unnamed: "Naziv kluba nije dostupan", noWallet: "Riznica nije predložena · udio je rezerviran",
+  withdrawn: "Prijedlog riznice je povučen · udio je rezerviran", identityHold: "Potrebna je provjera vlasništva kluba · udio je rezerviran",
+  stale: "Zamijenjena raspodjela · samo povijest", select: "Pregledaj riznicu i zahtjev", close: "Zatvori pregled", retry: "Ponovi istu pripremu",
+  review: "Provjera riznice", prepare: "Pripremi točan klupski zahtjev", confirm: "Pripremi ovu nagradu za prikazani klupski Safe. Time se isplata ne odobrava niti šalje.",
+  ready: "Riznica je provjerena · svježe provjere slijede pri pripremi", held: "Priprema je zaustavljena. Organizator mora razriješiti provjeru izvora, vlasništva ili riznice.",
+  unreviewed: "Riznica nije provjerena. Otvori provjeru riznice za pregled ugovora Safe i evidentiranje dokaza o ovlastima kluba, kontroli ključeva, oporavku i povijesti transakcija.",
+  recorded: "Zahtjev je pripremljen · potrebni su pristanak vlasnika kluba te zasebno odobrenje i isplata",
+  consent: "Pristanak kluba je spremljen · potvrda isplate je zaseban korak", approved: "Odobrenje operatora je spremljeno · potvrda isplate je zaseban korak",
+  existing: "Zahtjev već postoji. Pregledaj spremljeno stanje; nemoj pripremati duplikat.",
+  error: "Nije moguće provjeriti ovaj odabir. Osvježi prije nove odluke.", uncertain: "Priprema ovdje nije potvrđena. Ponovi samo isti zahtjev; nemoj stvarati zamjenski.",
+  network: "Mreža", amount: "Točan rezervirani iznos", safe: "Primatelj: klupski Safe", campaign: "Ugovor za raspodjelu", reference: "Oznaka zahtjeva",
+};
+export const organizerClubCopyV3 = (locale: AppLocale) => locale === "hr" ? hr : en;

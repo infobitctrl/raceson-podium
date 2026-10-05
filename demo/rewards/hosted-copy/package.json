@@ -1,0 +1,9 @@
+{
+  "name": "@raceson/podium-hosted-copy-build",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

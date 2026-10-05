@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "noEmitOnError": true,
+    "declaration": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@raceson/domain": ["packages/domain/src/index.ts"],
+      "@raceson/domain/auth": ["packages/domain/src/auth/index.ts"],
+      "@raceson/domain/*": ["packages/domain/src/*", "packages/domain/src/*/index.ts"],
+      "@raceson/db": ["packages/db/src/index.ts"],
+      "@raceson/db/*": ["packages/db/src/*"]
+    },
+    "types": ["node"]
+  }
+}

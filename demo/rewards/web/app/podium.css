@@ -1,0 +1,22 @@
+/* Owner-selected Base44 visual system, scoped to the isolated Podium app. */
+body.podium {
+  --background: 38 38% 97%;
+  --foreground: 20 14% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 20 14% 11%;
+  --primary: 22 90% 52%;
+  --primary-foreground: 20 14% 8%;
+  --secondary: 36 28% 92%;
+  --secondary-foreground: 20 14% 11%;
+  --muted: 36 28% 92%;
+  --muted-foreground: 25 10% 34%;
+  --accent: 36 28% 92%;
+  --accent-foreground: 20 14% 11%;
+  --border: 36 22% 85%;
+  --input: 36 22% 80%;
+  --ring: 20 14% 11%;
+  --radius: .75rem;
+  background: #faf8f5;
+  color: #201c19;
+  font-family: var(--font-plus-jakarta), sans-serif;
+}

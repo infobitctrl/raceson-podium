@@ -1,0 +1,26 @@
+{
+  "name": "@raceson/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "types": "./dist/server.d.ts",
+  "exports": {
+    ".": "./dist/server.js",
+    "./rewards-demo": "./dist/rewards-demo.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "tsc -b ../../packages/domain ../../packages/db . --force && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@privy-io/node": "0.35.0",
+    "@raceson/db": "0.1.0",
+    "@raceson/domain": "0.1.0",
+    "@raceson/rewards-chain": "0.1.0",
+    "jose": "4.15.9",
+    "stripe": "^22.3.2",
+    "viem": "2.56.3",
+    "zod": "^3.25.76"
+  }
+}

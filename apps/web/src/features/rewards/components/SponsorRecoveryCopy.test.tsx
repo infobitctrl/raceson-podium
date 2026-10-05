@@ -1,0 +1,34 @@
+import {fireEvent,render,screen} from "@testing-library/react";
+import {MemoryRouter} from "react-router-dom";
+import {expect,it,vi} from "vitest";
+import {createGuidedSetup,addGuidedGroup} from "@raceson/domain/rewards/guided-setup-editor";
+import type {SponsorLaunch} from "@raceson/domain/rewards/sponsor-launch";
+import SponsorRecoveryCopy from "./SponsorRecoveryCopy";
+const m=vi.hoisted(()=>({save:vi.fn()}));
+vi.mock("../data/distributionSetups",()=>({saveRewardSetup:m.save}));
+it("preserves frozen economics and retries an uncertain copy with exactly the same payload",async()=>{
+  let n=10;const id=()=>`73000000-0000-4000-8000-${String(n++).padStart(12,"0")}`;
+  let configuration=createGuidedSetup(id);configuration.budgetMon="100";
+  configuration=addGuidedGroup(configuration,configuration.guided!.pots[0].nodeId,"club_metres",id,null);
+  configuration.root.children.forEach((pot,index)=>{pot.shareBps=index===0?10000:0;});
+  configuration.root.children[0].children[0].shareBps=10000;
+  configuration.guided!.groups[0].eligibilityApproved=true;
+  const launch:SponsorLaunch={id:id(),state:"prepared",configurationHash:"a".repeat(64),createdAt:"2026-09-24T00:00:00.000Z",
+    setup:{id:id(),chainId:10143,revision:1,updatedAt:"2026-09-24T00:00:00.000Z",configuration}};
+  const before=structuredClone(launch);
+  m.save.mockRejectedValueOnce(Error("lost response")).mockImplementationOnce(async(id)=>({id}));
+  const ui=(hr=false)=><MemoryRouter><SponsorRecoveryCopy launch={launch} hr={hr}/></MemoryRouter>;
+  const page=render(ui());fireEvent.click(screen.getByRole("button",{name:"Create corrected draft"}));
+  await screen.findByRole("alert");page.rerender(ui(true));
+  fireEvent.click(screen.getByRole("button",{name:"Ponovi istu kopiju nacrta"}));
+  const link=await screen.findByRole("link",{name:"Poveži izvore u ispravljenom nacrtu"});
+  expect(m.save.mock.calls[1]).toEqual(m.save.mock.calls[0]);
+  const [copyId,body]=m.save.mock.calls[0];
+  expect(copyId).not.toBe(launch.setup.id);expect(body.expectedRevision).toBe(0);
+  expect(body.configuration.root).toEqual(configuration.root);
+  expect(body.configuration.policy).toEqual(configuration.policy);
+  expect(body.configuration.budgetMon).toBe("100");expect(launch).toEqual(before);
+  expect(body.configuration.stage).toBe("draft");
+  expect(body.configuration.guided.groups.every((group:{eligibilityApproved:boolean})=>!group.eligibilityApproved)).toBe(true);
+  expect(link).toHaveAttribute("href",`/rewards/create?opportunity=league&step=1&setup=${copyId}`);
+});

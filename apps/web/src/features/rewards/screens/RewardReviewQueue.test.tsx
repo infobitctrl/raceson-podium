@@ -1,0 +1,15 @@
+import {render,screen,fireEvent} from '@testing-library/react';
+import {MemoryRouter} from 'react-router-dom';
+import {beforeEach,expect,it,vi} from 'vitest';
+import {I18nProvider} from '@/shared/i18n/I18nProvider';
+import RewardReviewQueue from './RewardReviewQueue';
+const mocks=vi.hoisted(()=>({auth:{isLoading:false,user:{id:'reviewer'},account:{userId:'reviewer',hasOrganizerAccess:true,platformRole:'user'}},query:vi.fn(),retry:vi.fn()}));
+vi.mock('@/lib/auth',()=>({useAuth:()=>mocks.auth}));
+vi.mock('../data/publicDirectory',()=>({usePublicDirectory:mocks.query}));
+vi.mock('../components/CampaignSponsor',()=>({CampaignSponsor:()=>null,CampaignSponsorProvider:({children}:{children:React.ReactNode})=>children}));
+const campaign=(id:string,finished=false)=>({campaign:{id,name:`Campaign ${id}`,budgetWei:'1000000000000000001',pots:[{slot:3,amountWei:'1000000000000000001',paidWei:'0',returnedWei:finished?'1000000000000000001':'0',remainingWei:finished?'0':'1000000000000000001',state:finished?4:1,paused:false}]},verified:true,publishedAt:'2026-10-04T10:00:00Z',selection:null});
+const show=()=>render(<I18nProvider initialLocale="en"><MemoryRouter><RewardReviewQueue/></MemoryRouter></I18nProvider>);
+beforeEach(()=>{mocks.query.mockReset();mocks.retry.mockReset();mocks.auth={isLoading:false,user:{id:'reviewer'},account:{userId:'reviewer',hasOrganizerAccess:true,platformRole:'user'}};mocks.query.mockReturnValue({data:{items:[campaign('active'),campaign('finished',true)]},isPending:false,isError:false,refetch:mocks.retry});});
+it('links active published campaigns to their existing review endpoint',()=>{show();expect(screen.getByRole('link',{name:'Campaign active'})).toHaveAttribute('href','/rewards/manage/campaigns/active?pot=3');expect(screen.queryByText('Campaign finished')).not.toBeInTheDocument();});
+it('hides stale campaign rows after a failed refresh',()=>{mocks.query.mockReturnValue({data:{items:[campaign('stale')]},isPending:false,isError:true,refetch:mocks.retry});show();expect(screen.queryByText('Campaign stale')).not.toBeInTheDocument();fireEvent.click(screen.getByRole('button',{name:'Retry'}));expect(mocks.retry).toHaveBeenCalledOnce();});
+it.each(['wrong-role','stale-account'])('does not fetch a review queue for %s',reason=>{if(reason==='wrong-role')mocks.auth.account.hasOrganizerAccess=false;else mocks.auth.account.userId='another-user';show();expect(screen.getByRole('alert')).toHaveTextContent('results-team');expect(mocks.query).not.toHaveBeenCalled();});

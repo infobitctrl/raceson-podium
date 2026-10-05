@@ -1,0 +1,19 @@
+import {useEffect,useRef,useState} from 'react';
+import {Link,NavLink,useLocation} from 'react-router-dom';
+import {ChevronDown,Menu} from 'lucide-react';
+import {useAuth} from '@/lib/auth';
+import {useI18n} from '@/shared/i18n/I18nContext';
+import ThemeToggle from '@/components/shared/ThemeToggle';
+import s from './PodiumHeader.module.css';
+import PodiumBrand from './PodiumBrand';
+export default function PodiumHeader(){
+ const auth=useAuth(),{locale}=useI18n(),hr=locale==='hr',{pathname,search}=useLocation();
+ const [busy,setBusy]=useState(false),[error,setError]=useState(false);
+ const menu=useRef<HTMLDetailsElement>(null);
+ useEffect(()=>{if(menu.current)menu.current.open=false;},[pathname]);
+ const privateCampaign=/^\/rewards\/campaigns\/[^/]+\/?$/.test(pathname);
+ const next=`/auth?next=${encodeURIComponent(pathname+search)}`;
+ const roleLink=(pathname==='/rewards/review'||pathname.startsWith('/rewards/manage/campaigns/'))?['/rewards/review',hr?'Pregled':'Review']:pathname.startsWith('/athlete')?['/athlete/rewards',hr?'Moje nagrade':'My rewards']:pathname.startsWith('/club')?['/club/rewards',hr?'Klupske nagrade':'Club rewards']:pathname.startsWith('/rewards/admin')?['/rewards/admin/wallets',hr?'Administracija':'Admin']:['/rewards/manage',hr?'Moje kampanje':'My campaigns'];
+ async function leave(){setBusy(true);setError(false);try{await auth.signOut();}catch{setError(true);}finally{setBusy(false);}}
+ return <header className={s.header}><div className={s.inner}><Link className={s.brand} to="/rewards" aria-label="RacesOn Podium" translate="no"><PodiumBrand/></Link><nav className={s.nav} aria-label={hr?'Glavna navigacija':'Main navigation'}><NavLink to="/rewards" end>{hr?'Početna':'Home'}</NavLink><NavLink to="/rewards/events">{hr?'Događaji':'Events'}</NavLink><NavLink to="/rewards/campaigns" end={privateCampaign}>{hr?'Kampanje':'Campaigns'}</NavLink>{auth.user?<Link to={roleLink[0]} aria-current={privateCampaign||pathname===roleLink[0]||pathname.startsWith(roleLink[0]+'/')||roleLink[0]==='/rewards/review'&&pathname.startsWith('/rewards/manage/campaigns/')?'page':undefined}>{roleLink[1]}</Link>:null}</nav><div className={s.utilities}><details ref={menu} className={s.account}><summary aria-label={hr?'Račun i navigacija':'Account and navigation'}><Menu className={s.mobileIcon} size={20}/><span>{auth.account?.loginUsername??(hr?'Račun':'Account')}</span><ChevronDown className={s.desktopIcon} size={13}/></summary><div className={s.menu}><div className={s.mobileLinks}><Link to="/rewards">{hr?'Početna':'Home'}</Link><Link to="/rewards/events">{hr?'Događaji':'Events'}</Link><Link to="/rewards/campaigns">{hr?'Kampanje':'Campaigns'}</Link></div><Link to="/rewards/manage">{hr?'Moje kampanje':'My campaigns'}</Link><Link to="/athlete/rewards">{hr?'Moje nagrade':'My rewards'}</Link><Link to="/club/rewards">{hr?'Klupske nagrade':'Club rewards'}</Link>{auth.account?.hasAthleteAccess?<Link to="/athlete/account">{hr?'Moj profil':'My profile'}</Link>:null}{auth.account?.hasOrganizerAccess||auth.account?.platformRole==='super_admin'?<><Link to="/rewards/review">{hr?'Pregled nagrada':'Award review'}</Link><a href="/rewards/control">{hr?'Kontrola raspodjele':'Rewards control'}</a></>:null}{auth.account?.platformRole==='super_admin'?<Link to="/rewards/admin/wallets">{hr?'Administracija':'Admin'}</Link>:null}<ThemeToggle/>{auth.user?<button disabled={busy} onClick={()=>void leave()}>{hr?'Odjava':'Sign out'}</button>:<Link to={next}>{hr?'Prijava':'Sign in'}</Link>}</div></details>{auth.user?<button className={s.signOut} disabled={busy} onClick={()=>void leave()}>{hr?'Odjava':'Sign out'}</button>:<Link className={s.signOut} to={next}>{hr?'Prijava':'Sign in'}</Link>}</div></div>{error?<p role="alert">{hr?'Odjava nije uspjela. Pokušajte ponovno.':'Sign out failed. Please retry.'}</p>:null}</header>;
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@raceson/rewards-chain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared test-MON protocol encoding; no signer keys, provider credentials or database access",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./programme-lifecycle-v3": "./dist/programme-lifecycle-v3.js",
+    "./programme-v3": "./dist/programme-v3.js",
+    ".": "./dist/index.js",
+    "./athlete-consent-v3": "./dist/athlete-consent-v3.js",
+    "./club-consent-v3": "./dist/club-consent-v3.js",
+    "./wallet-control": "./dist/wallet-control.js",
+    "./claims": "./dist/claims.js",
+    "./campaign-v3": "./dist/campaign-v3.js",
+    "./deployment-v3": "./dist/deployment-v3.js",
+    "./deployment-reader-v3": "./dist/deployment-reader-v3.js",
+    "./campaign-v2": "./dist/campaign-v2.js",
+    "./deployment-v2": "./dist/deployment-v2.js",
+    "./deployment-reader-v2": "./dist/deployment-reader-v2.js",
+    "./claim-reader-v3": "./dist/claim-reader-v3.js",
+    "./claim-reader-v2": "./dist/claim-reader-v2.js",
+    "./canary-status": "./dist/canary-status.js",
+    "./final-results-canary-status": "./dist/final-results-canary-status.js",
+    "./canary-public-client": "./dist/canary-public-client.js",
+    "./sponsor-v4": "./dist/sponsor-v4.js",
+    "./sponsor-claims-v4": "./dist/sponsor-claims-v4.js",
+    "./sponsor-allocation-v4": "./dist/sponsor-allocation-v4.js",
+    "./sponsor-claim-reader-v4": "./dist/sponsor-claim-reader-v4.js",
+    "./sponsor-lifecycle-v4": "./dist/sponsor-lifecycle-v4.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsc -b && node --test test/*.test.mjs",
+    "test:integration": "tsc -b && node --test --test-concurrency=1 integration/*.test.mjs"
+  },
+  "dependencies": {
+    "@raceson/domain": "0.1.0",
+    "viem": "2.56.3"
+  }
+}

@@ -1,0 +1,34 @@
+import {fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {beforeEach,expect,it,vi} from 'vitest';
+import {createGuidedSetup} from '@raceson/domain/rewards/guided-setup-editor';
+import HostedSponsorDrafts from './HostedSponsorDrafts';
+const api=vi.hoisted(()=>({request:vi.fn()}));
+vi.mock('@/lib/api',()=>({apiRequest:api.request,ApiError:class extends Error {status=503;}}));
+vi.mock('../components/SponsorPotPlanner',()=>({default:()=> <p>Pot planner</p>}));
+vi.mock('../components/SponsorPrizeEditor',()=>({default:()=> <p>Prize editor</p>}));
+const id='00000000-0000-4000-8000-000000000001';let n=10;
+const config=createGuidedSetup(()=>`00000000-0000-4000-8000-${String(n++).padStart(12,'0')}`);
+const preview={budgetWei:'100000000000000000000000',retainedWei:'100000000000000000000000',complete:false};
+const record={id,chainId:10143,revision:1,configuration:config,updatedAt:'2026-10-05T12:00:00.000Z'};
+beforeEach(()=>api.request.mockReset());
+it('selects once, saves and reopens the same campaign',async()=>{
+ api.request.mockResolvedValueOnce({items:[]}).mockResolvedValueOnce({id,configuration:config,preview}).mockImplementationOnce(async r=>({record:{...record,configuration:r.body.configuration},preview})).mockResolvedValueOnce({record:{...record,configuration:{...config,name:'Committee plan'}},preview});
+ render(<HostedSponsorDrafts/>);await screen.findByText('No campaigns saved yet.');
+ fireEvent.click(screen.getByRole('button',{name:'Configure league rewards'}));await screen.findByLabelText('Campaign name');
+ expect(screen.getByRole('button',{name:'Configure league rewards'})).toBeDisabled();
+ fireEvent.change(screen.getByLabelText('Campaign name'),{target:{value:'Committee plan'}});fireEvent.click(screen.getByRole('button',{name:'Save campaign'}));
+ await screen.findByText('Saved · revision 1');
+ expect(api.request.mock.calls[2][0]).toMatchObject({path:`/v1/rewards/demo-copy/sponsor-setups/${id}`,method:'PATCH',body:{expectedRevision:0,configuration:{name:'Committee plan',stage:'draft'}}});
+ fireEvent.click(screen.getByRole('button',{name:'Reopen saved version'}));await screen.findByText('Saved revision 1');
+ expect(screen.getByLabelText('Campaign name')).toHaveValue('Committee plan');
+ expect(screen.getByRole('region',{name:'Saved allocation preview'})).toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('Campaign name'),{target:{value:'Unsaved rules'}});
+ expect(screen.queryByRole('region',{name:'Saved allocation preview'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:/create contract|fund|claim/i})).not.toBeInTheDocument();
+});
+it('freezes an uncertain save and retries the identical request',async()=>{
+ api.request.mockResolvedValueOnce({items:[]}).mockResolvedValueOnce({id,configuration:config,preview}).mockRejectedValueOnce(Error('network')).mockResolvedValueOnce({record,preview});
+ render(<HostedSponsorDrafts/>);await screen.findByText('No campaigns saved yet.');fireEvent.click(screen.getByRole('button',{name:'Configure league rewards'}));await screen.findByLabelText('Campaign name');fireEvent.click(screen.getByRole('button',{name:'Save campaign'}));await screen.findByRole('alert');
+ expect(screen.getByLabelText('Campaign name')).toBeDisabled();const first=api.request.mock.calls[2][0];
+ fireEvent.click(screen.getByRole('button',{name:'Retry save'}));await waitFor(()=>expect(api.request).toHaveBeenCalledTimes(4));expect(api.request.mock.calls[3][0]).toEqual(first);await screen.findByText('Saved · revision 1');
+});

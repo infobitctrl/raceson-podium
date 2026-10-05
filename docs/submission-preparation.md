@@ -143,7 +143,7 @@ steps from the current preview or use personal funds in shared demo wallets.
 | Privy video, optional ≤2 minutes | Wallet action, exact signature context, cancellation and successful claim on final environment. |
 | Logo | Form requires PNG/JPG/WEBP ≤2 MB, at least 500 px, ≤4 million pixels. Use a rights-approved 1000×1000 asset. This stricter form limit supersedes the track page's 3 MB wording. |
 | Community | Both bounties remain selected. The required onboarded Metropolis community name is blank; owner must identify their actual builder affiliation. No group is inferred from the running dataset. |
-| Source link | infobitctrl/raceson-podium remains private and documentation-only as checked today. Do not claim that it supplies runnable source. |
+| Source link | infobitctrl/raceson-podium is public and now includes the actual Next.js application source. See release-readiness.md for build, data isolation and verification scope. |
 | Support | Named operator, backup, contact and availability through judging still need confirmation. |
 
 ## Ordered release work
