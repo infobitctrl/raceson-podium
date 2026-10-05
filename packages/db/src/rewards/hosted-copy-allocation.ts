@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
-import type { SavedRewardSetup } from '@raceson/domain/rewards/distribution-setup';
+import {decodeSavedRewardSetup,type SavedRewardSetup} from '@raceson/domain/rewards/distribution-setup';
 import type { FiveRoundCombinedSelection } from '@raceson/domain/rewards/five-round-copy-v1';
 import { quoteFiveRoundCopySetupV1, type FiveRoundUnaffiliatedReview } from '@raceson/domain/rewards/five-round-copy-setup-v1';
 import { hostedCopySponsor } from './hosted-copy-sponsor.js';
-import { fiveRoundCopyProjectionHashV1, type FiveRoundCopyPinV1 } from './five-round-copy-v1.js';
+import { readFiveRoundCopyV1,fiveRoundCopyProjectionHashV1, type FiveRoundCopyPinV1 } from './five-round-copy-v1.js';
 import type { RewardAccountIdentity } from './athlete-wallets.js';
 import type { RewardLedgerRpc } from './programme-ledger.js';
 /** Compatibility with the canonical SQL template's deterministic node IDs.
@@ -15,7 +15,18 @@ export function hostedCopySetupNodeId(id:string,key:string) {
 async function readSnapshot(identity:RewardAccountIdentity,id:string,revision:number,pin:FiveRoundCopyPinV1,
  rpc:RewardLedgerRpc,selections:readonly FiveRoundCombinedSelection[]=[],unaffiliatedReview?:FiveRoundUnaffiliatedReview) {
  if (!Number.isInteger(revision)||revision<1||revision>2147483645) throw Error('invalid_reward_setup');
- const {result,source}=await hostedCopySponsor(identity,'read',id,undefined,pin,rpc),saved=result as SavedRewardSetup;
+ const current=await hostedCopySponsor(identity,'read',id,undefined,pin,rpc);
+ let saved=current.result as SavedRewardSetup,source=current.source;
+ // A funded contract retains its launch rules when its editable draft advances.
+ // Only the owner-scoped immutable launch reader can supply an older revision.
+ if(saved.revision>revision){
+  const response=await rpc('service_reward_demo_copy_frozen_setup',{p_actor_user_id:identity.userId,p_actor_session_id:identity.sessionId,p_setup_id:id,p_revision:revision});
+  if(response.error){const code=(response.error as {message?:string}).message;throw Error(code&&['reward_account_session_required','reward_demo_sponsor_required','reward_setup_not_found','reward_setup_conflict'].includes(code)?code:'hosted_copy_unavailable');}
+  const value=response.data as {result?:unknown;source?:unknown}|null;
+  if(!value)throw Error('hosted_copy_unavailable');
+  saved=decodeSavedRewardSetup(value.result,10143,id);
+  source=await readFiveRoundCopyV1(pin,async()=>value.source);
+ }
  if (saved.revision!==revision) throw Error('reward_setup_conflict');
  const bindings=Array.from({length:6},(_,slot)=>source.classifications.map(c=>({nodeId:hostedCopySetupNodeId(id,`group:${slot}:${c.id}`),classificationId:c.id}))).flat();
  const c=saved.configuration;

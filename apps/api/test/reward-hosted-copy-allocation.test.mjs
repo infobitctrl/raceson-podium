@@ -115,6 +115,22 @@ test('repository reads only the owned source-pinned revision and rejects stale o
  record.configuration.root.children[0].children[0].id=id(3333);record.configuration.guided.groups[0].nodeId=id(3333);await assert.rejects(readHostedCopyAllocation(identity,record.id,1,pin,rpc),/invalid_copy_setup_binding/);
  record.configuration=saved(s).configuration;s.results[0].finishTimeMs='999';await assert.rejects(readHostedCopyAllocation(identity,record.id,1,pin,rpc),/copy_projection_changed/);
 });
+test('an advanced draft cannot replace a source-bound launch allocation or handoff',async()=>{
+ const source=fixture(),frozen=saved(source),current=structuredClone(frozen),identity={userId:id(9991),sessionId:id(9992)};
+ current.revision=2;current.configuration.budgetMon='0.000000000000000202';
+ const pin={batchSha256:source.batchSha256,leagueId:source.leagueId,seasonId:source.seasonId,projectionSha256:fiveRoundCopyProjectionHashV1(source)};
+ let reads=0,reply={result:frozen,source};
+ const rpc=async(name,args)=>{
+  assert.equal(args.p_actor_user_id,identity.userId);assert.equal(args.p_actor_session_id,identity.sessionId);assert.equal(args.p_setup_id,frozen.id);
+  if(name==='service_reward_demo_copy_sponsor')return {data:{result:current,source,sourceFingerprint:'f'.repeat(64)},error:null};
+  assert.equal(name,'service_reward_demo_copy_frozen_setup');assert.equal(args.p_revision,1);reads++;return {data:reply,error:null};
+ };
+ const q=await readHostedCopyAllocation(identity,frozen.id,1,pin,rpc);conserved(q);assert.equal(q.budgetWei,101n);assert.equal(q.revision,1);
+ const handoff=await readHostedCopyAllocationHandoff(identity,frozen.id,1,pin,rpc,[],undefined,{combined:'test-v1',unaffiliated:null});
+ assert.equal(handoff.document.setup.revision,1);assert.equal(handoff.document.allocation.budgetWei,'101');assert.equal(reads,2);
+ reply={result:current,source};await assert.rejects(()=>readHostedCopyAllocation(identity,frozen.id,1,pin,rpc),/reward_setup_conflict/);
+ reply={result:frozen,source:{...source,sportingSha256:'c'.repeat(64)}};await assert.rejects(()=>readHostedCopyAllocation(identity,frozen.id,1,pin,rpc),/copy_projection_changed/);
+});
 test('review handoff binds one saved revision, source, both decisions and exact integer awards without writes',async()=>{
  const s=fixture(),selections=duplicate(s),record=saved(s),identity={userId:id(9991),sessionId:id(9992)};selectGroup(record,'club_metres');
  const pin={batchSha256:s.batchSha256,leagueId:s.leagueId,seasonId:s.seasonId,projectionSha256:fiveRoundCopyProjectionHashV1(s)},review={sourceHash:pin.projectionSha256,resultIds:s.results.filter(r=>r.clubId===null).map(r=>r.id)},versions={combined:'synthetic-combined-v1',unaffiliated:'synthetic-unaffiliated-v1'};
