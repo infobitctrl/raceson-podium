@@ -119,7 +119,7 @@ it("campaign preserves independent prize weights through its three-step navigati
 
 it("campaign retains unsaved contribution review until saved",async()=>{
  render(<Harness campaign initial={fixture()}/>);
- fireEvent.click(screen.getByText("Official results & source"));
+ fireEvent.click(screen.getByText("Review results"));
  fireEvent.click(await screen.findByRole("button",{name:"Edit contribution review"}));
  expect(screen.getByRole("button",{name:/Reward rules/})).toBeDisabled();
  expect(screen.getByRole("button",{name:"Save draft"})).toBeDisabled();
@@ -142,7 +142,7 @@ it.each([1,5])('presents a single race independently through budget, rules and r
  initial.setup.budgetMon='';
  render(<Harness campaign initial={initial} copySource={{name,slot}}/>);
  const studio=within(screen.getByRole('article'));
- expect(studio.getByRole('heading',{name:'Race prize pool'})).toBeVisible();
+ expect(studio.getByRole('heading',{name})).toBeVisible();
  expect(studio.queryByText(/Each percentage is a share/)).not.toBeInTheDocument();
  expect(studio.queryByLabelText(`Round ${slot} %`)).not.toBeInTheDocument();
  expect(studio.queryByRole('button',{name:'Split rounds equally'})).not.toBeInTheDocument();
