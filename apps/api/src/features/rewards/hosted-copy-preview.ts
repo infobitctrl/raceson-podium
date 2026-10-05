@@ -39,6 +39,7 @@ export function hostedCopyRequestAllowed(method: string | undefined, url: URL, m
   if (mode === "sponsor-drafts-v1" && [...url.searchParams].length === 0) {
     if(operations&&url.pathname==='/api/v1/rewards/admin/wallets')return method==='GET'||method==='POST';
     if(operations&&/^\/api\/v1\/rewards\/demo-copy\/reviews(?:\/[0-9a-f-]{36})?$/.test(url.pathname))return method==='GET';
+    if(operations&&/^\/api\/v1\/rewards\/demo-copy\/reviews\/[0-9a-f-]{36}\/allocations\/[0-5]$/.test(url.pathname))return method==='GET'||method==='POST';
     if(operations&&url.pathname==='/api/v1/rewards/admin/support')return method==='GET'||method==='POST';
     if(operations&&url.pathname==='/api/v1/rewards/admin/wallets/creation')return method==='POST';
     if(operations&&/^\/api\/v1\/rewards\/(?:demo-copy\/sponsor-setups\/[0-9a-f-]{36}\/launch|distribution-setups\/[0-9a-f-]{36}\/execution)$/.test(url.pathname))return method==='GET'||method==='POST';

@@ -4,6 +4,7 @@ import HostedReviewQueue from './HostedReviewQueue';
 const mocks=vi.hoisted(()=>({read:vi.fn()}));
 vi.mock('../data/hostedReviewSources',()=>({readHostedReviewSources:mocks.read}));
 vi.mock('./HostedAllocationPreview',()=>({default:({id,revision,source}:{id:string;revision:number;source:string})=><p>Preview {id} r{revision} {source}</p>}));
+vi.mock('./HostedAwardReview',()=>({default:()=>null}));
 const item={id:'copied',launchId:'retained',revision:2,name:'Copied campaign',budgetWei:'1000000000000000001',executionState:'awaiting_contract'};
 beforeEach(()=>{mocks.read.mockReset();});
 it('opens retained contract rules through reviewer authority and preserves every wei',async()=>{

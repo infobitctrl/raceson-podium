@@ -11,7 +11,7 @@ export const sponsorAllocationDocumentHashV4 = (v: unknown) => createHash("sha25
 function check(v: unknown): asserts v {if (!v) throw new RewardLedgerStoreError("invalid_sponsor_allocation");}
 const hash = (v: unknown) => {check(typeof v === "string" && /^[0-9a-f]{64}$/.test(v)); return v;};
 const safe = new Set(["reward_account_session_required", "reward_setup_not_found", "reward_planning_not_found", "reward_planning_revision_changed",
-  "reward_sponsor_source_not_ready", "reward_sponsor_approval_conflict", "reward_review_issue_open", "invalid_sponsor_allocation", "reward_historical_source_missing"]);
+  "reward_sponsor_source_not_ready", "reward_sponsor_approval_conflict", "reward_review_issue_open", "invalid_sponsor_allocation", "reward_historical_source_missing", "reward_demo_account_required", "reward_demo_reviewer_required"]);
 /** Service-only source facts. Never return this private transport directly through HTTP. */
 export async function sponsorAllocationFactsV4(identity: RewardAccountIdentity, scope: SponsorAllocationScopeV4,
   write?: {expectedApprovalId: string | null; contextHash: string; document: unknown; decision: "approved" | "held"}, rpc?: RewardLedgerRpc) {

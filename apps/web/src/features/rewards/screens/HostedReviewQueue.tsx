@@ -2,6 +2,7 @@ import {useEffect,useState} from 'react';
 import {formatUnits} from 'viem';
 import {readHostedReviewSources} from '../data/hostedReviewSources';
 import HostedAllocationPreview from './HostedAllocationPreview';
+import HostedAwardReview from './HostedAwardReview';
 import {setupAmount} from '../model/setupAmount';
 import p from '../components/Podium.module.css';
 import s from './RewardReviewQueue.module.css';
@@ -17,6 +18,6 @@ export default function HostedReviewQueue({hr}:{hr:boolean}){
   <strong title={`${formatUnits(BigInt(item.budgetWei),18)} test MON`}>{setupAmount(BigInt(item.budgetWei),hr)} <small>test MON</small></strong>
   <span className={p.badge}>{item.executionState==='awaiting_contract'?(hr?'Čeka izradu ugovora':'Awaiting contract'):item.executionState==='awaiting_funding'?(hr?'Čeka uplatu':'Awaiting funding'):(hr?'Uplatu treba provjeriti':'Funding needs confirmation')}</span>
  </div>)}{!data.items.length?<p className={p.empty}>{hr?'Sponzor još nije nastavio s financiranjem spremljenih pravila.':'No sponsor has continued to funding with saved rules yet.'}</p>:null}</div>
- {chosen?<section key={`${chosen.id}:${chosen.launchId}`}><h2>{chosen.name}</h2><p>{hr?'Pregled koristi spremljenu verziju ugovora. Novčanici ne mijenjaju udjele sportaša. Odobrenje nagrada i aktivacija zahtijevaju zasebne korake.':'Review uses the retained contract version. Wallet status does not change athlete shares. Award approval and activation require separate steps.'}</p><HostedAllocationPreview id={chosen.id} revision={chosen.revision} source="reviewer"/></section>:null}
+ {chosen?<section key={`${chosen.id}:${chosen.launchId}`}><h2>{chosen.name}</h2><p>{hr?'Pregled koristi spremljenu verziju ugovora. Novčanici ne mijenjaju udjele sportaša. Odobrenje nagrada i aktivacija zahtijevaju zasebne korake.':'Review uses the retained contract version. Wallet status does not change athlete shares. Award approval and activation require separate steps.'}</p><HostedAllocationPreview id={chosen.id} revision={chosen.revision} source="reviewer"/><HostedAwardReview id={chosen.id} hr={hr}/></section>:null}
  </>;
 }

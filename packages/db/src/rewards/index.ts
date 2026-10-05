@@ -111,3 +111,4 @@ export { hostedCopySponsorExecutionRpc,hostedCopyWalletRpc,hostedCopySupportRpc 
 export { composeHostedCopyAllocation,readHostedCopyAllocation, readHostedCopyAllocationHandoff } from './hosted-copy-allocation.js';
 
 export {hostedCopyReviewSources} from "./hosted-copy-review-sources.js";
+export {hostedCopyApprovalRpc} from "./hosted-copy-approval.js";
