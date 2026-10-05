@@ -119,3 +119,4 @@ export {hostedCopyUploadRpc} from './hosted-copy-upload.js';
 
 export {hostedCopyLifecycleRpc} from './hosted-copy-lifecycle.js';
 export {hostedCopyControllerRpc} from './hosted-copy-controller.js';
+export {hostedCopyBeneficiaryWalletRpc} from './hosted-copy-beneficiary-wallet.js';

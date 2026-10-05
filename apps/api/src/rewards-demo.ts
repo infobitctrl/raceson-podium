@@ -1,4 +1,5 @@
 import {dispatchHostedCopyReviews} from './routes/rewards/hosted-copy-reviews.js';
+import {hostedCopyBeneficiaryWalletRpc} from '@raceson/db/rewards';
 import {dispatchHostedCopyCatalogue} from './routes/rewards/hosted-copy-catalogue.js';
 import { dispatchHostedCopyAllocation } from "./routes/rewards/hosted-copy-allocation.js";
 import { dispatchHostedCopySponsor } from "./routes/rewards/hosted-copy-sponsor.js";
@@ -57,13 +58,15 @@ import { programmeLocalReader } from "./features/rewards/programme-local-reader.
 import { dispatchPilotAcceptanceV3, type LocalPilotRunnerV3 } from "./routes/rewards/pilot-acceptance-v3.js";
 
 const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpointV3, publicReport?: PublicRewardReportReader): ApiRouteExtension => async (req, res, url, boundary) => {
-  const deps: Parameters<typeof dispatchAthleteRewardRoutes>[3] = {
+  const deps = {
   config: () => rewardPortalConfig(process.env, boundary.env),
   requireIdentity: async (request) => authenticateRewardRequest(await boundary.requireAccessToken(request), boundary.env),
   readJsonBody: boundary.readJsonBody, sendSuccess: boundary.sendSuccess,
   sendError: boundary.sendError, applyPrivateSessionHeaders: boundary.applyPrivateSessionHeaders,
-  };
+  } satisfies Parameters<typeof dispatchAthleteRewardRoutes>[3];
   const config = deps.config();
+  if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchAthleteRewardRoutes(req,res,url,{...deps,
+    resolveRpc:identity=>hostedCopyBeneficiaryWalletRpc(identity,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}))return true;
   if (await dispatchHostedCopyReviews(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if (await dispatchHostedCopyCatalogue(req, res, url, deps)) return true;
   if (await dispatchHostedCopyAllocation(req, res, url, deps)) return true;

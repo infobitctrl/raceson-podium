@@ -33,6 +33,16 @@ const allowed = new Map([
 /** First hosted slice permits ordinary sessions and this read only. In particular,
  * registration/recovery delivery, auto-bootstrap, provider tokens and signing stay closed. */
 export function hostedCopyRequestAllowed(method: string | undefined, url: URL, mode = "preview-v1",operations=false) {
+  if(mode==='sponsor-drafts-v1'&&operations){
+    const keys=[...url.searchParams.keys()];
+    if(url.pathname==='/api/v1/athlete/rewards/destination-requests'&&method==='GET')
+      return keys.length===0||keys.length===1&&keys[0]==='after'&&/^[0-9a-f-]{36}$/.test(url.searchParams.get('after')??'');
+    if(keys.length===0){
+      if(/^\/api\/v1\/athlete\/rewards\/(wallet-challenges|wallet-proofs|destination-requests)$/.test(url.pathname))return method==='POST';
+      if(/^\/api\/v1\/athlete\/rewards\/destination-requests\/[0-9a-f-]{36}$/.test(url.pathname))return method==='GET';
+      if(/^\/api\/v1\/athlete\/rewards\/destination-requests\/[0-9a-f-]{36}\/withdraw$/.test(url.pathname))return method==='POST';
+    }
+  }
   if (mode === "sponsor-drafts-v1" && [...url.searchParams].length === 0) {
     if(operations&&/^\/api\/v1\/rewards\/control\/(access|session)$/.test(url.pathname))return method==='GET';
     if(operations&&url.pathname==='/api/v1/rewards/control/transactions')return method==='GET'||method==='POST';

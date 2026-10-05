@@ -24,6 +24,7 @@ type Dependencies={
   sendError:(res:ServerResponse,statusCode:number,code:string,message:string)=>void;
   applyPrivateSessionHeaders:(res:ServerResponse)=>void;
   rpc?:RewardLedgerRpc;
+  resolveRpc?:(identity:RewardAccountIdentity)=>RewardLedgerRpc;
   claimReader?:RewardCampaignReader;
   clubClaimReader?:RewardClubClaimReader;
 };
@@ -56,6 +57,7 @@ export async function dispatchAthleteRewardRoutes(req:IncomingMessage,res:Server
   try{
     const config=deps.config();if(!config)return false;
     const identity=await deps.requireIdentity(req);
+    const rpc=deps.resolveRpc?deps.resolveRpc(identity):deps.rpc;
     const keys=[...url.searchParams.keys()];
     const paginated=action==="allocations"||action==="allocationsV3"||action==="destinationList"||action==="claims";
     if((!paginated && keys.length) || (paginated && (keys.length>1||keys.some(key=>key!=="after"))))throw new Error("invalid_reward_query");
@@ -81,22 +83,22 @@ export async function dispatchAthleteRewardRoutes(req:IncomingMessage,res:Server
       else deps.sendSuccess(res,await getAthleteRewardClaimConsent(identity,intentId,options));
     }else if(action==="destinationList"){
       const after=url.searchParams.has("after")?z.string().uuid().parse(url.searchParams.get("after")):null;
-      deps.sendSuccess(res,await getAthleteRewardDestinations(identity,after,deps.rpc));
+      deps.sendSuccess(res,await getAthleteRewardDestinations(identity,after,rpc));
     }else if(action==="challenge"){
       const input=challengeSchema.parse(await deps.readJsonBody(req));
-      deps.sendSuccess(res,await prepareAthleteWalletProof(identity,input,{...config,rpc:deps.rpc}));
+      deps.sendSuccess(res,await prepareAthleteWalletProof(identity,input,{...config,rpc}));
     }else if(action==="proof"){
       const input=proofSchema.parse(await deps.readJsonBody(req));
-      deps.sendSuccess(res,await verifyAthleteWalletProof(identity,{...input,signature:input.signature as `0x${string}`},{...config,rpc:deps.rpc}));
+      deps.sendSuccess(res,await verifyAthleteWalletProof(identity,{...input,signature:input.signature as `0x${string}`},{...config,rpc}));
     }else if(action==="destination"){
       const input=destinationSchema.parse(await deps.readJsonBody(req));
-      deps.sendSuccess(res,await submitAthleteRewardDestination(identity,input,{...config,rpc:deps.rpc}));
+      deps.sendSuccess(res,await submitAthleteRewardDestination(identity,input,{...config,rpc}));
     }else{
       const requestId=z.string().uuid().parse(destinationPath?.[1]);
       if(action==="destinationWithdraw"){
         z.object({}).strict().parse(await deps.readJsonBody(req));
-        deps.sendSuccess(res,await withdrawAthleteRewardDestination(identity,requestId,deps.rpc));
-      }else deps.sendSuccess(res,await getAthleteRewardDestination(identity,requestId,deps.rpc));
+        deps.sendSuccess(res,await withdrawAthleteRewardDestination(identity,requestId,rpc));
+      }else deps.sendSuccess(res,await getAthleteRewardDestination(identity,requestId,rpc));
     }
   }catch(error){
     const code=error!==null && typeof error==="object" && "code" in error && typeof error.code==="string"?error.code:null;
