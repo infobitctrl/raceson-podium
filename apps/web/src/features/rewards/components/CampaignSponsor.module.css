@@ -3,3 +3,7 @@
 .compact{font-size:14px;color:#62584f;display:block;line-height:1.5}
 
 .featured{margin:0;padding:20px;background:#f6f3ee;border-bottom:1px solid #e5dfd6}.featured .row{gap:16px}.featured .logo{height:56px;width:56px;background:#115e59;color:white;font-size:16px;box-shadow:0 2px 5px #201c1915;border:2px solid #faf8f4}.featured .identity small{color:#b94309;text-transform:uppercase;font-weight:700;letter-spacing:.08em;font-size:12px}.featured .identity strong{font-family:var(--font-outfit),sans-serif;font-weight:700;font-size:20px;line-height:1.25}.backing{font-size:14px;color:#62584f;margin-top:3px}.backing b{font-weight:600}.featured .edit{margin-left:auto;border:1px solid #e5dfd6;border-radius:999px;background:#fff;min-height:32px;padding:6px 12px}@media(max-width:639px){.featured .identity{flex-basis:calc(100% - 72px)}.featured .edit{margin-left:72px}}
+
+.unavailable{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;color:#62584f;font-size:12px;line-height:1.5}.unavailable button{font:inherit;text-decoration:underline;text-underline-offset:3px;min-height:32px;border:0;padding:0;background:transparent;color:inherit}.featured[data-unavailable=true] .logo{background:#eee8de;color:#62584f}
+
+.featured .unavailable{margin:8px 0 0;font-size:12px;line-height:1.4}.featured .unavailable button{min-height:24px}

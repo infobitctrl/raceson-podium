@@ -11,6 +11,25 @@ it('shows saved public identity but no edit control to nonowners',async()=>{
  mocks.read.mockImplementation(async(mine:boolean)=>mine?[]:[record]);render(<CampaignSponsor id={id}/>);
  expect(await screen.findByText('Trail sponsor')).toBeVisible();expect(screen.queryByRole('button',{name:/Edit sponsor/})).not.toBeInTheDocument();
 });
+it('keeps public branding visible if the owner-only request fails without granting editing',async()=>{
+ mocks.read.mockImplementation((mine:boolean)=>mine?Promise.reject(Error('private unavailable')):Promise.resolve([record]));
+ render(<CampaignSponsor id={id} backing="Trail event"/>);
+ expect(await screen.findByText('Trail sponsor')).toBeVisible();
+ expect(screen.getByText('Trail event')).toBeVisible();
+ expect(screen.queryByRole('button',{name:/Edit sponsor/})).not.toBeInTheDocument();
+ expect(screen.queryByText(/temporarily unavailable/)).not.toBeInTheDocument();
+});
+it('retains a neutral sponsor card and backing context on failure, then recovers the saved identity',async()=>{
+ mocks.read.mockRejectedValue(Error('unavailable'));
+ render(<CampaignSponsor id={id} backing="Trail event"/>);
+ expect(await screen.findByRole('button',{name:'Retry sponsor details'})).toBeVisible();
+ expect(screen.getByText('Campaign sponsor')).toBeVisible();expect(screen.getByText('Trail event')).toBeVisible();
+ expect(screen.queryByRole('button',{name:/Edit sponsor/})).not.toBeInTheDocument();
+ mocks.read.mockImplementation(async(mine:boolean)=>mine?[]:[record]);
+ fireEvent.click(screen.getByRole('button',{name:'Retry sponsor details'}));
+ expect(await screen.findByText('Trail sponsor')).toBeVisible();
+ expect(screen.queryByRole('button',{name:'Retry sponsor details'})).not.toBeInTheDocument();
+});
 it('owner edits per-campaign name without touching money; save updates display',async()=>{
  render(<CampaignSponsor id={id}/>);fireEvent.click(await screen.findByRole('button',{name:/Edit sponsor/}));
  fireEvent.change(screen.getByLabelText('Sponsor name'),{target:{value:'New sponsor'}});fireEvent.click(screen.getByRole('button',{name:'Save sponsor'}));

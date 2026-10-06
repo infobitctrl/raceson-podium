@@ -72,7 +72,7 @@ export default function PublicSponsorCampaign() {
   ];
   return <article className={`${s.page} ${detail.page}`}>
     <CampaignSponsorProvider><header className={detail.heading}>
-      <div><div className={detail.eyebrow}><CampaignSponsor id={id} hr={hr} compact/></div><h1>{campaign.name}</h1><Link className={detail.subtitle} to="/rewards/campaigns">{t('All campaigns', 'Sve kampanje')} <ArrowRight size={14}/></Link></div>
+      <div><span className={detail.eyebrow}>{t('Public campaign', 'Javna kampanja')}</span><h1>{campaign.name}</h1><Link className={detail.subtitle} to="/rewards/campaigns">{t('All campaigns', 'Sve kampanje')} <ArrowRight size={14}/></Link></div>
       <span className={s.badge} data-state={campaignStatus(item)}>{statusLabel(item, hr)}</span>
     </header>
     <section className={detail.sponsor} aria-label={t('Sponsor', 'Sponzor')}>
