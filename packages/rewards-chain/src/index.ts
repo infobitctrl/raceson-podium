@@ -24,6 +24,7 @@ export * from "./payment-reader.js";
 export * from "./club-safe.js";
 export * from "./club-safe-deployment.js";
 export * from "./club-safe-creation.js";
+export * from "./sponsor-settlement-v4.js";
 export * from "./club-claim-reader.js";
 export * from "./club-payments.js";
 export * from "./club-payment-receipts.js";

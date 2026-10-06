@@ -127,3 +127,5 @@ export {hostedCopyClaimFacts,hostedCopyNativeClaimFacts,hostedCopyAthleteAwards,
 
 export * from "./hosted-copy-club-claims.js";
 export * from "./hosted-copy-club-creation.js";
+
+export {hostedCopySettlementFacts,type HostedSettlementReceipt} from './hosted-copy-settlement.js';

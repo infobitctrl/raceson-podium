@@ -1,3 +1,4 @@
+import ControllerSettlement from './ControllerSettlement';
 import ControllerClaims from './ControllerClaims';
 import RewardReviewViews from '../components/RewardReviewViews';
 import ControllerSigningStatus,{type SigningPhase} from "../components/ControllerSigningStatus";
@@ -58,7 +59,7 @@ export default function RewardsControl({connection,onLogout}:{connection:Control
   const [requestedClaim]=useState(()=>controllerClaimSelection(typeof window==='undefined'?'':window.location.search));
   const [session,setSession]=useState<ControllerSession|null>(null),[campaigns,setCampaigns]=useState<ControllerCampaign[]>([]),[selected,setSelected]=useState<string|null>(requested.campaign);
   const [error,setError]=useState<string|null>(null),[busy,setBusy]=useState(true),[loadingLabel,setLoadingLabel]=useState("Checking controller access…"),live=useRef(true);
-  const [settingsOpen,setSettingsOpen]=useState(false);
+  const [settingsOpen,setSettingsOpen]=useState(false),[settlementOpen,setSettlementOpen]=useState(false);
   useEffect(()=>{live.current=true;return()=>{live.current=false;};},[]);
   async function refresh(){setBusy(true);setError(null);setSession(null);setCampaigns([]);setLoadingLabel("Checking controller access…");try{
     const verified=decodeControllerSession(await connection.request("/access"));
@@ -81,6 +82,7 @@ export default function RewardsControl({connection,onLogout}:{connection:Control
     {session&&!connection.wallets.includes(session.wallet)?<p className={s.notice}>The designated wallet {session.wallet} is not available in this Privy account. No signing is enabled.</p>:null}
     {session&&campaigns.length===0?<section className={s.card}><h3>No assigned campaigns</h3><p>Prepared campaigns appear here when their contract operator matches this controller. Existing campaigns keep their saved operator.</p></section>:null}
     {session&&requested.campaign&&!campaigns.some(c=>c.setupId===requested.campaign)?<p className={s.notice} role="status">The linked campaign is not assigned to this controller account. Switch to its designated controller or select an assigned campaign below.</p>:null}
+    {publicEnv.hostedOperations&&session&&requested.campaign&&!campaign?<details className={s.section} onToggle={e=>setSettlementOpen(e.currentTarget.open)}><summary>Recover original campaign settlement</summary><p>Check the original escrow even if its setup is archived. Controller authority is verified separately.</p>{settlementOpen?<ControllerSettlement connection={connection} wallet={session.wallet} setupId={requested.campaign} slot={requested.slot??0}/>:null}</details>:null}
     {session&&campaigns.length>1?<ControllerCampaignPicker campaigns={campaigns} selected={campaign?.setupId} busy={busy} onSelect={setSelected} onRefresh={()=>void refresh()}/>:null}
     <div className={s.grid}>
     {session&&campaign?<CampaignControl key={`${campaign.setupId}:${session.subject}`} campaign={campaign} connection={connection} session={session} requestedClaim={campaign.setupId===requested.campaign?requestedClaim:null} requestedSlot={campaign.setupId===requested.campaign?requested.slot:null}/>:campaigns.length?<section className={s.card}><h3>Select a campaign</h3><p>Review its contract and official-results handoff.</p></section>:null}</div>    <details className={s.section} onToggle={e=>setSettingsOpen(e.currentTarget.open)}><summary>Controller settings & gas</summary>
@@ -92,6 +94,7 @@ export default function RewardsControl({connection,onLogout}:{connection:Control
 type Pending={requestId:string;transactionHash:string;operation:"deployment"|"upload"|"stage"|"activate";start:number;end:number;approvalId?:string;journalId?:string};
 function CampaignControl({campaign,connection,session,requestedSlot,requestedClaim}:{requestedClaim:ReturnType<typeof controllerClaimSelection>;campaign:ControllerCampaign;connection:ControllerConnection;session:ControllerSession;requestedSlot:number|null}) {
   const [execution,setExecution]=useState(campaign.execution),[slot,setSlot]=useState(()=>campaign.pots.find(p=>p.approvalId===requestedClaim?.approvalId)?.slot??(requestedSlot!==null&&BigInt(campaign.execution.plan.caps[requestedSlot])>0n?requestedSlot:campaign.pots.find(p=>p.ready&&BigInt(campaign.execution.plan.caps[p.slot])>0n)?.slot??campaign.execution.plan.caps.findIndex(cap=>BigInt(cap)>0n))),[allocation,setAllocation]=useState<ControllerAllocation|null>(null);
+  const [settlementOpen,setSettlementOpen]=useState(false);
   const [reviewed,setReviewed]=useState(false),[signingPhase,setSigningPhase]=useState<SigningPhase|null>(null);
   const [continuing,setContinuing]=useState(false),sequence=useRef<{approvalId:string;documentHash:string}|null>(null);
   const [busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[pending,setPending]=useState<Pending|null>(null),[notice,setNotice]=useState<string|null>(null);
@@ -207,6 +210,7 @@ function CampaignControl({campaign,connection,session,requestedSlot,requestedCla
       {recoveryAction==="upload"?<div className={s.row}><label className={s.field}>Start index<input type="number" min={0} value={start} onChange={e=>setStart(Number(e.target.value))}/></label><label className={s.field}>End index<input type="number" min={0} value={end} onChange={e=>setEnd(Number(e.target.value))}/></label></div>:null}
       <button disabled={busy||!!pending||!/^0x[0-9a-f]{64}$/.test(recovery)||recoveryAction!=="deployment"&&!selected?.approvalId} className={s.secondary} onClick={()=>void run(()=>verify({requestId:crypto.randomUUID(),transactionHash:recovery,operation:recoveryAction,start:recoveryAction==="upload"?start:0,end:recoveryAction==="upload"?end:0,...(recoveryAction!=="deployment"?{approvalId:selected!.approvalId}:{})}))}>Verify existing transaction</button></details>
     </aside></div>
+    {publicEnv.hostedOperations?<details className={s.section} onToggle={e=>setSettlementOpen(e.currentTarget.open)}><summary>Prize settlement · selected pot</summary>{settlementOpen?<ControllerSettlement connection={connection} wallet={session.wallet} setupId={campaign.setupId} slot={slot} disabled={busy||!!pending}/>:null}</details>:null}
     {publicEnv.hostedOperations&&selected?.ready?<><ControllerClaims connection={connection} wallet={session.wallet} setupId={campaign.setupId} approvalId={selected.approvalId} requestedClaimId={requestedClaim?.approvalId===selected.approvalId&&!requestedClaim.club?requestedClaim.claimId:null} disabled={busy||!!pending}/><ControllerClaims club connection={connection} wallet={session.wallet} setupId={campaign.setupId} approvalId={selected.approvalId} requestedClaimId={requestedClaim?.approvalId===selected.approvalId&&requestedClaim.club?requestedClaim.claimId:null} disabled={busy||!!pending}/></>:null}
   </section>;
 }

@@ -1,3 +1,6 @@
+import {hostedCopySettlementFacts} from '@raceson/db/rewards';
+import {sponsorSettlementDataV4} from '@raceson/rewards-chain';
+import {currentSettlement,originalSettlementFacts,preparedSettlement,recordSettlementReceipt,type SettlementDeps} from './sponsor-settlement-v4-service.js';
 import {verifiedSponsorClubClaimExecutionV4,sponsorClubClaimFromFactsV4} from './sponsor-club-claims-v4-service.js';
 import type {hostedCopyNativeClubClaimFacts} from '@raceson/db/rewards';
 import type {SponsorClubClaimReaderV4} from '@raceson/rewards-chain/sponsor-claim-reader-v4';
@@ -14,6 +17,7 @@ import {sponsorLifecycleInputV4} from './sponsor-lifecycle-v4-service.js';
 import type {SponsorCreationDeps} from './sponsor-creation-service.js';
 const uint=z.string().regex(/^(0|[1-9][0-9]*)$/),hex=z.string().regex(/^0x[0-9a-f]+$/),address=z.string().regex(/^0x[0-9a-f]{40}$/);
 const context=z.discriminatedUnion('kind',[
+ z.object({kind:z.literal('settlement'),setupId:z.string().uuid(),slot:z.number().int().min(0).max(5),action:z.enum(['close','returnUnallocated','returnExpired']),recipient:address.nullable(),amountWei:uint,source:z.string()}).strict(),
  z.object({kind:z.literal('claim'),claimId:z.string().uuid(),setupId:z.string().uuid(),approvalId:z.string().uuid(),source:z.string()}).strict(),
  z.object({kind:z.literal('clubClaim'),claimId:z.string().uuid(),setupId:z.string().uuid(),approvalId:z.string().uuid(),source:z.string()}).strict(),
  z.object({kind:z.literal('factory'),build:z.literal(sponsorFactoryBuild.creationCodeHash)}).strict(),
@@ -25,6 +29,7 @@ type Job=z.infer<typeof job>;
 type Actor={subject:string;wallet:string};
 type Deps={actor:Actor;reader:SponsorCreationDeps['reader'];rpc?:RewardLedgerRpc;assertActive:()=>Promise<void>;nativeClubClaim?:{reader:SponsorClubClaimReaderV4;facts:(id:string)=>ReturnType<typeof hostedCopyNativeClubClaimFacts>};nativeClaim?:{origin:string;facts:(id:string)=>ReturnType<typeof hostedCopyNativeClaimFacts>}};
 export const controllerTransactionRequest=z.union([
+ z.object({action:z.literal('prepare'),kind:z.literal('settlement'),setupId:z.string().uuid(),slot:z.number().int().min(0).max(5),operation:z.enum(['close','returnUnallocated','returnExpired']),expectedSourceHash:z.string().regex(/^[0-9a-f]{64}$/)}).strict(),
  z.object({action:z.literal('prepare'),kind:z.literal('claim'),claimId:z.string().uuid(),expectedSourceStamp:z.string().regex(/^[0-9a-f]{64}$/),expectedProfileFingerprint:z.string().regex(/^[0-9a-f]{64}$/)}).strict(),
  z.object({action:z.literal('prepare'),kind:z.literal('clubClaim'),claimId:z.string().uuid(),expectedSourceStamp:z.string().regex(/^[0-9a-f]{64}$/),expectedProfileFingerprint:z.string().regex(/^[0-9a-f]{64}$/)}).strict(),
  z.object({action:z.literal('prepare'),kind:z.literal('factory')}).strict(),
@@ -84,6 +89,18 @@ async function currentClaim(d:Deps,claimId:string,requireUnpaid=true,kind:'claim
  const f=await verifiedSponsorClaimExecutionV4(claimId,{origin:d.nativeClaim.origin,reader:d.reader,readFacts:async write=>{await d.assertActive();return readFacts(write);}},requireUnpaid);
  if(f.transaction.from!==d.actor.wallet)throw Error('controller_scope_required');return f;
 }
+function settlementDeps(d:Deps,setupId:string,slot:number):SettlementDeps{
+ if(!d.rpc)throw Error('controller_scope_required');
+ return{reader:d.reader,assertActive:d.assertActive,readFacts:hostedCopySettlementFacts(d.actor,setupId,slot,d.rpc)};
+}
+async function verifySettlementBinding(d:Deps,j:Job,requireNext:boolean){
+ const c=j.context;if(c.kind!=='settlement')throw Error('controller_transaction_invalid');
+ const f=await currentSettlement(settlementDeps(d,c.setupId,c.slot));
+ const lane=c.action==='returnUnallocated'?f.observed.lanes.unallocated:f.observed.lanes.expired;
+ if(c.source!==f.source||j.transaction.to!==f.observed.pot.address||j.transaction.data!==sponsorSettlementDataV4(c.action)
+  ||c.recipient!==(c.action==='close'?null:lane.recipient)||c.amountWei!==(c.action==='close'?'0':lane.originalWei))throw Error('controller_source_not_ready');
+ if(requireNext&&!f.observed.available.some(o=>o.action===c.action&&o.recipient===c.recipient&&o.amountWei===c.amountWei))throw Error('controller_source_not_ready');
+}
 function verifyClaimBinding(j:Job,f:Awaited<ReturnType<typeof currentClaim>>){
  const c=j.context,t=j.transaction;
  if((c.kind!=='claim'&&c.kind!=='clubClaim')||c.setupId!==f.setupId||c.approvalId!==f.approvalId||c.source!==f.source||t.to!==f.transaction.to||t.data!==f.transaction.data)throw Error('controller_source_not_ready');
@@ -104,6 +121,7 @@ function verifyDistributionBinding(j:Job,f:Awaited<ReturnType<typeof currentDist
 }
 async function verifyContext(d:Deps,j:Job,requireNext:boolean){
  verifyJob(d,j);const c=j.context;
+ if(c.kind==='settlement')await verifySettlementBinding(d,j,requireNext);
  if(c.kind==='claim'||c.kind==='clubClaim')verifyClaimBinding(j,await currentClaim(d,c.claimId,requireNext,c.kind));
  if(c.kind==='distribution'){const f=await distribution(d,c.setupId,c.approvalId);
   verifyDistributionBinding(j,f);
@@ -125,12 +143,14 @@ export async function advanceControllerTransaction(d:Deps,input:unknown){
  const r=controllerTransactionRequest.parse(input);await d.assertActive();if(await d.reader.getChainId()!==10143)throw Error('controller_chain_unavailable');
  if(r.action==='prepare'){
   const existing=r.kind==='factory'?await read(d,controllerFactoryId(d.actor)):await read(d);
-  if(existing){if(existing.context.kind!==r.kind||r.kind==='distribution'&&(existing.context.kind!=='distribution'||existing.context.setupId!==r.setupId||existing.context.approvalId!==r.approvalId)||(r.kind==='claim'||r.kind==='clubClaim')&&((existing.context.kind!=='claim'&&existing.context.kind!=='clubClaim')||existing.context.claimId!==r.claimId))throw Error('controller_transaction_pending');
+  if(existing){if(existing.context.kind!==r.kind||r.kind==='settlement'&&(existing.context.kind!=='settlement'||existing.context.setupId!==r.setupId||existing.context.slot!==r.slot||existing.context.action!==r.operation)||r.kind==='distribution'&&(existing.context.kind!=='distribution'||existing.context.setupId!==r.setupId||existing.context.approvalId!==r.approvalId)||(r.kind==='claim'||r.kind==='clubClaim')&&((existing.context.kind!=='claim'&&existing.context.kind!=='clubClaim')||existing.context.claimId!==r.claimId))throw Error('controller_transaction_pending');
    if((r.kind==='claim'||r.kind==='clubClaim')&&(existing.context.kind==='claim'||existing.context.kind==='clubClaim'))checkReviewedClaim(await currentClaim(d,r.claimId,false,r.kind),r);
+   if(r.kind==='settlement'&&existing.context.kind==='settlement'){const f=await originalSettlementFacts(settlementDeps(d,r.setupId,r.slot));if(f.sourceHash!==r.expectedSourceHash||f.source!==existing.context.source)throw Error('controller_source_not_ready');}
    if(r.kind==='distribution'&&existing.context.kind==='distribution')checkReviewedSource(existing.context.source,r.expectedDocumentHash);
    await verifyContext(d,existing,!existing.hash);return publicJob(existing);}
   let c:Job['context'],to:Hex|undefined,data:Hex;
   if(r.kind==='factory'){c={kind:'factory',build:sponsorFactoryBuild.creationCodeHash};data=sponsorFactoryBuild.bytecode;}
+  else if(r.kind==='settlement'){const f=await preparedSettlement(settlementDeps(d,r.setupId,r.slot),r.operation,r.expectedSourceHash);c={kind:'settlement',setupId:r.setupId,slot:r.slot,...f.operation,source:f.source};to=f.transaction.to as Hex;data=f.transaction.data;}
   else if(r.kind==='claim'||r.kind==='clubClaim'){const f=await currentClaim(d,r.claimId,true,r.kind);checkReviewedClaim(f,r);c={kind:r.kind,claimId:r.claimId,setupId:f.setupId,approvalId:f.approvalId,source:f.source};to=f.transaction.to;data=f.transaction.data;}
   else {const f=await distribution(d,r.setupId,r.approvalId);checkReviewedSource(f.source,r.expectedDocumentHash);if(!f.observed.next)throw Error('controller_source_not_ready');
    c={kind:'distribution',setupId:r.setupId,approvalId:r.approvalId,action:f.observed.next,start:f.observed.start,end:f.observed.end,source:f.source};to=f.binding.campaignAddress;data=sponsorLifecycleDataV4(f.binding,c.action,c.start,c.end);}
@@ -143,6 +163,7 @@ export async function advanceControllerTransaction(d:Deps,input:unknown){
   // next-action observation below, including a concurrent on-chain change.
   verifyJob(d,candidate);
   if(c.kind==='claim'||c.kind==='clubClaim')verifyClaimBinding(candidate,await currentClaim(d,c.claimId,false,c.kind));
+  if(c.kind==='settlement')await verifySettlementBinding(d,candidate,true);
   if(c.kind==='distribution')verifyDistributionBinding(candidate,await currentDistribution(d,c.setupId,c.approvalId));
   await d.assertActive();if(await d.reader.getChainId()!==10143)throw Error('controller_chain_unavailable');
   const reserved=decode(await rewardControllerTransaction(d.actor,'reserve',{id:candidate.id,context:c,transaction},d.rpc));if(!reserved)throw Error('controller_transaction_invalid');await verifyContext(d,reserved,true);return publicJob(reserved);
@@ -168,6 +189,10 @@ export async function advanceControllerTransaction(d:Deps,input:unknown){
    if(chainTx.chainId!==10143||chainTx.hash.toLowerCase()!==j.hash||receipt.from.toLowerCase()!==j.sender||chainTx.blockHash!==receipt.blockHash||chainTx.blockNumber!==receipt.blockNumber||chainTx.transactionIndex!==receipt.transactionIndex||block.hash!==receipt.blockHash)throw Error('controller_transaction_invalid');
    if(receipt.contractAddress?.toLowerCase()!==factory.toLowerCase()||receipt.to!==null||chainTx.from.toLowerCase()!==j.sender||chainTx.to!==null||chainTx.input!==sponsorFactoryBuild.bytecode||chainTx.nonce!==Number(j.transaction.nonce)||chainTx.value!==0n)throw Error('controller_transaction_invalid');
    await verifySponsorFactory(d.reader,factory,10143,receipt.blockNumber);await verifySponsorFactory(d.reader,factory);
+  }else if(j.context.kind==='settlement'){
+   await verifySettlementBinding(d,j,false);const c=j.context;
+   await recordSettlementReceipt(settlementDeps(d,c.setupId,c.slot),j.id,j.hash as Hex,{action:c.action,recipient:c.recipient,amountWei:c.amountWei},c.source);
+   await verifySettlementBinding(d,j,false);
   }else if(j.context.kind==='claim'||j.context.kind==='clubClaim'){
    const c=j.context,f=await currentClaim(d,c.claimId,false,c.kind);verifyClaimBinding(j,f);
    if(c.kind==='clubClaim'){

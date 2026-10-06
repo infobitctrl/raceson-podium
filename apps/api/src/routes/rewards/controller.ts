@@ -1,3 +1,5 @@
+import {hostedCopySettlementFacts} from '@raceson/db/rewards';
+import {settlementView,recoverSettlementReceipt} from '../../features/rewards/sponsor-settlement-v4-service.js';
 import {sponsorClubClaimFromFactsV4,type SponsorClubClaimChangeV4} from '../../features/rewards/sponsor-club-claims-v4-service.js';
 import type {hostedCopyNativeClubClaimFacts,hostedCopyNativeClubClaimQueue} from '@raceson/db/rewards';
 import type {SponsorClubClaimReaderV4} from '@raceson/rewards-chain/sponsor-claim-reader-v4';
@@ -31,7 +33,7 @@ type Deps=Omit<OrganizerRewardRouteDependencies,"requireIdentity"> & {controller
  resolveNativeClaimQueue?:(actor:{subject:string;wallet:string},id:string,after:string|null)=>ReturnType<typeof hostedCopyNativeClaimQueue>;
  resolveNativeClaimFacts?:(actor:{subject:string;wallet:string},id:string)=>ReturnType<typeof hostedCopyNativeClaimFacts>};
 export async function dispatchRewardController(req:IncomingMessage,res:ServerResponse,url:URL,deps:Deps) {
-  const m=/^\/api\/v1\/rewards\/control(?:\/(access|session|campaigns|transactions|club-claims|claims)(?:\/([0-9a-f-]+)(?:\/allocations\/([0-9a-f-]+))?)?)?$/.exec(url.pathname);
+  const m=/^\/api\/v1\/rewards\/control(?:\/(access|session|campaigns|transactions|club-claims|claims)(?:\/([0-9a-f-]+)(?:\/(allocations|settlement)\/([0-9a-f-]+))?)?)?$/.exec(url.pathname);
   if(!m)return false;
   deps.applyPrivateSessionHeaders(res);
   try {
@@ -108,8 +110,16 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
       deps.sendSuccess(res,{subject:actor.subject,wallet:actor.wallet,chainId:10143,
         ...(deps.creationSigner!==undefined?{creation:{configured,address:gasAddress,balanceWei,...(setup&&setup.address===actor.wallet&&gasAddress===actor.wallet?{setup:{factory:setup.factory,signerId:setup.signerId,policyId:setup.policyId}}:{})}}:{})});return true;
     }
+    if(m[1]==='campaigns'&&m[3]==='settlement'){
+      if(!deps.reader||!rpc)throw Error('controller_chain_unavailable');
+      const setupId=uuid.parse(m[2]),slot=Number(z.string().regex(/^[0-5]$/).parse(m[4]));
+      const d={reader:deps.reader,assertActive,readFacts:hostedCopySettlementFacts(actor,setupId,slot,rpc)};
+      const change=req.method==='POST'?z.object({action:z.literal('receipt'),requestId:uuid,operation:z.enum(['close','returnUnallocated','returnExpired']),transactionHash:hash}).strict().parse(await deps.readJsonBody(req)):null;
+      const view=change?await recoverSettlementReceipt(d,change.requestId,change.transactionHash as Hex,change.operation):await settlementView(d);
+      await assertActive();deps.sendSuccess(res,view);return true;
+    }
     if(m[1]!=="campaigns")throw Error("controller_invalid_request");
-    const scope:{setupId?:string;approvalId?:string}=m[2]?{setupId:uuid.parse(m[2]),...(m[3]?{approvalId:uuid.parse(m[3])}:{})}:{};
+    const scope:{setupId?:string;approvalId?:string}=m[2]?{setupId:uuid.parse(m[2]),...(m[3]==="allocations"?{approvalId:uuid.parse(m[4])}:{})}:{};
     if(req.method==="POST"&&!scope.setupId)throw Error("controller_invalid_request");
     const change=req.method==="POST"?receipt.parse(await deps.readJsonBody(req)):undefined;
     let raw=await rewardControllerFacts(actor,scope,undefined,rpc);

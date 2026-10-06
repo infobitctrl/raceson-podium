@@ -4,6 +4,7 @@ import {sponsorFactoryBuild} from '@raceson/rewards-chain/sponsor-v4';
 import type {ControllerConnection} from '../screens/RewardsControl';
 const uint=z.string().regex(/^(0|[1-9][0-9]*)$/);
 export const controllerJobSchema=z.object({id:z.string().uuid(),context:z.discriminatedUnion('kind',[
+ z.object({kind:z.literal('settlement'),setupId:z.string().uuid(),slot:z.number().int().min(0).max(5),action:z.enum(['close','returnUnallocated','returnExpired']),recipient:z.string().regex(/^0x[0-9a-f]{40}$/).nullable(),amountWei:uint,source:z.string()}).strict(),
  z.object({kind:z.literal('claim'),claimId:z.string().uuid(),setupId:z.string().uuid(),approvalId:z.string().uuid(),source:z.string()}).strict(),
  z.object({kind:z.literal('clubClaim'),claimId:z.string().uuid(),setupId:z.string().uuid(),approvalId:z.string().uuid(),source:z.string()}).strict(),
  z.object({kind:z.literal('factory'),build:z.literal(sponsorFactoryBuild.creationCodeHash)}).strict(),
