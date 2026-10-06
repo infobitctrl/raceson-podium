@@ -78,7 +78,7 @@ export async function dispatchPublicCampaign(req:IncomingMessage,res:ServerRespo
   const code=error instanceof Error?error.message:'';
   if(['Unauthorized','Missing bearer token','reward_account_session_required'].includes(code))deps.sendError(res,401,'reward_auth_required','Sign in to complete setup.');
   else if(code==='Untrusted browser origin')deps.sendError(res,403,'forbidden','This browser request is not allowed.');
-  else if(code==='reward_demo_sponsor_required')deps.sendError(res,403,code,'Use the provisioned sponsor account to complete setup.');
+  else if(['reward_demo_sponsor_required','reward_demo_account_required'].includes(code))deps.sendError(res,403,'reward_demo_sponsor_required','Use the provisioned sponsor account to complete setup.');
   else if(code==='reward_setup_not_found')deps.sendError(res,404,'reward_setup_not_found','Campaign not found.');
   else if(['campaign_funding_required','reward_setup_conflict'].includes(code))deps.sendError(res,409,code,'Confirm the deposit for this saved campaign before completing setup.');
   else if(code==='invalid_public_campaign')deps.sendError(res,400,code,'Invalid campaign request.');

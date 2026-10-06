@@ -21,11 +21,11 @@ test('copy public closure exposes three fixed projections and captures exact pub
  assert.throws(()=>publish('service_reward_public_campaign',{...write,p_actor_session_id:id}));
  assert.equal(calls.length,4);
 });
-async function request(method='GET',body={},authError){
+async function request(method='GET',body={},authError,sponsorError){
  let response;const calls=[];
  const generic=async()=>{throw Error('Generic reader used');};
  const deps={config:()=>({chainId:10143}),rpc:generic,publicRpc:hostedCopyPublicRpc(async(n,a)=>{calls.push([n,a]);return{data:null,error:null};}),
-  resolveSponsorRpc:async identity=>{assert.deepEqual(identity,actor);return async(n,a)=>{calls.push([n,a]);return{data:null,error:null};};},
+  resolveSponsorRpc:async identity=>{assert.deepEqual(identity,actor);if(sponsorError)throw Error(sponsorError);return async(n,a)=>{calls.push([n,a]);return{data:null,error:null};};},
   requireIdentity:async()=>{if(authError)throw Error(authError);return actor;},readJsonBody:async()=>body,sponsorReader:{},applyPrivateSessionHeaders(){},
   sendSuccess:(_,data)=>response={status:200,data},sendError:(_,status,code)=>response={status,code}};
  await dispatchPublicCampaign({method},{setHeader(){}},new URL('https://podium.raceson.com/api/v1/rewards/public-campaigns/'+id),deps);
@@ -35,6 +35,7 @@ test('public route uses anonymous copy reader; completion authenticates and reje
  const guest=await request();assert.equal(guest.response.status,404);assert.equal(guest.calls[0][0],'service_reward_demo_copy_public_campaign');
  const unauth=await request('POST',{},'Unauthorized');assert.equal(unauth.response.status,401);assert.equal(unauth.calls.length,0);
  const injected=await request('POST',{funded:true});assert.equal(injected.response.status,400);assert.equal(injected.calls.length,0);
+ for(const code of ['reward_demo_sponsor_required','reward_demo_account_required']){const denied=await request('POST',{},undefined,code);assert.equal(denied.response.status,403);assert.equal(denied.response.code,'reward_demo_sponsor_required');assert.equal(denied.calls.length,0);}
  const unfunded=await request('POST');assert.equal(unfunded.response.status,409);assert.equal(unfunded.calls.length,1);assert.equal(unfunded.calls[0][0],'service_reward_sponsor_execution');
 });
 test('public directory resolves the copied reader without private identity or generic RPC',async()=>{
