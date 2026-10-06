@@ -12,6 +12,7 @@ import { getClubTreasuryHistory, getRewardOwnedClubs } from "../data/clubTreasur
 import { clubAccessLost, clubTreasuryErrorKey, type ClubRewardPage } from "../model/clubTreasuries";
 import ClubTreasuryHistory from "../components/ClubTreasuryHistory";
 const Nomination = lazy(() => import("../components/ClubTreasuryNomination"));
+const Creation = lazy(() => import("../components/ClubTreasuryCreation"));
 const Ledger = lazy(() => import("../components/ClubRewardLedger"));
 
 function usePrivatePage<T>(fetchPage: (after: string | null) => Promise<ClubRewardPage<T>>, onAccessLost: (error: unknown) => void) {
@@ -30,9 +31,10 @@ function usePrivatePage<T>(fetchPage: (after: string | null) => Promise<ClubRewa
 function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void }) {
   const { t, locale } = useI18n(), clubs = usePrivatePage(getRewardOwnedClubs, onAccessLost), history = usePrivatePage(getClubTreasuryHistory, onAccessLost);
   const [open, setOpen] = useState(false);
+  const [createOpen,setCreateOpen]=useState(false);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const unavailable = !!clubs.error || !!history.error;
-  if ((clubs.loading || history.loading) && !clubs.items.length && !history.items.length && !open)
+  if ((clubs.loading || history.loading) && !clubs.items.length && !history.items.length && !open && !createOpen)
     return <section className={p.empty} aria-busy="true"><p role="status">{locale === "hr" ? "Provjera pristupa klupskim nagradama…" : "Checking your club reward access…"}</p></section>;
   if (!clubs.loading && !history.loading && !unavailable && !clubs.items.length && !history.items.length && !clubs.nextCursor && !history.nextCursor) return <section className={p.empty} aria-labelledby="club-empty-title">
     <h2 id="club-empty-title" className="text-xl font-semibold">{locale === "hr" ? "Nema kluba kojim upravljate" : "No club to manage"}</h2>
@@ -46,9 +48,10 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
       {clubs.loading ? <p role="status">{t("rewards.loading")}</p> : clubs.error ? <p role="alert">{t(clubTreasuryErrorKey(clubs.error))}</p>
         : clubs.items.length ? <ul className="list-inside list-disc space-y-1 text-sm">{clubs.items.map(c => <li key={c.clubId} className="break-words">{c.name}</li>)}</ul>
           : <p className="text-sm text-muted-foreground">{t("rewards.club.noClubs")}</p>}
-      <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={clubs.loading || open} onClick={() => void clubs.load()}>{t("rewards.club.refreshClubs")}</Button>
-        {clubs.nextCursor ? <Button variant="outline" disabled={clubs.loading || open} onClick={() => void clubs.load(clubs.nextCursor)}>{t("rewards.loadMore")}</Button> : null}
-        {!open ? <Button className="h-auto whitespace-normal" disabled={clubs.loading || history.loading || unavailable || !clubs.items.length} onClick={() => setOpen(true)}>{t("rewards.club.nominate")}</Button> : null}</div>
+      <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={clubs.loading || open || createOpen} onClick={() => void clubs.load()}>{t("rewards.club.refreshClubs")}</Button>
+        {clubs.nextCursor ? <Button variant="outline" disabled={clubs.loading || open || createOpen} onClick={() => void clubs.load(clubs.nextCursor)}>{t("rewards.loadMore")}</Button> : null}
+        {!open&&!createOpen ? <><Button className="h-auto whitespace-normal" disabled={clubs.loading || history.loading || unavailable || !clubs.items.length} onClick={() => setOpen(true)}>{t("rewards.club.nominate")}</Button>
+        {publicEnv.hostedOperations?<Button variant="outline" disabled={clubs.loading||history.loading||unavailable||!clubs.items.length} onClick={()=>setCreateOpen(true)}>Create club treasury</Button>:null}</> : null}</div>
     </section>
     {!unavailable&&!clubs.loading&&!history.loading?<RewardReadiness label={locale==='hr'?'Spremnost kluba':'Club readiness'} steps={[
       {id:'owner',title:locale==='hr'?'Pristup vlasnika kluba':'Club owner access',detail:locale==='hr'?'Pristup potvrđen za gore navedene klubove.':'Access checked for the clubs listed above.',state:clubs.items.length?'complete':'waiting'},
@@ -68,6 +71,7 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
     </div></div>
     {open ? <Suspense fallback={<p role="status">{t("rewards.loading")}</p>}><Nomination clubs={clubs.items} onAccessLost={onAccessLost}
       onBack={() => setOpen(false)} onSaved={() => { void history.load(); }} /></Suspense> : null}
+    {createOpen?<Suspense fallback={<p role="status">{t("rewards.loading")}</p>}><Creation clubs={clubs.items} onBack={()=>setCreateOpen(false)} onSaved={()=>{void history.load();}}/></Suspense>:null}
     {!publicEnv.hostedOperations?<Button variant="outline" aria-expanded={ledgerOpen} onClick={() => setLedgerOpen(v => !v)}>{t("rewards.clubLedger.open")}</Button>:null}
     {ledgerOpen ? <Suspense fallback={<p role="status">{t("rewards.loading")}</p>}><Ledger clubs={clubs.items} onAccessLost={onAccessLost} /></Suspense> : null}
   </div>;

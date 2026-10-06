@@ -1,4 +1,5 @@
 import {dispatchHostedCopyClubClaims} from './routes/rewards/hosted-copy-club-claims.js';
+import {dispatchHostedCopyClubCreation} from './routes/rewards/hosted-copy-club-creation.js';
 import {dispatchHostedCopyClaims} from './routes/rewards/hosted-copy-claims.js';
 import {dispatchHostedCopyReviews} from './routes/rewards/hosted-copy-reviews.js';
 import {hostedCopyNativeClubClaimQueue,hostedCopyNativeClubClaimFacts,hostedCopyNativeClaimQueue,hostedCopyNativeClaimFacts,hostedCopyBeneficiaryWalletRpc,hostedCopyClubWalletRpc} from '@raceson/db/rewards';
@@ -76,6 +77,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
       return hostedCopySponsorExecutionRpc(identity,id,rpc,preflight.sourceFingerprint);
     },
   }:{};
+  if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClubCreation(req,res,url,{...deps,creationReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClubClaims(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClaims(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchAthleteRewardRoutes(req,res,url,{...deps,

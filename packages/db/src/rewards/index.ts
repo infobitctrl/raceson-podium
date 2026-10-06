@@ -126,3 +126,4 @@ export {hostedCopyBeneficiaryWalletRpc} from './hosted-copy-beneficiary-wallet.j
 export {hostedCopyClaimFacts,hostedCopyNativeClaimFacts,hostedCopyAthleteAwards,hostedCopyClaimReviews,hostedCopyNativeClaimQueue} from './hosted-copy-claims.js';
 
 export * from "./hosted-copy-club-claims.js";
+export * from "./hosted-copy-club-creation.js";

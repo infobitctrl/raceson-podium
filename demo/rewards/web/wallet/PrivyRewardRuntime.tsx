@@ -8,6 +8,7 @@ import { bindEmbeddedRewardWallet } from "@/features/rewards/data/embeddedWallet
 import { getRewardPrivyToken } from "@/features/rewards/data/privyAuthToken";
 import { useRewardSessionEpoch } from "@/features/rewards/model/useRewardSessionEpoch";
 import {sendProgrammeTransaction} from "@/features/rewards/data/sponsorProgrammeWallet";
+import {sendClubSafeCreation} from "@/features/rewards/data/clubSafeCreation";
 import {checkSponsorTransaction, sendSponsorTransaction, sponsorTransactionSender} from "@/features/rewards/data/sponsorTransaction";
 
 const monadTestnet = {
@@ -118,6 +119,10 @@ function AuthenticatedWallet({ configuration, sessionKey, walletUserId, onState 
           sendProgrammeTransaction: (view, operatorCurrent) => {
             if (view.transaction?.from !== wallet.address.toLowerCase() || view.transaction.chainId !== 10143 || !isCurrent()) return Promise.reject(new Error("wallet_changed"));
             return sendProgrammeTransaction(provider, view, () => isCurrent() && operatorCurrent());
+          },
+          sendClubSafeCreation: (view, ownerCurrent) => {
+            if (view.record.sender !== wallet.address.toLowerCase() || view.record.chainId !== 10143 || !isCurrent()) return Promise.reject(new Error("wallet_changed"));
+            return sendClubSafeCreation(provider, view, () => isCurrent() && ownerCurrent());
           },
           sendSponsorTransaction: (input, sponsorCurrent) => {
             if (sponsorTransactionSender(input) !== wallet.address.toLowerCase() || input.plan.chainId !== 10143 || !isCurrent()) return Promise.reject(new Error("sponsor_wallet_changed"));
