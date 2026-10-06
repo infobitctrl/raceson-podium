@@ -10,7 +10,8 @@ import {ArrowRight} from "lucide-react";
 import s from "@/features/rewards/screens/RewardsControl.module.css";
 
 const chain={id:10143,name:"Monad Testnet",nativeCurrency:{name:"MON",symbol:"MON",decimals:18},rpcUrls:{default:{http:["https://testnet-rpc.monad.xyz"]}}};
-const config:PrivyClientConfig={loginMethods:["email","google"],defaultChain:chain,supportedChains:[chain],
+// Use the app's enabled login methods rather than advertising disabled providers.
+const config:PrivyClientConfig={defaultChain:chain,supportedChains:[chain],
   embeddedWallets:{ethereum:{createOnLogin:"off"},solana:{createOnLogin:"off"},showWalletUIs:true}};
 
 function WalletLoading({onRetry,onSwitch,unavailable=false,connecting=false}:{onRetry:()=>void;onSwitch?:()=>void;unavailable?:boolean;connecting?:boolean}){

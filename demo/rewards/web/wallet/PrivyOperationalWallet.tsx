@@ -9,7 +9,8 @@ import s from '@/features/rewards/screens/RewardsControl.module.css';
 import a from '@/features/rewards/screens/WalletAdministration.module.css';
 
 const chain={id:10143,name:'Monad Testnet',nativeCurrency:{name:'MON',symbol:'MON',decimals:18},rpcUrls:{default:{http:['https://testnet-rpc.monad.xyz']}}};
-const config:PrivyClientConfig={loginMethods:['email','google'],defaultChain:chain,supportedChains:[chain],embeddedWallets:{ethereum:{createOnLogin:'off'},solana:{createOnLogin:'off'},showWalletUIs:true}};
+// Use the app's enabled login methods rather than advertising disabled providers.
+const config:PrivyClientConfig={defaultChain:chain,supportedChains:[chain],embeddedWallets:{ethereum:{createOnLogin:'off'},solana:{createOnLogin:'off'},showWalletUIs:true}};
 type Candidate={id?:string|null;address:string};
 
 function Owner(props:OperationalWalletProps){
