@@ -1,3 +1,4 @@
+import RewardActionProgress from "./RewardActionProgress";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export default function RewardDestinationChoice({ prepared, athleteProfileId, on
             <span>{t("rewards.destination.consent")}</span>
           </label>
           {error ? <div role="alert" className="space-y-1 text-sm text-destructive"><p>{t(rewardErrorKey(error))}</p><p>{t("rewards.destination.uncertain")}</p></div> : null}
+          {busy ? <RewardActionProgress label={locale === "hr" ? "Spremanje odredišta" : "Destination save progress"} labels={[locale === "hr" ? "Provjera dokaza" : "Checking proof", locale === "hr" ? "Odredište spremljeno" : "Destination saved"]} stage={0} message={t("rewards.destination.saving")}/> : null}
           <Button disabled={!accepted || busy} onClick={() => void submit()}>{busy ? t("rewards.destination.saving") : ux.saveWallet}</Button>
         </>}
   </div>;

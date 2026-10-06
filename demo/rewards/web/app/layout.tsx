@@ -8,6 +8,8 @@ import "./podium.css";
 // the demo's initial stylesheet, including direct links and cold page loads.
 // This imports no private screen data, wallet provider or production bootstrap.
 import "../../../../apps/web/src/features/rewards/components/Podium.module.css";
+import "../../../../apps/web/src/features/rewards/components/AthleteRewards.module.css";
+import "../../../../apps/web/src/features/rewards/components/RewardActionProgress.module.css";
 import "../../../../apps/web/src/features/rewards/components/PodiumHeader.module.css";
 import "../../../../apps/web/src/features/rewards/screens/SponsorDiscovery.module.css";
 import "../../../../apps/web/src/features/rewards/components/RewardEditorial.module.css";

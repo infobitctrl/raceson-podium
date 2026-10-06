@@ -294,7 +294,7 @@ describe("athlete rewards journey", () => {
 
 it('hosted My rewards uses only the copied awards and hosted destination readers',async()=>{
  controls.hosted=true;controls.mode='testnet';mount();
- await screen.findByText('No published sponsor awards yet.');
+ await screen.findByText('Your next reward starts with an official result');
  expect(controls.getHostedAwards).toHaveBeenCalledExactlyOnceWith(null);
  expect(controls.getDestinations).toHaveBeenCalledExactlyOnceWith(null);
  for(const read of [controls.getAllocations,controls.getAllocationsV3,controls.getClaims,controls.getClaimsV3,controls.sponsorAwards])expect(read).not.toHaveBeenCalled();

@@ -10,3 +10,8 @@ it("reconnects a saved wallet without creating or replacing an address",()=>{
   page.rerender(view("ready"));expect(screen.queryByRole("button",{name:"Create my Privy wallet"})).not.toBeInTheDocument();
   expect(screen.getByRole("status")).toHaveTextContent("Your saved address has not changed");expect(create).not.toHaveBeenCalled();
 });
+
+it("shows provider loading without claiming a wallet or payment is ready",()=>{
+ render(<I18nProvider initialLocale="en"><RewardEmbeddedWalletContext.Provider value={{status:"loading",wallet:null}}><RewardEmbeddedWalletControls/></RewardEmbeddedWalletContext.Provider></I18nProvider>);
+ expect(screen.getByRole("group",{name:"Privy wallet progress"})).toHaveAttribute("aria-busy","true");expect(screen.queryByRole("button",{name:"Create my Privy wallet"})).not.toBeInTheDocument();expect(screen.queryByText("Wallet control verified")).not.toBeInTheDocument();
+});

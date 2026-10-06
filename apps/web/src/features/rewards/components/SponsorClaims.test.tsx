@@ -96,9 +96,10 @@ it('attributes a real embedded-wallet selection to Privy and clears attribution 
 });
 
 it('reviewer-only details suppress wallet approval and payment even if transport supplies them',async()=>{
+ sessionStorage.setItem(`raceson:sponsor-claim:10143:${id}`,hash);
  const request=vi.fn().mockResolvedValue({...view,role:'operator',operatorAddress:'0xrecipient',status:'ready_to_pay',transaction:{from:'0xrecipient'}});
  render(<ClaimDetail id={id} role="operator" chainId={10143} hr={false} reviewerOnly claimRequest={request}/>);
- await screen.findByText('Ready for payment');expect(request).toHaveBeenCalledWith(id);
+ await screen.findByText('Ready for payment');expect(request).toHaveBeenCalledWith(id);expect(screen.queryByText('Wallet confirmation')).not.toBeInTheDocument();expect(screen.queryByText(hash)).not.toBeInTheDocument();
  expect(screen.queryByRole('button',{name:'Connect wallet'})).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:'Sign operator approval'})).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:'Pay exact reward'})).not.toBeInTheDocument();expect(m.claim).not.toHaveBeenCalled();
 });
 it('reviewer-only preparation uses its readiness transport and never a native operator command',async()=>{
@@ -108,4 +109,36 @@ it('reviewer-only preparation uses its readiness transport and never a native op
  fireEvent.change(screen.getByLabelText('Verified date of birth'),{target:{value:'1990-01-01'}});
  for(const label of ['Identity evidence reference','Adult status reference','Wallet MFA reference','Wallet recovery reference'])fireEvent.change(screen.getByLabelText(label),{target:{value:id}});
  fireEvent.click(screen.getByRole('button',{name:'Verify & prepare claim'}));await waitFor(()=>expect(request).toHaveBeenCalledWith(id,expect.objectContaining({action:'prepare'})));expect(m.claim).not.toHaveBeenCalled();expect(m.sign).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
+});
+
+it('receipt verification keeps the submitted hash when the server has not confirmed payment',async()=>{
+ sessionStorage.setItem(`raceson:sponsor-claim:31337:${id}`,hash);
+ m.claim.mockResolvedValue({...view,status:'ready_to_pay',signing:null,transaction:{from:'0xrecipient'}});
+ render(<ClaimDetail id={id} role="operator" hr={false} chainId={31337}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Verify payment receipt'}));await screen.findByText(/This step could not be completed/);
+ expect(sessionStorage.getItem(`raceson:sponsor-claim:31337:${id}`)).toBe(hash);expect(m.send).not.toHaveBeenCalled();expect(screen.queryByText('Claim confirmed — reward paid')).not.toBeInTheDocument();
+});
+it('shows actual wallet progress while consent is pending and stops it on cancellation',async()=>{
+ m.claim.mockResolvedValue(view);let reject!:(e:unknown)=>void;m.sign.mockImplementation(()=>new Promise((_,fail)=>{reject=fail;}));
+ render(<ClaimDetail id={id} role="recipient" hr={false} chainId={31337}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Connect wallet'}));fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Sign reward consent'}));
+ await screen.findByText('Confirm in your wallet. Nothing is sent until you approve.');expect(screen.getByRole('group',{name:'Reward action progress'})).toHaveAttribute('aria-busy','true');
+ reject({code:4001});await screen.findByText(/This step could not be completed/);expect(screen.getByRole('group',{name:'Reward action progress'})).toHaveAttribute('aria-busy','false');expect(m.send).not.toHaveBeenCalled();
+});
+it('a refresh reconciles a verified receipt without sending a saved transaction again',async()=>{
+ sessionStorage.setItem(`raceson:sponsor-claim:31337:${id}`,hash);
+ m.claim.mockResolvedValue({...view,status:'paid',signing:null,receipt:{transactionHash:hash,blockNumber:'1',recipient:'0xrecipient'}});
+ render(<ClaimDetail id={id} role="recipient" hr={false} chainId={31337}/>);await screen.findByText('Claim confirmed — reward paid');
+ expect(sessionStorage.getItem(`raceson:sponsor-claim:31337:${id}`)).toBe(null);expect(screen.queryByRole('button',{name:'Verify payment receipt'})).not.toBeInTheDocument();expect(m.send).not.toHaveBeenCalled();
+});
+
+it('keeps the hosted reward dialog open during an explicit request and never creates consent',async()=>{
+ let finish!:(value:unknown)=>void;m.claim.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+ const shared={awards:[{approvalId:id,athleteProfileId:id,entitlementId:hash,slot:1,amountWei:'1',claims:[]}],destinations:[{requestId:id,athleteProfileId:id,chainId:31337 as const,status:'pending_review' as const,address:'0x'+'1'.repeat(40),requestedAt:'2026-10-06T00:00:00Z',withdrawnAt:null}],destinationsComplete:true,refresh:vi.fn().mockResolvedValue(undefined)};
+ render(<SponsorClaims athletePresentation role="recipient" hr={false} chainId={31337} shared={shared}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Review reward'}));expect(m.claim).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Request reward to this wallet'}));await waitFor(()=>expect(screen.getByRole('button',{name:'Close review'})).toBeDisabled());
+ fireEvent.click(screen.getByRole('button',{name:'Close'}));expect(screen.getByRole('dialog',{name:'Claim your reward'})).toBeVisible();
+ expect(m.claim.mock.calls[0][2].action).toBe('request');expect(m.sign).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
+ finish({...view,status:'awaiting_review',signing:null});
 });

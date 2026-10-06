@@ -19,8 +19,8 @@ function mount(){const client=new QueryClient({defaultOptions:{queries:{retry:fa
 beforeEach(()=>{mocks.awards.mockReset().mockResolvedValue({items:[award],nextCursor:null});mocks.destinations.mockReset().mockResolvedValue({items:[destination],nextCursor:null});mocks.wallet=null;mocks.claims=null;mocks.summary=null;});
 it('uses copied awards only, retains unclaimed amounts and keeps consent separate from wallet choice',async()=>{
  mount();await screen.findByText('Copied award');expect(mocks.awards).toHaveBeenCalledExactlyOnceWith(null);expect(mocks.destinations).toHaveBeenCalledExactlyOnceWith(null);
- expect(mocks.wallet?.profileId).toBe(profile);expect(mocks.wallet?.destinations).toEqual([destination]);expect(mocks.claims?.role).toBe('recipient');expect(mocks.summary?.confirmedPaid).toBe(null);
- expect(screen.getByText(/Walletless awards keep/)).toBeVisible();
+ expect(mocks.wallet?.profileId).toBe(profile);expect(mocks.wallet?.destinations).toEqual([destination]);expect(mocks.claims?.role).toBe('recipient');expect(mocks.summary?.confirmedPaid).toBe(0n);
+ expect(mocks.claims?.athletePresentation).toBe(true);expect(mocks.summary?.claimReadiness).toEqual({reviewable:0n,waiting:101n});
 });
 it('keeps totals/history incomplete until explicit pagination completes',async()=>{
  mocks.awards.mockResolvedValueOnce({items:[award],nextCursor:award.entitlementId}).mockResolvedValueOnce({items:[{...award,entitlementId:'0x'+'c'.repeat(64)}],nextCursor:null});

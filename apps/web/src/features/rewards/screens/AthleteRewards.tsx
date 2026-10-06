@@ -175,9 +175,9 @@ export default function AthleteRewards() {
   const sessionViewKey = useRewardSessionEpoch(session);
   const signedIn = !isLoading && user && account?.userId === user.id && account.hasAthleteAccess;
   return <div className={`${p.page} ${p.workspace}`}>
-    <header className={p.heading}><div><span className={p.eyebrow} translate="no">RacesOn Podium</span>
-      <h1>{locale === "hr" ? "Moje nagrade" : "My rewards"}</h1><p>{locale === "hr" ? "Vaše nagrade iz službenih rezultata. Pregledajte spremnost, odaberite novčanik i preuzmite svaku nagradu." : "Your awards from official results. Review readiness, choose your wallet and claim each reward."}</p>
-    </div><Link className={p.secondary} to="/rewards/campaigns">{locale === "hr" ? "Istraži kampanje" : "Explore campaigns"}</Link></header>
+    <header className={p.heading}><div><span className={p.eyebrow}>{locale === "hr" ? "Moje nagrade" : "My rewards"}</span>
+      <h1>{signedIn && account.displayName ? account.displayName : locale === "hr" ? "Moje nagrade" : "My rewards"}</h1><p>{locale === "hr" ? "Vaše nagrade iz službenih rezultata. Nedovršeni koraci ne oduzimaju nagradu." : "Your awards from official results. Missing steps never cost you a reward."}</p>
+    </div><Link className={p.secondary} to={signedIn ? "/rewards/profile" : "/rewards/campaigns"}>{signedIn ? (locale === "hr" ? "Pregledaj profil" : "View profile") : (locale === "hr" ? "Istraži kampanje" : "Explore campaigns")}</Link></header>
     {!publicEnv.rewardPortalEnabled ? <p role="status" className="rounded-xl border border-border p-5">{t("rewards.unavailable")}</p>
       : isLoading ? <p role="status">{t("rewards.loading")}</p>
          : signedIn && publicEnv.hostedOperations ? <HostedAthleteRewards key={`${user.id}:${sessionViewKey}:${account.primaryAthleteProfileId??'none'}`} userId={user.id}

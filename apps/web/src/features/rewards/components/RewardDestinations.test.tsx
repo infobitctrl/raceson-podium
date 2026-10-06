@@ -29,7 +29,7 @@ describe("athlete destination interaction", () => {
     const button = screen.getByRole("button", { name: locale === "en" ? "Save wallet" : "Spremi novčanik" });
     expect(button).toBeDisabled(); expect(calls.submit).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("checkbox")); fireEvent.click(button);
-    expect(await screen.findByRole("status")).toHaveTextContent(locale === "en" ? "Review is still required" : "Pregled je još potreban");
+    expect(await screen.findByText(locale === "en" ? /Review is still required/ : /Pregled je još potreban/)).toHaveAttribute("role", "status");
     expect(proof.assertCurrent).toHaveBeenCalledOnce(); expect(proof.confirm).not.toHaveBeenCalled();
     expect(calls.submit).toHaveBeenCalledWith(proof.challenge, id(2), expect.any(String)); expect(saved).toHaveBeenCalledOnce();
   });

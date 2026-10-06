@@ -1,3 +1,4 @@
+import RewardActionProgress from "./RewardActionProgress";
 import {walletActionLabel} from "../model/walletActionLabel";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export default function RewardWalletPanel({ athleteProfileId = null, onDestinati
   const [selectedWallet, setSelectedWallet] = useState<DetectedRewardWallet | null>(null);
   const [prepared, setPrepared] = useState<PreparedWalletProof | null>(null);
   const [proof, setProof] = useState<WalletProof | null>(null);
+  const [proofAction,setProofAction]=useState(false);
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
   const generation = useRef(0);
@@ -43,7 +45,7 @@ export default function RewardWalletPanel({ athleteProfileId = null, onDestinati
   }
   async function choose(wallet: DetectedRewardWallet) {
     if (inFlight.current) return;
-    reset(); inFlight.current = true; setBusy(true);
+    reset(); setProofAction(false); inFlight.current = true; setBusy(true);
     controller.current = new AbortController();
     const ticket = generation.current;
     try {
@@ -56,7 +58,7 @@ export default function RewardWalletPanel({ athleteProfileId = null, onDestinati
   }
   async function confirm() {
     if (!prepared || inFlight.current) return;
-    inFlight.current = true; setBusy(true); setErrorKey(null);
+    inFlight.current = true; setProofAction(true); setBusy(true); setErrorKey(null);
     const ticket = generation.current;
     try {
       const verified = await prepared.confirm();
@@ -79,7 +81,7 @@ export default function RewardWalletPanel({ athleteProfileId = null, onDestinati
     <details className="text-sm"><summary className="cursor-pointer">{ux.walletDetails}</summary><p className="break-all font-mono text-xs">{athleteProfileId ?? copy.selectProfile}</p></details>
     <RewardEmbeddedWalletControls />
     {errorKey ? <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">{t(errorKey)}</p> : null}
-    {busy ? <p role="status" className="text-sm text-muted-foreground">{t("rewards.wallet.waiting")}</p> : null}
+    {busy ? <RewardActionProgress label={locale === "hr" ? "Napredak postavljanja novčanika" : "Wallet setup progress"} labels={proofAction ? [locale === "hr" ? "Potvrda u novčaniku" : "Wallet confirmation", locale === "hr" ? "Kontrola potvrđena" : "Control verified"] : [locale === "hr" ? "Povezivanje" : "Connecting", locale === "hr" ? "Povezano" : "Connected"]} stage={0} message={t("rewards.wallet.waiting")}/> : null}
     {proof ? <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
       <div role="status" className="space-y-2">
       <p className="font-semibold">{t("rewards.wallet.verified")}</p>
