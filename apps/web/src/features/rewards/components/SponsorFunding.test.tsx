@@ -604,3 +604,16 @@ it('replaces the deposit button while the wallet is outstanding and preserves pr
  await screen.findByText(/All selected pots are funded/);
  expect(mocks.send).toHaveBeenCalledTimes(1);expect(readSponsorReceipt(launch)).toBeNull();
 });
+
+
+it('shows one confirmation strip when a recovered creation receipt also has a submitted server job',async()=>{
+ saveSponsorReceipt(launch,{action:'deployment',hash:deployment});
+ mocks.api.mockResolvedValue({enabled:true,record:{plan,deploymentHash:null,fundingHash:null},observation:null,creation:{status:'submitted',reason:null,hash:deployment}});
+ render(<SponsorFunding launch={launch} hr={false}/>);
+ await screen.findByRole('heading',{name:'Confirming your reward account'});
+ expect(screen.getAllByRole('group',{name:'Contract creation progress'})).toHaveLength(1);
+ expect(screen.getByRole('button',{name:'Check confirmation'})).toBeEnabled();
+ expect(screen.queryByRole('button',{name:'Create reward account'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'Deposit reward funds'})).not.toBeInTheDocument();
+ expect(mocks.send).not.toHaveBeenCalled();
+});
