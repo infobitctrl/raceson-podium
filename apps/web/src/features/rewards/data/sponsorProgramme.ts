@@ -1,3 +1,5 @@
+import {sponsorAwardSchema} from './sponsorAwardCodec';
+export {sponsorAwardSchema} from './sponsorAwardCodec';
 import {resultDisplaySchema} from "./resultDisplay";
 import {lifecycleSchema as lifecycle,sponsorTransactionSchema as tx} from "./sponsorLifecycleCodec";
 export {decodeSponsorLifecycleView} from "./sponsorLifecycleCodec";
@@ -24,7 +26,8 @@ export const sponsorClaimSchema=z.object({schema:z.literal("raceson-sponsor-clai
  context:z.object({environment:z.enum(["local-simulation","monad-testnet"]),chainId:z.union([z.literal(31337),z.literal(10143)]),verifyingContract:z.string()}).nullable(),
  signing:z.unknown().nullable(),transaction:tx.nullable(),receipt:z.object({transactionHash:hex,amountWei:wei,recipient:z.string(),blockNumber:wei,blockHash:hex}).nullable()});
 export type SponsorClaim=z.infer<typeof sponsorClaimSchema>;
-const awards=z.array(z.object({approvalId:uuid,slot:z.number().int().min(0).max(5),entitlementId:hex,amountWei:wei,athleteProfileId:uuid.nullable(),claims:z.array(z.object({id:uuid,prepared:z.boolean(),consented:z.boolean(),approved:z.boolean(),paid:z.boolean()}))}));
+
+const awards=z.array(sponsorAwardSchema);
 export type SponsorAward=z.infer<typeof awards>[number];
 export async function sponsorAwards(role:"recipient"|"operator",approvalId?:string){enabled();return awards.parse(await apiRequest({path:`/v1/${role==="recipient"?"athlete":"organizer"}/rewards/sponsor-claims${approvalId?`?approvalId=${uuid.parse(approvalId)}`:""}`,cache:"no-store"}));}
 export async function sponsorClaim(role:"recipient"|"operator",id:string,body?:unknown){enabled();const v=sponsorClaimSchema.parse(await apiRequest({path:`/v1/${role==="recipient"?"athlete":"organizer"}/rewards/sponsor-claims/${uuid.parse(id)}`,cache:"no-store",...(body?{method:"POST" as const,body}:{})}));if(v.claimId!==id||v.role!==role||v.chainId!==publicEnv.rewardDemo?.chainId)throw Error("invalid_claim");return v;}

@@ -54,7 +54,15 @@ async function paymentReceipt(f:Facts,deps:Deps,hash:Hex){check(deps.reader);con
  return{transactionHash:hash,blockNumber:r.blockNumber.toString(),blockHash:r.blockHash,amountWei:p.claim.amount.toString(),recipient:p.claim.recipient};
 }
 export async function sponsorClaimV4(actor:RewardAccountIdentity,scope:SponsorClaimScopeV4,change:SponsorClaimChangeV4|undefined,deps:Deps){
- let f=await sponsorClaimFactsV4(actor,scope,change?.action==="request"?{action:"request",body:{approvalId:change.approvalId,entitlementId:change.entitlementId,destinationId:change.destinationId}}:undefined,deps.rpc);
+ return sponsorClaimFromFactsV4(scope,change,{...deps,readFacts:write=>sponsorClaimFactsV4(actor,scope,write,deps.rpc)});
+}
+type FactWrite={action:string;body:unknown};
+/** Share cryptographic/chain verification while keeping account and native
+ * authentication in separate facts resolvers. A reviewer cannot authorize/pay. */
+export async function sponsorClaimFromFactsV4(scope:SponsorClaimScopeV4,change:SponsorClaimChangeV4|undefined,deps:Deps&{
+ readFacts:(write?:FactWrite)=>Promise<Facts>; signer?:boolean;
+}){
+ let f=await deps.readFacts(change?.action==="request"?{action:"request",body:{approvalId:change.approvalId,entitlementId:change.entitlementId,destinationId:change.destinationId}}:undefined);
  await wallet(f,deps.origin);
  if(change?.action==="prepare"){
   check(scope.role==="operator"&&change.sourceStamp===f.sourceStamp&&change.profileFingerprint===f.profileFingerprint);
@@ -65,24 +73,24 @@ export async function sponsorClaimV4(actor:RewardAccountIdentity,scope:SponsorCl
    const w=await readSponsorAthleteClaimV4(deps.reader,{plan:f.plan,deploymentHash:i.deploymentHash,fundingHash:i.fundingHash,slot:f.slot,allocation,entitlementId,recipient:f.destination.address});
    const issuedAt=w.finalizedBlock.timestamp,expiresAt=issuedAt+86400n<w.claimDeadline?issuedAt+86400n:w.claimDeadline;
    const claim:RewardClaim={entitlementId,recipient:f.destination.address,amount:w.award.amount,pot:f.slot===0?"league":"race",nonce:w.award.nonce,issuedAt,expiresAt,allocationDigest:w.allocationDigest};
-   f=await sponsorClaimFactsV4(actor,scope,{action:"intent",body:{sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,attestation,claim,witness:{finalizedBlock:w.finalizedBlock}}},deps.rpc);
+   f=await deps.readFacts({action:"intent",body:{sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,attestation,claim,witness:{finalizedBlock:w.finalizedBlock}}});
   }else check(canonical((f.events.intent as {attestation:unknown}).attestation)===canonical(attestation),"reward_sponsor_claim_conflict");
  }
  if(change?.action==="recipient"||change?.action==="operator"){
-  check(scope.role===change.action);const p=await proofs(f);check(p);const proof=await verifySponsorClaimProofV4(p.context,p.claim,change.action,f.plan.operator as Hex,change.signature);
+  check(scope.role===change.action&&deps.signer!==false);const p=await proofs(f);check(p);const proof=await verifySponsorClaimProofV4(p.context,p.claim,change.action,f.plan.operator as Hex,change.signature);
   if(!f.events[change.action]){await live(f,deps);check(change.action!=="operator"||f.events.recipient,"reward_recipient_consent_required");}
-  f=await sponsorClaimFactsV4(actor,scope,{action:change.action,body:proof},deps.rpc);
+  f=await deps.readFacts({action:change.action,body:proof});
  }
  if(change?.action==="receipt"&&f.events.receipt)check((f.events.receipt as {transactionHash:string}).transactionHash===change.transactionHash,"reward_sponsor_claim_conflict");
- if(change?.action==="receipt")f=await sponsorClaimFactsV4(actor,scope,{action:"receipt",body:f.events.receipt??await paymentReceipt(f,deps,change.transactionHash)},deps.rpc);
- if(change?.action==="revoke")f=await sponsorClaimFactsV4(actor,scope,{action:"revoked",body:{reason:"operator_hold"}},deps.rpc);
+ if(change?.action==="receipt"){check(deps.signer!==false);f=await deps.readFacts({action:"receipt",body:f.events.receipt??await paymentReceipt(f,deps,change.transactionHash)});}
+ if(change?.action==="revoke")f=await deps.readFacts({action:"revoked",body:{reason:"operator_hold"}});
  const p=await proofs(f);let signing=null,transaction=null,availability=f.current?"awaiting_review":"held";
  if(f.events.receipt)availability="paid";
  else if(p&&f.current){try{await live(f,deps);availability=f.events.operator?"ready_to_pay":f.events.recipient?"awaiting_operator":"awaiting_consent";
-  if(!f.events[scope.role]&&(scope.role==="recipient"||f.events.recipient))signing=copy(sponsorClaimMessagesV4(p.context,p.claim)[scope.role==="recipient"?"consent":"authorization"]);
-  if(scope.role==="operator"&&f.events.operator&&f.events.recipient)transaction={chainId:scope.chainId,from:f.plan.operator,to:p.i.campaignAddress,value:"0",data:encodeSponsorClaimV4(p.context,p.claim,{operator:(f.events.operator as {signature:Hex}).signature,recipient:(f.events.recipient as {signature:Hex}).signature})};
+  if(deps.signer!==false&&!f.events[scope.role]&&(scope.role==="recipient"||f.events.recipient))signing=copy(sponsorClaimMessagesV4(p.context,p.claim)[scope.role==="recipient"?"consent":"authorization"]);
+  if(deps.signer!==false&&scope.role==="operator"&&f.events.operator&&f.events.recipient)transaction={chainId:scope.chainId,from:f.plan.operator,to:p.i.campaignAddress,value:"0",data:encodeSponsorClaimV4(p.context,p.claim,{operator:(f.events.operator as {signature:Hex}).signature,recipient:(f.events.recipient as {signature:Hex}).signature})};
  }catch(e){if(e instanceof Error&&["reward_sponsor_claim_not_ready","sponsor_claim_unavailable","sponsor_entitlement_unavailable"].includes(e.message))availability="held";else throw e;}}
- const after=await sponsorClaimFactsV4(actor,scope,undefined,deps.rpc);check(canonical(after.events)===canonical(f.events)&&after.current===f.current&&after.sourceStamp===f.sourceStamp&&after.profileFingerprint===f.profileFingerprint,"reward_planning_revision_changed");
+ const after=await deps.readFacts();check(canonical(after.events)===canonical(f.events)&&after.current===f.current&&after.sourceStamp===f.sourceStamp&&after.profileFingerprint===f.profileFingerprint,"reward_planning_revision_changed");
  return copy({schema:"raceson-sponsor-claim-view-v4",claimId:f.claimId,approvalId:f.approvalId,role:scope.role,chainId:scope.chainId,current:f.current,status:availability,
   sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,operatorAddress:f.plan.operator,address:f.destination.address,claim:p?.claim??null,context:p?.context??null,signing,transaction,receipt:f.events.receipt??null});
 }

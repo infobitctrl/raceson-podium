@@ -94,3 +94,18 @@ it('attributes a real embedded-wallet selection to Privy and clears attribution 
  expect(screen.getByRole('button',{name:'Sign reward consent'})).toBeDisabled();
  expect(m.sign).not.toHaveBeenCalled();
 });
+
+it('reviewer-only details suppress wallet approval and payment even if transport supplies them',async()=>{
+ const request=vi.fn().mockResolvedValue({...view,role:'operator',operatorAddress:'0xrecipient',status:'ready_to_pay',transaction:{from:'0xrecipient'}});
+ render(<ClaimDetail id={id} role="operator" chainId={10143} hr={false} reviewerOnly claimRequest={request}/>);
+ await screen.findByText('Ready for payment');expect(request).toHaveBeenCalledWith(id);
+ expect(screen.queryByRole('button',{name:'Connect wallet'})).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:'Sign operator approval'})).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:'Pay exact reward'})).not.toBeInTheDocument();expect(m.claim).not.toHaveBeenCalled();
+});
+it('reviewer-only preparation uses its readiness transport and never a native operator command',async()=>{
+ const request=vi.fn().mockResolvedValue({...view,status:'awaiting_review',signing:null,transaction:null,claim:null,sourceStamp:'a'.repeat(64),profileFingerprint:'b'.repeat(64)});
+ render(<ClaimDetail id={id} role="operator" chainId={10143} hr={false} reviewerOnly claimRequest={request}/>);
+ await screen.findByRole('button',{name:'Verify & prepare claim'});
+ fireEvent.change(screen.getByLabelText('Verified date of birth'),{target:{value:'1990-01-01'}});
+ for(const label of ['Identity evidence reference','Adult status reference','Wallet MFA reference','Wallet recovery reference'])fireEvent.change(screen.getByLabelText(label),{target:{value:id}});
+ fireEvent.click(screen.getByRole('button',{name:'Verify & prepare claim'}));await waitFor(()=>expect(request).toHaveBeenCalledWith(id,expect.objectContaining({action:'prepare'})));expect(m.claim).not.toHaveBeenCalled();expect(m.sign).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
+});

@@ -1,6 +1,7 @@
 import {fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedAwardUpload from './HostedAwardUpload';
+vi.mock('./HostedClaimReviews',()=>({default:({approvalId}:{approvalId:string})=><p>Recipient queue {approvalId}</p>}));
 const mocks=vi.hoisted(()=>({upload:vi.fn(),handoff:vi.fn()}));
 vi.mock('../data/hostedAwardUpload',()=>({readHostedAwardUpload:mocks.upload,readHostedAwardHandoff:mocks.handoff}));
 const props={id:'setup',slot:0,approvalId:'approval',contextHash:'c'.repeat(64),documentHash:'d'.repeat(64),hr:false};
@@ -13,8 +14,9 @@ it('requires explicit funding preparation and results handoff before linking to 
  render(<HostedAwardUpload {...props}/>);fireEvent.click(await screen.findByRole('button',{name:'Verify funding and prepare package'}));
  await screen.findByText('Package prepared for the controller.');expect(mocks.handoff).toHaveBeenCalledTimes(1);
  expect(mocks.upload.mock.calls[1][1]).toEqual({requestId:expect.any(String),contextHash:props.contextHash,documentHash:props.documentHash});
- expect(screen.queryByRole('link',{name:'Open controller workspace'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('link',{name:'Open controller workspace'})).not.toBeInTheDocument();expect(screen.queryByText('Recipient queue approval')).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Confirm results handoff'}));expect(await screen.findByRole('link',{name:'Open controller workspace'})).toHaveAttribute('href','/rewards/control?campaign=setup&pot=0');
+ expect(screen.getByText('Recipient queue approval')).toBeVisible();
  expect(mocks.handoff.mock.calls[1][1]).toEqual({action:'publication',requestId:expect.any(String),documentHash:handoff.publicationHash});
  expect(JSON.stringify(mocks.upload.mock.calls[1][1])).not.toMatch(/funding|amount|wallet|source/);
 });

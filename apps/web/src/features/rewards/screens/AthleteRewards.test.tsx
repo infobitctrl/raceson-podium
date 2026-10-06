@@ -10,19 +10,20 @@ import { paymentFixture } from "../model/paymentFixtures.test-helper";
 import { consentV3Fixture } from "../model/athleteConsentV3Fixtures.test-helper";
 
 const controls = vi.hoisted(() => ({
-  enabled: true, mode: "local", userId: "account-one", accountId: "account-one", loading: false,
+  hosted: false, enabled: true, mode: "local", userId: "account-one", accountId: "account-one", loading: false,
   session: { fixtureEpoch: 1 } as Record<string, unknown>,
   getAllocations: vi.fn<() => Promise<RewardAllocationsPage>>(), walletRequests: vi.fn(),
   getDestinations: vi.fn<() => Promise<RewardDestinationsPage>>(),
   getClaims: vi.fn(),
   getClaimsV3: vi.fn(), sponsorAwards: vi.fn(),
   getAllocationsV3: vi.fn(),
-  getPayment: vi.fn(), paymentV3: vi.fn(),
+  getHostedAwards: vi.fn(), getPayment: vi.fn(), paymentV3: vi.fn(),
 }));
-vi.mock("@/lib/public-env", () => ({ publicEnv: { get rewardPortalEnabled() { return controls.enabled; }, get rewardDemo() { return { mode: controls.mode }; } } }));
+vi.mock("@/lib/public-env", () => ({ publicEnv: { get hostedOperations(){return controls.hosted;}, get rewardPortalEnabled() { return controls.enabled; }, get rewardDemo() { return { mode: controls.mode }; } } }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: { id: controls.userId },
   account: { userId: controls.accountId, hasAthleteAccess: true }, session: controls.session, isLoading: controls.loading }) }));
 vi.mock("../data/sponsorProgramme",()=>({sponsorAwards:controls.sponsorAwards}));
+vi.mock("../data/hostedAthleteAwards",()=>({getHostedAthleteAwards:controls.getHostedAwards}));
 vi.mock("../data/athleteRewards", () => ({ getOwnRewardAllocations: controls.getAllocations }));
 vi.mock("../data/athleteAllocationsV3", () => ({ getOwnAllocationsV3: controls.getAllocationsV3 }));
 vi.mock("../data/athleteDestinations", () => ({ getOwnRewardDestinations: controls.getDestinations }));
@@ -43,7 +44,8 @@ function mount(locale: "hr" | "en" = "en") {
   return { ...view, update: () => view.rerender(tree()), client };
 }
 beforeEach(() => {
-  controls.enabled = true; controls.mode = "local"; controls.userId = "account-one"; controls.accountId = "account-one"; controls.loading = false;
+  controls.hosted=false; controls.enabled = true; controls.mode = "local"; controls.userId = "account-one"; controls.accountId = "account-one"; controls.loading = false;
+  controls.getHostedAwards.mockReset().mockResolvedValue({items:[],nextCursor:null});
   controls.sponsorAwards.mockReset().mockResolvedValue([]);
   controls.getAllocations.mockReset().mockResolvedValue({ items: [award], nextCursor: null });
   controls.getDestinations.mockReset().mockResolvedValue({ items: [], nextCursor: null });
@@ -288,4 +290,12 @@ describe("athlete rewards journey", () => {
     expect(screen.queryByText(address)).not.toBeInTheDocument(); expect(screen.queryByText("Race reward")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Connect wallet" })).toBeDisabled();
   });
+});
+
+it('hosted My rewards uses only the copied awards and hosted destination readers',async()=>{
+ controls.hosted=true;controls.mode='testnet';mount();
+ await screen.findByText('No published sponsor awards yet.');
+ expect(controls.getHostedAwards).toHaveBeenCalledExactlyOnceWith(null);
+ expect(controls.getDestinations).toHaveBeenCalledExactlyOnceWith(null);
+ for(const read of [controls.getAllocations,controls.getAllocationsV3,controls.getClaims,controls.getClaimsV3,controls.sponsorAwards])expect(read).not.toHaveBeenCalled();
 });

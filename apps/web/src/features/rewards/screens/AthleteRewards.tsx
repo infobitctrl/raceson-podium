@@ -1,3 +1,4 @@
+import HostedAthleteRewards from './HostedAthleteRewards';
 import {sponsorAwards} from "../data/sponsorProgramme";
 import SponsorClaims from "../components/SponsorClaims";
 import type { AthleteAllocationV3 } from "@raceson/domain/rewards/athlete-allocations-v3";
@@ -179,6 +180,8 @@ export default function AthleteRewards() {
     </div><Link className={p.secondary} to="/rewards/campaigns">{locale === "hr" ? "Istraži kampanje" : "Explore campaigns"}</Link></header>
     {!publicEnv.rewardPortalEnabled ? <p role="status" className="rounded-xl border border-border p-5">{t("rewards.unavailable")}</p>
       : isLoading ? <p role="status">{t("rewards.loading")}</p>
+         : signedIn && publicEnv.hostedOperations ? <HostedAthleteRewards key={`${user.id}:${sessionViewKey}:${account.primaryAthleteProfileId??'none'}`} userId={user.id}
+          profileId={account.primaryAthleteProfileId??null} viewKey={sessionViewKey} hr={locale==='hr'}/>
         : signedIn ? <SignedInRewards key={`${user.id}:${sessionViewKey}:${publicEnv.rewardDemo?.mode ?? "disabled"}:${account.primaryAthleteProfileId ?? "none"}`} userId={user.id}
           viewKey={`${sessionViewKey}:${publicEnv.rewardDemo?.mode ?? "disabled"}`} athleteProfileId={account.primaryAthleteProfileId ?? null}
           selectedProfile={profileChoice?.actor === user.id && profileChoice.mode === mode ? profileChoice.id : null}

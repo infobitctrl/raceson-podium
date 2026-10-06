@@ -35,6 +35,12 @@ const allowed = new Map([
 export function hostedCopyRequestAllowed(method: string | undefined, url: URL, mode = "preview-v1",operations=false) {
   if(mode==='sponsor-drafts-v1'&&operations){
     const keys=[...url.searchParams.keys()];
+    if(['/api/v1/rewards/demo-copy/claim-reviews','/api/v1/rewards/control/claims'].includes(url.pathname)&&method==='GET')
+      return keys.length>=1&&keys.length<=2&&new Set(keys).size===keys.length&&keys.includes('approvalId')
+        &&keys.every(k=>['approvalId','after'].includes(k)&&/^[0-9a-f-]{36}$/.test(url.searchParams.get(k)??''));
+    if(url.pathname==='/api/v1/rewards/demo-copy/athlete-awards'&&method==='GET')
+      return keys.length===0||keys.length===1&&keys[0]==='after'&&/^0x[0-9a-f]{64}$/.test(url.searchParams.get('after')??'');
+    if(keys.length===0&&/^\/api\/v1\/(?:athlete\/rewards\/sponsor-claims|rewards\/demo-copy\/claim-reviews|rewards\/control\/claims)\/[0-9a-f-]{36}$/.test(url.pathname))return method==='GET'||method==='POST';
     if(url.pathname==='/api/v1/athlete/rewards/destination-requests'&&method==='GET')
       return keys.length===0||keys.length===1&&keys[0]==='after'&&/^[0-9a-f-]{36}$/.test(url.searchParams.get('after')??'');
     if(keys.length===0){
