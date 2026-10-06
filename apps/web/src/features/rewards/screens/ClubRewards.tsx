@@ -68,7 +68,7 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
     </div></div>
     {open ? <Suspense fallback={<p role="status">{t("rewards.loading")}</p>}><Nomination clubs={clubs.items} onAccessLost={onAccessLost}
       onBack={() => setOpen(false)} onSaved={() => { void history.load(); }} /></Suspense> : null}
-    <Button variant="outline" aria-expanded={ledgerOpen} onClick={() => setLedgerOpen(v => !v)}>{t("rewards.clubLedger.open")}</Button>
+    {!publicEnv.hostedOperations?<Button variant="outline" aria-expanded={ledgerOpen} onClick={() => setLedgerOpen(v => !v)}>{t("rewards.clubLedger.open")}</Button>:null}
     {ledgerOpen ? <Suspense fallback={<p role="status">{t("rewards.loading")}</p>}><Ledger clubs={clubs.items} onAccessLost={onAccessLost} /></Suspense> : null}
   </div>;
 }

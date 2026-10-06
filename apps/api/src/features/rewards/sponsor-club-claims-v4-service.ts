@@ -87,7 +87,10 @@ async function paymentReceipt(f:Facts,deps:Deps,hash:Hex){check(deps.reader);con
  return{transactionHash:hash,blockNumber:r.blockNumber.toString(),blockHash:r.blockHash,amountWei:p.claim.amount.toString(),recipient:p.claim.recipient};
 }
 export async function sponsorClubClaimV4(actor:RewardAccountIdentity,scope:SponsorClubClaimScopeV4,change:SponsorClubClaimChangeV4|undefined,deps:Deps){
- let f=await sponsorClubClaimFactsV4(actor,scope,change?.action==="request"?{action:"request",body:{approvalId:change.approvalId,entitlementId:change.entitlementId,requestId:change.requestId}}:undefined,deps.rpc);
+ return sponsorClubClaimFromFactsV4(scope,change,{...deps,readFacts:write=>sponsorClubClaimFactsV4(actor,scope,write,deps.rpc)});
+}
+export async function sponsorClubClaimFromFactsV4(scope:SponsorClubClaimScopeV4,change:SponsorClubClaimChangeV4|undefined,deps:Deps&{readFacts:(write?:{action:string;body:unknown})=>Promise<Facts>;signer?:boolean}){
+ let f=await deps.readFacts(change?.action==="request"?{action:"request",body:{approvalId:change.approvalId,entitlementId:change.entitlementId,requestId:change.requestId}}:undefined);
 
  if(change?.action==="prepare"){
   check(scope.role==="operator"&&change.sourceStamp===f.sourceStamp&&change.profileFingerprint===f.profileFingerprint);
@@ -98,25 +101,41 @@ export async function sponsorClubClaimV4(actor:RewardAccountIdentity,scope:Spons
    const w=await readSponsorClubClaimV4(deps.reader,{plan:f.plan,deploymentHash:i.deploymentHash,fundingHash:i.fundingHash,slot:f.slot,allocation,entitlementId,recipient:f.nomination.candidate.safeAddress,...treasury(f,attestation)});
    const issuedAt=w.finalizedBlock.timestamp,expiresAt=issuedAt+86400n<w.claimDeadline?issuedAt+86400n:w.claimDeadline;
    const claim:RewardClaim={entitlementId,recipient:f.nomination.candidate.safeAddress,amount:w.award.amount,pot:f.slot===0?"league":"race",nonce:w.award.nonce,issuedAt,expiresAt,allocationDigest:w.allocationDigest};
-   f=await sponsorClubClaimFactsV4(actor,scope,{action:"intent",body:{sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,attestation,claim,witness:{finalizedBlock:w.finalizedBlock,treasury:w.treasury}}},deps.rpc);
+   f=await deps.readFacts({action:"intent",body:{sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,attestation,claim,witness:{finalizedBlock:w.finalizedBlock,treasury:w.treasury}}});
   }else check(canonical((f.events.intent as {attestation:unknown}).attestation)===canonical(attestation),"reward_sponsor_claim_conflict");
  }
  if(change?.action==="recipient"||change?.action==="operator"){
-  check(scope.role===change.action);const p=await proofs(f,deps);check(p);const at=p.body.witness.finalizedBlock;
+  check(scope.role===change.action&&deps.signer!==false);const p=await proofs(f,deps);check(p);const at=p.body.witness.finalizedBlock;
   const verified=await proof(f,p,change.action,change.signature,{number:BigInt(at.number),hash:at.hash,timestamp:BigInt(at.timestamp)},deps);
   if(!f.events[change.action]){await live(f,deps);check(change.action!=="operator"||f.events.recipient,"reward_recipient_consent_required");}
-  f=await sponsorClubClaimFactsV4(actor,scope,{action:change.action,body:verified},deps.rpc);
+  f=await deps.readFacts({action:change.action,body:verified});
  }
  if(change?.action==="receipt"&&f.events.receipt)check((f.events.receipt as {transactionHash:string}).transactionHash===change.transactionHash,"reward_sponsor_claim_conflict");
- if(change?.action==="receipt")f=await sponsorClubClaimFactsV4(actor,scope,{action:"receipt",body:f.events.receipt??await paymentReceipt(f,deps,change.transactionHash)},deps.rpc);
- if(change?.action==="revoke")f=await sponsorClubClaimFactsV4(actor,scope,{action:"revoked",body:{reason:"operator_hold"}},deps.rpc);
+ if(change?.action==="receipt"){check(deps.signer!==false);f=await deps.readFacts({action:"receipt",body:f.events.receipt??await paymentReceipt(f,deps,change.transactionHash)});}
+ if(change?.action==="revoke")f=await deps.readFacts({action:"revoked",body:{reason:"operator_hold"}});
  const p=await proofs(f,deps);let signing=null,transaction=null,availability=f.current?"awaiting_review":"held";
  if(f.events.receipt)availability="paid";
  else if(p&&f.current){try{await live(f,deps);availability=f.events.operator?"ready_to_pay":f.events.recipient?"awaiting_operator":"awaiting_consent";
-  if(!f.events[scope.role]&&(scope.role==="recipient"||f.events.recipient))signing=copy(scope.role==="recipient"?sponsorSafeConsentMessageV4(p.context,p.claim):sponsorClaimMessagesV4(p.context,p.claim).authorization);
-  if(scope.role==="operator"&&f.events.operator&&f.events.recipient)transaction={chainId:scope.chainId,from:f.plan.operator,to:p.i.campaignAddress,value:"0",data:encodeSponsorClaimV4(p.context,p.claim,{operator:(f.events.operator as {signature:Hex}).signature,recipient:(f.events.recipient as {signature:Hex}).signature})};
+  if(deps.signer!==false&&!f.events[scope.role]&&(scope.role==="recipient"||f.events.recipient))signing=copy(scope.role==="recipient"?sponsorSafeConsentMessageV4(p.context,p.claim):sponsorClaimMessagesV4(p.context,p.claim).authorization);
+  if(deps.signer!==false&&scope.role==="operator"&&f.events.operator&&f.events.recipient)transaction={chainId:scope.chainId,from:f.plan.operator,to:p.i.campaignAddress,value:"0",data:encodeSponsorClaimV4(p.context,p.claim,{operator:(f.events.operator as {signature:Hex}).signature,recipient:(f.events.recipient as {signature:Hex}).signature})};
  }catch(e){if(e instanceof Error&&["reward_sponsor_claim_not_ready","sponsor_claim_unavailable","sponsor_entitlement_unavailable"].includes(e.message))availability="held";else throw e;}}
- const after=await sponsorClubClaimFactsV4(actor,scope,undefined,deps.rpc);check(canonical(after.events)===canonical(f.events)&&after.current===f.current&&after.sourceStamp===f.sourceStamp&&after.profileFingerprint===f.profileFingerprint,"reward_planning_revision_changed");
+ const after=await deps.readFacts();check(canonical(after.events)===canonical(f.events)&&after.current===f.current&&after.sourceStamp===f.sourceStamp&&after.profileFingerprint===f.profileFingerprint,"reward_planning_revision_changed");
  return copy({schema:"raceson-sponsor-club-claim-view-v4",claimId:f.claimId,approvalId:f.approvalId,role:scope.role,chainId:scope.chainId,current:f.current,status:availability,
   sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,operatorAddress:f.plan.operator,address:f.nomination.candidate.safeAddress,owners:f.nomination.candidate.owners,candidate:f.nomination.candidate,claim:p?.claim??null,context:p?.context??null,signing,transaction,receipt:f.events.receipt??null});
+}
+
+/** Safe quorum and both claim authorizations are reverified before preparing
+ * an exact native-controller transaction. No raw signatures enter its source. */
+export async function verifiedSponsorClubClaimExecutionV4(claimId:string,deps:Deps&{readFacts:(write?:{action:string;body:unknown})=>Promise<Facts>},requireUnpaid=true){
+ const f=await deps.readFacts();check(f.claimId===claimId&&f.plan.chainId===10143&&f.current&&!f.events.revoked);
+ const p=await proofs(f,deps);check(p&&f.events.recipient&&f.events.operator);
+ if(requireUnpaid){check(!f.events.receipt);await live(f,deps);}
+ const proofBinding=(role:'recipient'|'operator')=>{const v=f.events[role] as {digest:string;signer:string};return{digest:v.digest,signer:v.signer};};
+ const source=canonical({claimId:f.claimId,setupId:f.setupId,approvalId:f.approvalId,sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,
+  packageHash:f.packageHash,claim:p.claim,recipient:proofBinding('recipient'),operator:proofBinding('operator')});
+ const transaction={chainId:10143 as const,from:f.plan.operator,to:p.i.campaignAddress,value:'0' as const,
+  data:encodeSponsorClaimV4(p.context,p.claim,{operator:(f.events.operator as {signature:Hex}).signature,recipient:(f.events.recipient as {signature:Hex}).signature})};
+ const after=await deps.readFacts();check(after.current===f.current&&after.sourceStamp===f.sourceStamp&&after.profileFingerprint===f.profileFingerprint&&after.packageHash===f.packageHash
+  &&canonical(after.events)===canonical(f.events),"reward_planning_revision_changed");
+ return{facts:f,source,transaction};
 }

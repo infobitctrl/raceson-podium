@@ -5,6 +5,7 @@ import type {ControllerConnection} from '../screens/RewardsControl';
 const uint=z.string().regex(/^(0|[1-9][0-9]*)$/);
 export const controllerJobSchema=z.object({id:z.string().uuid(),context:z.discriminatedUnion('kind',[
  z.object({kind:z.literal('claim'),claimId:z.string().uuid(),setupId:z.string().uuid(),approvalId:z.string().uuid(),source:z.string()}).strict(),
+ z.object({kind:z.literal('clubClaim'),claimId:z.string().uuid(),setupId:z.string().uuid(),approvalId:z.string().uuid(),source:z.string()}).strict(),
  z.object({kind:z.literal('factory'),build:z.literal(sponsorFactoryBuild.creationCodeHash)}).strict(),
  z.object({kind:z.literal('distribution'),setupId:z.string().uuid(),approvalId:z.string().uuid(),action:z.enum(['upload','stage','activate']),start:z.number().int().min(0),end:z.number().int().min(0),source:z.string()}).strict(),
 ]),transaction:z.object({chainId:z.literal(10143),to:z.string().regex(/^0x[0-9a-f]{40}$/).optional(),data:z.string().regex(/^0x[0-9a-f]+$/),value:z.literal('0'),nonce:uint,gas:uint,gasPrice:uint}).strict(),hash:z.string().regex(/^0x[0-9a-f]{64}$/).nullable(),confirmed:z.boolean(),factory:z.string().regex(/^0x[0-9a-f]{40}$/).nullable()}).strict();

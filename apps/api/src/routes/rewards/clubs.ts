@@ -23,7 +23,7 @@ export async function dispatchClubRewardRoutes(req: IncomingMessage, res: Server
   deps.applyPrivateSessionHeaders(res);
   try {
     const config = deps.config(); if (!config) return false;
-    const identity = await deps.requireIdentity(req), options = { ...config, rpc: deps.rpc };
+    const identity = await deps.requireIdentity(req), options = { ...config, rpc: deps.resolveRpc?.(identity)??deps.rpc };
     const keys = [...url.searchParams.keys()];
     const paginated = action === "list" || action === "clubs";
     if ((!paginated && keys.length) || (paginated && (keys.length > 1 || keys.some(key => key !== "after")))) throw Error("invalid_reward_query");
@@ -44,7 +44,7 @@ export async function dispatchClubRewardRoutes(req: IncomingMessage, res: Server
     if (code === "reward_account_session_required" || message === "Unauthorized" || message === "Missing bearer token")
       deps.sendError(res, 401, "reward_auth_required", "Sign in to view your treasury requests.");
     else if (message === "Untrusted browser origin") deps.sendError(res, 403, "forbidden", "This browser request is not allowed.");
-    else if (code === "reward_club_owner_required") deps.sendError(res, 403, code, "Current club ownership is required to nominate a treasury.");
+    else if (code === "reward_club_owner_required" || code === "reward_demo_account_required") deps.sendError(res, 403, "reward_club_owner_required", "Current club ownership is required to nominate a treasury.");
     else if (code === "reward_club_treasury_not_found") deps.sendError(res, 404, code, "Treasury request not found.");
     else if (code === "reward_club_treasury_withdraw_first" || code === "reward_ledger_idempotency_conflict")
       deps.sendError(res, 409, code, "Review your existing treasury request before submitting another.");

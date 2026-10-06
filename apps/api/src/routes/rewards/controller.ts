@@ -1,3 +1,6 @@
+import {sponsorClubClaimFromFactsV4,type SponsorClubClaimChangeV4} from '../../features/rewards/sponsor-club-claims-v4-service.js';
+import type {hostedCopyNativeClubClaimFacts,hostedCopyNativeClubClaimQueue} from '@raceson/db/rewards';
+import type {SponsorClubClaimReaderV4} from '@raceson/rewards-chain/sponsor-claim-reader-v4';
 import {sponsorClaimFromFactsV4,type SponsorClaimChangeV4} from '../../features/rewards/sponsor-claims-v4-service.js';
 import type {hostedCopyNativeClaimFacts,hostedCopyNativeClaimQueue} from '@raceson/db/rewards';
 import {hostedCopyResultDisplay} from '../../features/rewards/hosted-copy-result-display.js';
@@ -21,16 +24,19 @@ import type {SponsorCreationSigner} from "../../features/rewards/sponsor-creatio
 const uuid=z.string().uuid(), hash=z.string().regex(/^0x[0-9a-f]{64}$/);
 const receipt=z.object({requestId:uuid,transactionHash:hash,operation:z.enum(["deployment","upload","stage","activate"]),start:z.number().int().min(0).max(10000),end:z.number().int().min(0).max(10000)}).strict();
 type Deps=Omit<OrganizerRewardRouteDependencies,"requireIdentity"> & {controllerPolicy:(token?:string)=>ControllerPolicy|null|Promise<ControllerPolicy|null>; requireToken:(r:IncomingMessage)=>Promise<string>; reader?:SponsorCreationDeps["reader"];creationSigner?:SponsorCreationSigner|null;
+ clubReader?:SponsorClubClaimReaderV4;
+ resolveNativeClubClaimQueue?:(actor:{subject:string;wallet:string},id:string,after:string|null)=>ReturnType<typeof hostedCopyNativeClubClaimQueue>;
+ resolveNativeClubClaimFacts?:(actor:{subject:string;wallet:string},id:string)=>ReturnType<typeof hostedCopyNativeClubClaimFacts>;
  resolveRpc?:(actor:{subject:string;wallet:string})=>RewardLedgerRpc;
  resolveNativeClaimQueue?:(actor:{subject:string;wallet:string},id:string,after:string|null)=>ReturnType<typeof hostedCopyNativeClaimQueue>;
  resolveNativeClaimFacts?:(actor:{subject:string;wallet:string},id:string)=>ReturnType<typeof hostedCopyNativeClaimFacts>};
 export async function dispatchRewardController(req:IncomingMessage,res:ServerResponse,url:URL,deps:Deps) {
-  const m=/^\/api\/v1\/rewards\/control(?:\/(access|session|campaigns|transactions|claims)(?:\/([0-9a-f-]+)(?:\/allocations\/([0-9a-f-]+))?)?)?$/.exec(url.pathname);
+  const m=/^\/api\/v1\/rewards\/control(?:\/(access|session|campaigns|transactions|club-claims|claims)(?:\/([0-9a-f-]+)(?:\/allocations\/([0-9a-f-]+))?)?)?$/.exec(url.pathname);
   if(!m)return false;
   deps.applyPrivateSessionHeaders(res);
   try {
     if(req.method!=="GET"&&req.method!=="POST"){res.setHeader("Allow","GET, POST");deps.sendError(res,405,"method_not_allowed","Unsupported method.");return true;}
-    if([...url.searchParams].length&&!(m[1]==="claims"&&!m[2]))throw Error("controller_invalid_request");
+    if([...url.searchParams].length&&!(["claims","club-claims"].includes(m[1]!)&&!m[2]))throw Error("controller_invalid_request");
     if(req.headers.origin && req.headers.origin!==deps.config()?.origin)throw Error("Untrusted browser origin");
     if(deps.config()?.chainId!==10143)throw Error("controller_not_configured");
     const token=await deps.requireToken(req);
@@ -42,6 +48,26 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
       if(!current||canonical(current)!==canonical(config))throw Error("controller_auth_required");
       await authenticateController(token,current);
     };
+    if(m[1]==="club-claims"){
+      if(!m[2]){
+        if(req.method!=='GET'||!deps.resolveNativeClubClaimQueue)throw Error('controller_invalid_request');
+        const q=z.object({approvalId:uuid,after:uuid.optional()}).strict().parse(Object.fromEntries(url.searchParams));
+        if([...url.searchParams.keys()].length!==Object.keys(q).length)throw Error('controller_invalid_request');
+        const page=await deps.resolveNativeClubClaimQueue(actor,q.approvalId,q.after??null);
+        await assertActive();deps.sendSuccess(res,page);return true;
+      }
+      if(!m[2]||m[3]||!deps.resolveNativeClubClaimFacts)throw Error('controller_invalid_request');
+      const id=uuid.parse(m[2]);
+      const change=req.method==='POST'?z.discriminatedUnion('action',[
+        z.object({action:z.literal('operator'),signature:z.string().regex(/^0x[0-9a-f]{130}$/)}).strict(),
+        z.object({action:z.literal('receipt'),transactionHash:hash}).strict(),
+      ]).parse(await deps.readJsonBody(req)):undefined;
+      const facts=deps.resolveNativeClubClaimFacts(actor,id);
+      const view=await sponsorClubClaimFromFactsV4({chainId:10143,claimId:id,role:'operator'},change as SponsorClubClaimChangeV4|undefined,{
+        reader:deps.clubReader,readFacts:async write=>{await assertActive();return facts(write);},
+      });
+      await assertActive();deps.sendSuccess(res,view);return true;
+    }
     if(m[1]==="claims"){
       if(!m[2]){
         if(req.method!=='GET'||!deps.resolveNativeClaimQueue)throw Error('controller_invalid_request');
@@ -64,7 +90,7 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
     }
     if(m[1]==="transactions"&&!m[2]){
       if(!deps.reader)throw Error("controller_chain_unavailable");
-      const d={actor,reader:deps.reader,rpc,assertActive,...(deps.resolveNativeClaimFacts?{nativeClaim:{origin:deps.config()!.origin,facts:(id:string)=>deps.resolveNativeClaimFacts!(actor,id)}}:{})};
+      const d={actor,reader:deps.reader,rpc,assertActive,...(deps.resolveNativeClubClaimFacts&&deps.clubReader?{nativeClubClaim:{reader:deps.clubReader,facts:(id:string)=>deps.resolveNativeClubClaimFacts!(actor,id)}}:{}),...(deps.resolveNativeClaimFacts?{nativeClaim:{origin:deps.config()!.origin,facts:(id:string)=>deps.resolveNativeClaimFacts!(actor,id)}}:{})};
       deps.sendSuccess(res,req.method==="GET"?await controllerTransactionStatus(d):await advanceControllerTransaction(d,await deps.readJsonBody(req)));return true;
     }
     if(m[1]==="access"&&!m[2]&&req.method==="GET") {

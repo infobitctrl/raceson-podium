@@ -100,6 +100,7 @@ export * from "./sponsor-club-claims-v4.js";
 export {resolveSponsorSourceV4} from "./sponsor-source-v4.js";
 export {rewardPublicCampaign,rewardPublicAwards} from './public-campaign.js';
 export {hostedCopyPublicRpc} from './hosted-copy-public.js';
+export {hostedCopyClubWalletRpc} from './hosted-copy-club-wallet.js';
 
 export {rewardPublicDirectory} from './public-directory.js';
 export {rewardWalletSettings,rewardWalletRuntime} from './wallet-settings.js';
@@ -123,3 +124,5 @@ export {hostedCopyControllerRpc} from './hosted-copy-controller.js';
 export {hostedCopyBeneficiaryWalletRpc} from './hosted-copy-beneficiary-wallet.js';
 
 export {hostedCopyClaimFacts,hostedCopyNativeClaimFacts,hostedCopyAthleteAwards,hostedCopyClaimReviews,hostedCopyNativeClaimQueue} from './hosted-copy-claims.js';
+
+export * from "./hosted-copy-club-claims.js";

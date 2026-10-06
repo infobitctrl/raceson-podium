@@ -29,3 +29,15 @@ it('payment shows its fee, requires a separate confirmation and resumes the same
  const pay=await screen.findByRole('button',{name:'Pay exact reward · Privy'});expect(pay).toBeDisabled();expect(screen.getByText(/Maximum gas fee: 0.02 test MON/)).toBeInTheDocument();fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(pay);
  fireEvent.click(await screen.findByRole('button',{name:'Verify payment receipt'}));await waitFor(()=>expect(c.request).toHaveBeenCalledWith('/transactions',{action:'resume',id:job.id}));expect(m.confirm).toHaveBeenCalledExactlyOnceWith(c,wallet,job);
 });
+
+it('native club payment uses its distinct journal kind and requires the same explicit fee confirmation',async()=>{
+ const c=connection(),clubJob={...job,context:{...job.context,kind:'clubClaim'}};
+ m.read.mockResolvedValue({...base,schema:'raceson-sponsor-club-claim-view-v4',status:'ready_to_pay',signing:null,transaction:{...transaction,from:wallet}});
+ c.request.mockImplementation(async(_path,body)=>body?.action==='prepare'?clubJob:{pending:null});m.confirm.mockResolvedValue({...clubJob,hash:'0x'+'b'.repeat(64)});
+ render(<NativeClaimDetail club connection={c} wallet={wallet} setupId={setupId} approvalId={approvalId} id={id}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Prepare exact payment'}));
+ expect(c.request).toHaveBeenCalledWith('/transactions',{action:'prepare',kind:'clubClaim',claimId:id,expectedSourceStamp:base.sourceStamp,expectedProfileFingerprint:base.profileFingerprint});
+ const pay=await screen.findByRole('button',{name:'Pay exact reward · Privy'});expect(pay).toBeDisabled();expect(m.confirm).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(pay);await screen.findByRole('button',{name:'Verify payment receipt'});
+ expect(m.confirm).toHaveBeenCalledExactlyOnceWith(c,wallet,clubJob);expect(m.read.mock.calls.every(call=>call[5]===true)).toBe(true);
+});

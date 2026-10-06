@@ -1,3 +1,4 @@
+vi.mock('./HostedClubClaimReviews',()=>({default:({approvalId}:{approvalId:string})=><p>Club queue {approvalId}</p>}));
 import {fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedAwardUpload from './HostedAwardUpload';
@@ -16,7 +17,7 @@ it('requires explicit funding preparation and results handoff before linking to 
  expect(mocks.upload.mock.calls[1][1]).toEqual({requestId:expect.any(String),contextHash:props.contextHash,documentHash:props.documentHash});
  expect(screen.queryByRole('link',{name:'Open controller workspace'})).not.toBeInTheDocument();expect(screen.queryByText('Recipient queue approval')).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Confirm results handoff'}));expect(await screen.findByRole('link',{name:'Open controller workspace'})).toHaveAttribute('href','/rewards/control?campaign=setup&pot=0');
- expect(screen.getByText('Recipient queue approval')).toBeVisible();
+ expect(screen.getByText('Recipient queue approval')).toBeVisible();expect(screen.getByText('Club queue approval')).toBeVisible();
  expect(mocks.handoff.mock.calls[1][1]).toEqual({action:'publication',requestId:expect.any(String),documentHash:handoff.publicationHash});
  expect(JSON.stringify(mocks.upload.mock.calls[1][1])).not.toMatch(/funding|amount|wallet|source/);
 });

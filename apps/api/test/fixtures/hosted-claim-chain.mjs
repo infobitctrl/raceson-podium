@@ -7,7 +7,7 @@ const h=n=>toHex(BigInt(n),{size:32}),word=v=>typeof v==='string'?padHex(v):h(v)
 // committed builds. This fixture performs no network or on-chain writes.
 function template(build){const bytecode=build.bytecode??sponsorProgrammeBuild.bytecode;for(let i=bytecode.indexOf('608080604052');i>=0;i=bytecode.indexOf('608080604052',i+2)){const code='0x'+bytecode.slice(i,i+build.runtimeBytes*2);if(keccak256(code)===build.runtimeTemplateHash)return code;}throw Error('Pinned runtime template missing');}
 function runtime(build,values){let result=template(build);for(const[name,offsets]of Object.entries(build.offsets))for(const offset of offsets){const at=2+offset*2;assert.equal(values[name].length,66);result=result.slice(0,at)+values[name].slice(2)+result.slice(at+64);}return result;}
-export function hostedClaimChain(f){
+export function hostedClaimChain(f,{paymentBlock=31n}={}){
  const plan=f.plan,c=sponsorContractConfiguration(plan),programme=getContractAddress({from:plan.operator,nonce:0n}).toLowerCase(),campaign=f.package.campaignAddress;
  const publication=f.publication.timing,award={...f.package.awards[0],amount:BigInt(f.package.awards[0].amount)},allocation=sponsorLifecycleCommitmentV4({plan,slot:0,...f.package,awards:[award],publication});
  const short=s=>padHex(stringToHex(s),{size:31,dir:'right'})+toHex(s.length,{size:1}).slice(2),name='RacesOnRewardCampaign',version='5';
@@ -28,9 +28,9 @@ export function hostedClaimChain(f){
    if(functionName==='caps')return args[0]===0n?101n:0n;if(functionName==='campaigns')return args[0]===0n?campaign:'0x'+'0'.repeat(40);
    if(functionName==='state')return 3;if(functionName==='accountedFunding')return 101n;if(functionName==='claimDeadline')return 1000n;if(functionName==='entitlementCount')return 1n;
    if(functionName==='allocated')return args[0]===1n?101n:0n;if(functionName==='paid')return state.paid&&args[0]===1n?101n:0n;if(functionName==='treasuryReturned')return 0n;
-   if(functionName==='entitlements')return[award.beneficiaryId,101n,award.explanationHash,state.paid?1n:0n,state.paid?f.destination.address:'0x'+'0'.repeat(40),1,state.paid,0];
+   if(functionName==='entitlements')return[award.beneficiaryId,101n,award.explanationHash,state.paid?1n:0n,state.paid?(f.destination?.address??f.nomination.candidate.safeAddress):'0x'+'0'.repeat(40),1,state.paid,award.beneficiaryKind];
    if(functionName==='allocationDigest')return allocation.allocationDigest;if(functionName==='snapshotDigest')return allocation.snapshotDigest;if(functionName==='uploadDigest')return allocation.uploadDigest;
    if(functionName==='reviewStartedAt'||functionName==='officialPublishedAt')return 100n;if(functionName==='publicationEvidenceHash')return publication.publicationEvidenceHash;throw Error('Unexpected synthetic contract read');
-  },sendRawTransaction:async({serializedTransaction})=>{state.sent.push(serializedTransaction);const p=parseTransaction(serializedTransaction);state.payment={...tx(keccak256(serializedTransaction),31n,plan.operator,p.to,p.data,p.value??0n),nonce:p.nonce};state.paid=true;state.anchor=31n;throw Error('Synthetic lost broadcast acknowledgement');},
+  },sendRawTransaction:async({serializedTransaction})=>{state.sent.push(serializedTransaction);const p=parseTransaction(serializedTransaction);state.payment={...tx(keccak256(serializedTransaction),paymentBlock,plan.operator,p.to,p.data,p.value??0n),nonce:p.nonce};state.paid=true;state.anchor=paymentBlock;throw Error('Synthetic lost broadcast acknowledgement');},
  };return state;
 }

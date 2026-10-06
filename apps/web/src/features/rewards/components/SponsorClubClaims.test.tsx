@@ -1,3 +1,4 @@
+vi.mock('../data/hostedClubClaims',()=>({getHostedClubAwards:vi.fn()}));
 import {render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
 import {afterEach,it,expect,vi} from 'vitest';
 import SponsorClubClaims,{SponsorClubClaimDetail} from './SponsorClubClaims';
@@ -51,4 +52,14 @@ it('discards stale club authority and collected signatures after a failed refres
  expect(screen.getByRole('checkbox')).not.toBeChecked();
  expect(screen.getByRole('button',{name:'Submit club consent'})).toBeDisabled();
  await waitFor(()=>expect(m.sign).toHaveBeenCalledTimes(1));expect(m.send).not.toHaveBeenCalled();
+});
+
+it('ordinary treasury review uses only the copied review transport and cannot expose wallet signing or payment controls',async()=>{
+ const v={...view(),role:'operator',status:'awaiting_operator',signing:{message:{amount:'1'}},transaction:{to:address}};
+ const review=vi.fn().mockResolvedValue(v);
+ render(<SponsorClubClaimDetail id={id} role="operator" hr={false} chainId={31337} reviewerOnly claimRequest={review}/>);
+ await screen.findByText('Club consent recorded · waiting for controller');
+ expect(review).toHaveBeenCalledWith(id,undefined);expect(m.claim).not.toHaveBeenCalled();
+ expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();expect(screen.queryByText('Owner 11')).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'Sign controller approval'})).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:'Confirm club reward payment'})).not.toBeInTheDocument();expect(m.send).not.toHaveBeenCalled();
 });

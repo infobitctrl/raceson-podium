@@ -26,7 +26,7 @@ export function decodeRewardClubTreasuryCandidate(raw: unknown): RewardClubTreas
 }
 const scope = (s: RewardAccountIdentity, chainId: number) => ({ userId: uuid(s.userId), sessionId: uuid(s.sessionId), chainId: chain(chainId) });
 const argsFor = (s: ReturnType<typeof scope>) => ({ p_user_id: s.userId, p_session_id: s.sessionId, p_chain_id: s.chainId });
-const safeErrors = new Set(["reward_account_session_required", "reward_club_owner_required", "reward_club_treasury_not_found",
+const safeErrors = new Set(["reward_account_session_required", "reward_demo_account_required", "reward_club_owner_required", "reward_club_treasury_not_found",
   "reward_club_treasury_withdraw_first", "invalid_reward_club_treasury_request", "reward_ledger_idempotency_conflict"]);
 async function call(name: Parameters<RewardLedgerRpc>[0], args: Record<string, unknown>, rpc?: RewardLedgerRpc) {
   let result: { data: unknown; error: unknown };

@@ -1,3 +1,6 @@
+import {verifiedSponsorClubClaimExecutionV4,sponsorClubClaimFromFactsV4} from './sponsor-club-claims-v4-service.js';
+import type {hostedCopyNativeClubClaimFacts} from '@raceson/db/rewards';
+import type {SponsorClubClaimReaderV4} from '@raceson/rewards-chain/sponsor-claim-reader-v4';
 import {verifiedSponsorClaimExecutionV4,sponsorClaimFromFactsV4} from './sponsor-claims-v4-service.js';
 import type {hostedCopyNativeClaimFacts} from '@raceson/db/rewards';
 import {createHash,randomUUID} from 'node:crypto';
@@ -12,6 +15,7 @@ import type {SponsorCreationDeps} from './sponsor-creation-service.js';
 const uint=z.string().regex(/^(0|[1-9][0-9]*)$/),hex=z.string().regex(/^0x[0-9a-f]+$/),address=z.string().regex(/^0x[0-9a-f]{40}$/);
 const context=z.discriminatedUnion('kind',[
  z.object({kind:z.literal('claim'),claimId:z.string().uuid(),setupId:z.string().uuid(),approvalId:z.string().uuid(),source:z.string()}).strict(),
+ z.object({kind:z.literal('clubClaim'),claimId:z.string().uuid(),setupId:z.string().uuid(),approvalId:z.string().uuid(),source:z.string()}).strict(),
  z.object({kind:z.literal('factory'),build:z.literal(sponsorFactoryBuild.creationCodeHash)}).strict(),
  z.object({kind:z.literal('distribution'),setupId:z.string().uuid(),approvalId:z.string().uuid(),action:z.enum(['upload','stage','activate']),start:z.number().int().min(0),end:z.number().int().min(0),source:z.string()}).strict(),
 ]);
@@ -19,9 +23,10 @@ const tx=z.object({chainId:z.literal(10143),to:address.optional(),data:hex,value
 const job=z.object({id:z.string().uuid(),subject:z.string(),sender:address,context,transaction:tx,signedTransaction:hex.nullable(),hash:z.string().regex(/^0x[0-9a-f]{64}$/).nullable(),confirmed:z.boolean()}).strict();
 type Job=z.infer<typeof job>;
 type Actor={subject:string;wallet:string};
-type Deps={actor:Actor;reader:SponsorCreationDeps['reader'];rpc?:RewardLedgerRpc;assertActive:()=>Promise<void>;nativeClaim?:{origin:string;facts:(id:string)=>ReturnType<typeof hostedCopyNativeClaimFacts>}};
+type Deps={actor:Actor;reader:SponsorCreationDeps['reader'];rpc?:RewardLedgerRpc;assertActive:()=>Promise<void>;nativeClubClaim?:{reader:SponsorClubClaimReaderV4;facts:(id:string)=>ReturnType<typeof hostedCopyNativeClubClaimFacts>};nativeClaim?:{origin:string;facts:(id:string)=>ReturnType<typeof hostedCopyNativeClaimFacts>}};
 export const controllerTransactionRequest=z.union([
  z.object({action:z.literal('prepare'),kind:z.literal('claim'),claimId:z.string().uuid(),expectedSourceStamp:z.string().regex(/^[0-9a-f]{64}$/),expectedProfileFingerprint:z.string().regex(/^[0-9a-f]{64}$/)}).strict(),
+ z.object({action:z.literal('prepare'),kind:z.literal('clubClaim'),claimId:z.string().uuid(),expectedSourceStamp:z.string().regex(/^[0-9a-f]{64}$/),expectedProfileFingerprint:z.string().regex(/^[0-9a-f]{64}$/)}).strict(),
  z.object({action:z.literal('prepare'),kind:z.literal('factory')}).strict(),
  z.object({action:z.literal('prepare'),kind:z.literal('distribution'),setupId:z.string().uuid(),approvalId:z.string().uuid(),expectedDocumentHash:z.string().regex(/^[0-9a-f]{64}$/).optional()}).strict(),
  z.object({action:z.literal('submit'),id:z.string().uuid(),signedTransaction:hex.max(250000)}).strict(),
@@ -66,7 +71,14 @@ async function distribution(d:Deps,setupId:string,approvalId:string){
  if((await currentDistribution(d,setupId,approvalId)).source!==source)throw Error('controller_source_not_ready');
  return {binding,observed,source};
 }
-async function currentClaim(d:Deps,claimId:string,requireUnpaid=true){
+async function currentClaim(d:Deps,claimId:string,requireUnpaid=true,kind:'claim'|'clubClaim'='claim'){
+ if(kind==='clubClaim'){
+  if(!d.nativeClubClaim)throw Error('controller_source_not_ready');
+  const readFacts=d.nativeClubClaim.facts(claimId);
+  const f=await verifiedSponsorClubClaimExecutionV4(claimId,{reader:d.nativeClubClaim.reader,readFacts:async write=>{await d.assertActive();return readFacts(write);}},requireUnpaid);
+  if(f.transaction.from!==d.actor.wallet)throw Error('controller_scope_required');
+  return{setupId:f.facts.setupId,approvalId:f.facts.approvalId,sourceStamp:f.facts.sourceStamp,profileFingerprint:f.facts.profileFingerprint,source:f.source,transaction:f.transaction};
+ }
  if(!d.nativeClaim)throw Error('controller_source_not_ready');
  const readFacts=d.nativeClaim.facts(claimId);
  const f=await verifiedSponsorClaimExecutionV4(claimId,{origin:d.nativeClaim.origin,reader:d.reader,readFacts:async write=>{await d.assertActive();return readFacts(write);}},requireUnpaid);
@@ -74,7 +86,7 @@ async function currentClaim(d:Deps,claimId:string,requireUnpaid=true){
 }
 function verifyClaimBinding(j:Job,f:Awaited<ReturnType<typeof currentClaim>>){
  const c=j.context,t=j.transaction;
- if(c.kind!=='claim'||c.setupId!==f.setupId||c.approvalId!==f.approvalId||c.source!==f.source||t.to!==f.transaction.to||t.data!==f.transaction.data)throw Error('controller_source_not_ready');
+ if((c.kind!=='claim'&&c.kind!=='clubClaim')||c.setupId!==f.setupId||c.approvalId!==f.approvalId||c.source!==f.source||t.to!==f.transaction.to||t.data!==f.transaction.data)throw Error('controller_source_not_ready');
 }
 function checkReviewedClaim(f:{sourceStamp:string;profileFingerprint:string},r:{expectedSourceStamp:string;expectedProfileFingerprint:string}){
  if(f.sourceStamp!==r.expectedSourceStamp||f.profileFingerprint!==r.expectedProfileFingerprint)throw Error('controller_source_not_ready');
@@ -92,7 +104,7 @@ function verifyDistributionBinding(j:Job,f:Awaited<ReturnType<typeof currentDist
 }
 async function verifyContext(d:Deps,j:Job,requireNext:boolean){
  verifyJob(d,j);const c=j.context;
- if(c.kind==='claim')verifyClaimBinding(j,await currentClaim(d,c.claimId,requireNext));
+ if(c.kind==='claim'||c.kind==='clubClaim')verifyClaimBinding(j,await currentClaim(d,c.claimId,requireNext,c.kind));
  if(c.kind==='distribution'){const f=await distribution(d,c.setupId,c.approvalId);
   verifyDistributionBinding(j,f);
   if(requireNext&&(f.observed.next!==c.action||f.observed.start!==c.start||f.observed.end!==c.end))throw Error('controller_source_not_ready');
@@ -113,13 +125,13 @@ export async function advanceControllerTransaction(d:Deps,input:unknown){
  const r=controllerTransactionRequest.parse(input);await d.assertActive();if(await d.reader.getChainId()!==10143)throw Error('controller_chain_unavailable');
  if(r.action==='prepare'){
   const existing=r.kind==='factory'?await read(d,controllerFactoryId(d.actor)):await read(d);
-  if(existing){if(existing.context.kind!==r.kind||r.kind==='distribution'&&(existing.context.kind!=='distribution'||existing.context.setupId!==r.setupId||existing.context.approvalId!==r.approvalId)||r.kind==='claim'&&(existing.context.kind!=='claim'||existing.context.claimId!==r.claimId))throw Error('controller_transaction_pending');
-   if(r.kind==='claim'&&existing.context.kind==='claim')checkReviewedClaim(await currentClaim(d,r.claimId,false),r);
+  if(existing){if(existing.context.kind!==r.kind||r.kind==='distribution'&&(existing.context.kind!=='distribution'||existing.context.setupId!==r.setupId||existing.context.approvalId!==r.approvalId)||(r.kind==='claim'||r.kind==='clubClaim')&&((existing.context.kind!=='claim'&&existing.context.kind!=='clubClaim')||existing.context.claimId!==r.claimId))throw Error('controller_transaction_pending');
+   if((r.kind==='claim'||r.kind==='clubClaim')&&(existing.context.kind==='claim'||existing.context.kind==='clubClaim'))checkReviewedClaim(await currentClaim(d,r.claimId,false,r.kind),r);
    if(r.kind==='distribution'&&existing.context.kind==='distribution')checkReviewedSource(existing.context.source,r.expectedDocumentHash);
    await verifyContext(d,existing,!existing.hash);return publicJob(existing);}
   let c:Job['context'],to:Hex|undefined,data:Hex;
   if(r.kind==='factory'){c={kind:'factory',build:sponsorFactoryBuild.creationCodeHash};data=sponsorFactoryBuild.bytecode;}
-  else if(r.kind==='claim'){const f=await currentClaim(d,r.claimId);checkReviewedClaim(f,r);c={kind:'claim',claimId:r.claimId,setupId:f.setupId,approvalId:f.approvalId,source:f.source};to=f.transaction.to;data=f.transaction.data;}
+  else if(r.kind==='claim'||r.kind==='clubClaim'){const f=await currentClaim(d,r.claimId,true,r.kind);checkReviewedClaim(f,r);c={kind:r.kind,claimId:r.claimId,setupId:f.setupId,approvalId:f.approvalId,source:f.source};to=f.transaction.to;data=f.transaction.data;}
   else {const f=await distribution(d,r.setupId,r.approvalId);checkReviewedSource(f.source,r.expectedDocumentHash);if(!f.observed.next)throw Error('controller_source_not_ready');
    c={kind:'distribution',setupId:r.setupId,approvalId:r.approvalId,action:f.observed.next,start:f.observed.start,end:f.observed.end,source:f.source};to=f.binding.campaignAddress;data=sponsorLifecycleDataV4(f.binding,c.action,c.start,c.end);}
   const [estimated,price,nonce,balance]=await Promise.all([d.reader.estimateGas({account:d.actor.wallet as Hex,...(to?{to}:{}),data,value:0n}),d.reader.getGasPrice(),d.reader.getTransactionCount({address:d.actor.wallet as Hex,blockTag:'pending'}),d.reader.getBalance({address:d.actor.wallet as Hex,blockTag:'pending'})]);
@@ -130,7 +142,7 @@ export async function advanceControllerTransaction(d:Deps,input:unknown){
   // recheck source/authority and fees; the reserved job still gets a full new
   // next-action observation below, including a concurrent on-chain change.
   verifyJob(d,candidate);
-  if(c.kind==='claim')verifyClaimBinding(candidate,await currentClaim(d,c.claimId,false));
+  if(c.kind==='claim'||c.kind==='clubClaim')verifyClaimBinding(candidate,await currentClaim(d,c.claimId,false,c.kind));
   if(c.kind==='distribution')verifyDistributionBinding(candidate,await currentDistribution(d,c.setupId,c.approvalId));
   await d.assertActive();if(await d.reader.getChainId()!==10143)throw Error('controller_chain_unavailable');
   const reserved=decode(await rewardControllerTransaction(d.actor,'reserve',{id:candidate.id,context:c,transaction},d.rpc));if(!reserved)throw Error('controller_transaction_invalid');await verifyContext(d,reserved,true);return publicJob(reserved);
@@ -156,12 +168,18 @@ export async function advanceControllerTransaction(d:Deps,input:unknown){
    if(chainTx.chainId!==10143||chainTx.hash.toLowerCase()!==j.hash||receipt.from.toLowerCase()!==j.sender||chainTx.blockHash!==receipt.blockHash||chainTx.blockNumber!==receipt.blockNumber||chainTx.transactionIndex!==receipt.transactionIndex||block.hash!==receipt.blockHash)throw Error('controller_transaction_invalid');
    if(receipt.contractAddress?.toLowerCase()!==factory.toLowerCase()||receipt.to!==null||chainTx.from.toLowerCase()!==j.sender||chainTx.to!==null||chainTx.input!==sponsorFactoryBuild.bytecode||chainTx.nonce!==Number(j.transaction.nonce)||chainTx.value!==0n)throw Error('controller_transaction_invalid');
    await verifySponsorFactory(d.reader,factory,10143,receipt.blockNumber);await verifySponsorFactory(d.reader,factory);
-  }else if(j.context.kind==='claim'){
-   const c=j.context,f=await currentClaim(d,c.claimId,false);verifyClaimBinding(j,f);
-   const readFacts=d.nativeClaim!.facts(c.claimId);
-   await sponsorClaimFromFactsV4({chainId:10143,claimId:c.claimId,role:'operator'},{action:'receipt',transactionHash:j.hash as Hex},
-    {origin:d.nativeClaim!.origin,reader:d.reader,readFacts:async write=>{await d.assertActive();return readFacts(write);}});
-   verifyClaimBinding(j,await currentClaim(d,c.claimId,false));
+  }else if(j.context.kind==='claim'||j.context.kind==='clubClaim'){
+   const c=j.context,f=await currentClaim(d,c.claimId,false,c.kind);verifyClaimBinding(j,f);
+   if(c.kind==='clubClaim'){
+    const readFacts=d.nativeClubClaim!.facts(c.claimId);
+    await sponsorClubClaimFromFactsV4({chainId:10143,claimId:c.claimId,role:'operator'},{action:'receipt',transactionHash:j.hash as Hex},
+     {reader:d.nativeClubClaim!.reader,readFacts:async write=>{await d.assertActive();return readFacts(write);}});
+   }else{
+    const readFacts=d.nativeClaim!.facts(c.claimId);
+    await sponsorClaimFromFactsV4({chainId:10143,claimId:c.claimId,role:'operator'},{action:'receipt',transactionHash:j.hash as Hex},
+     {origin:d.nativeClaim!.origin,reader:d.reader,readFacts:async write=>{await d.assertActive();return readFacts(write);}});
+   }
+   verifyClaimBinding(j,await currentClaim(d,c.claimId,false,c.kind));
   }else {const c=j.context,f=await currentDistribution(d,c.setupId,c.approvalId);
    verifyDistributionBinding(j,f);
    // The receipt verifier performs the full fresh runtime/state/finality check.
