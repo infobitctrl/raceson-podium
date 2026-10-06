@@ -1,18 +1,19 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/shared/i18n/I18nProvider";
 import ClubRewards from "./ClubRewards";
 import { clubFixture, clubAddress as a } from "../model/clubFixtures.test-helper";
 const c = vi.hoisted(() => ({ enabled: true, user: "owner", account: "owner", session: { epoch: 1 } as { epoch: number } | null,
-  clubs: vi.fn(), history: vi.fn(), submit: vi.fn(), read: vi.fn(), withdraw: vi.fn(), wallet: vi.fn() }));
+  clubs: vi.fn(), history: vi.fn(), submit: vi.fn(), read: vi.fn(), withdraw: vi.fn(), wallet: vi.fn(), signOut: vi.fn() }));
 vi.mock("../components/SponsorClubClaims",()=>({default:()=> <div>Club claim controls</div>}));
-vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: { id: c.user }, account: { userId: c.account }, session: c.session, isLoading: false }) }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: { id: c.user }, account: { userId: c.account }, session: c.session, isLoading: false, signOut:c.signOut }) }));
 vi.mock("@/lib/public-env", () => ({ publicEnv: { get rewardPortalEnabled() { return c.enabled; }, rewardDemo: { mode: "local" } } }));
 vi.mock("../data/clubTreasuries", () => ({ getRewardOwnedClubs: c.clubs, getClubTreasuryHistory: c.history,
   submitClubTreasury: c.submit, readClubTreasury: c.read, withdrawClubTreasury: c.withdraw }));
+function Route(){const l=useLocation();return <span aria-label="Route">{l.pathname+l.search}</span>;}
 function mount(locale: "en" | "hr" = "en") {
-  const tree = () => <I18nProvider initialLocale={locale}><MemoryRouter><ClubRewards /></MemoryRouter></I18nProvider>;
+  const tree = () => <I18nProvider initialLocale={locale}><MemoryRouter initialEntries={['/club/rewards']}><ClubRewards /><Route/></MemoryRouter></I18nProvider>;
   const view = render(tree()); return { ...view, update: () => view.rerender(tree()) };
 }
 async function open(locale: "en" | "hr" = "en") {
@@ -33,6 +34,7 @@ beforeEach(() => {
   c.submit.mockReset().mockResolvedValue(f.request); c.read.mockReset().mockResolvedValue(f.request);
   c.withdraw.mockReset().mockResolvedValue({ ...f.request, status: "withdrawn", withdrawnAt: "2026-09-09T01:01:00Z" }); c.wallet.mockReset();
   Object.defineProperty(window, "ethereum", { configurable: true, value: { request: c.wallet } });
+  c.signOut.mockReset().mockResolvedValue(undefined);
 });
 describe("private club treasury journey", () => {
   it.each(["en", "hr"] as const)("requires named-club selection and explicit nomination in %s without wallet calls", async locale => {
@@ -119,4 +121,9 @@ it("does not mistake failed ownership verification for an empty account",async()
   expect(await screen.findByRole('alert')).toBeVisible();
   expect(screen.queryByRole('heading',{name:'No club to manage'})).not.toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Nominate a treasury'})).toBeDisabled();
+});
+it('offers an explicit account switch after ownership denial instead of looping through sign-in with the same account',async()=>{
+ c.clubs.mockRejectedValue({status:403});c.history.mockRejectedValue({status:403});mount();
+ const change=await screen.findByRole('button',{name:'Sign in with the club owner account'});expect(c.signOut).not.toHaveBeenCalled();
+ fireEvent.click(change);await screen.findByText('/auth?next=%2Fclub%2Frewards');expect(c.signOut).toHaveBeenCalledOnce();expect(c.submit).not.toHaveBeenCalled();expect(c.wallet).not.toHaveBeenCalled();
 });

@@ -77,10 +77,10 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
   </div>;
 }
 function PrivateWorkspace() {
-  const { t } = useI18n(), [error, setError] = useState<unknown>(null);
+  const { t, locale } = useI18n(), [error, setError] = useState<unknown>(null);
   return error ? <div role="alert" className={`${p.panel} space-y-3`}><p>{t(clubTreasuryErrorKey(error))}</p>
     <Button variant="outline" onClick={() => setError(null)}>{t("rewards.organizer.checkAccess")}</Button>
-    <Link className="block text-primary underline" to="/auth?next=%2Fclub%2Frewards">{t("common.signIn")}</Link></div> : <Workspace onAccessLost={setError} />;
+    <RewardAccountSwitch hr={locale==='hr'} label={locale==='hr'?'Prijavite se računom vlasnika kluba':'Sign in with the club owner account'}/></div> : <Workspace onAccessLost={setError} />;
 }
 export default function ClubRewards() {
   const { t, locale } = useI18n(), { user, account, session, isLoading } = useAuth();
