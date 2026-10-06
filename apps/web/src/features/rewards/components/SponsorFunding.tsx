@@ -2,7 +2,7 @@ import {walletActionLabel} from "../model/walletActionLabel";
 import SponsorCompleteSetup from "./SponsorCompleteSetup";
 import RewardExplorerLink from "./RewardExplorerLink";
 import {useEffect, useId, useRef, useState, type ReactNode} from "react";
-import {ArrowRight, Check, RefreshCw} from "lucide-react";
+import {ArrowRight, Check, Circle, RefreshCw} from "lucide-react";
 import {ApiError} from "@/lib/api";
 import {sponsorLaunchSourcesReady, type SponsorLaunch} from "@raceson/domain/rewards/sponsor-launch";
 import {decodeCopySponsorLaunchBinding,type CopySponsorLaunchBinding} from '@raceson/domain/rewards/copy-sponsor-launch';
@@ -211,11 +211,18 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
     {funded ? allocation : null}
     {funded && !published?<p role="status" className={s.success}>{published?t("Your campaign is public. Follow results, awards and payouts on its campaign page.","Vaša kampanja je javna. Pratite rezultate, nagrade i isplate na stranici kampanje."):t("All selected pots are funded. Complete setup to open your public campaign page.","Svi odabrani fondovi su financirani. Dovršite postavljanje za otvaranje javne stranice kampanje.")}</p>:null}
     {funded && !published && record?.fundingHash && !pending ? <SponsorCompleteSetup compact published={published} id={launch.setup.id} hr={hr}/> : null}
-    <details open={!funded||Boolean(error)||Boolean(pending)} className={`${s.card} ${s.fundingPanel} ${d.card} ${funded ? d.history : d.current}`} aria-label={t("Add reward funds", "Uplatite fond nagrada")}><summary hidden={!funded}>{t("History", "Povijest")} <small>· {record?.deploymentHash ? 3 : 2} {t("completed", "dovršeno")}</small></summary>
+    <details open={!funded||Boolean(error)||Boolean(pending)} className={`${s.fundingPanel} ${d.card} ${funded ? d.history : d.current}`} aria-label={t("Add reward funds", "Uplatite fond nagrada")}><summary hidden={!funded}>{t("History", "Povijest")} <small>· {record?.deploymentHash ? 3 : 2} {t("completed", "dovršeno")}</small></summary>
       {funded ? <ul className={d.historyList}><li><Check size={14}/>{t("Rules saved", "Pravila spremljena")}</li>{record?.deploymentHash ? <li><Check size={14}/>{t("Reward contract created", "Ugovor za nagrade izrađen")}</li> : null}<li><Check size={14}/>{t("Prize deposit confirmed", "Uplata nagrada potvrđena")}</li></ul> : null}
-      <span className={s.eyebrow}>{t("Current task", "Trenutni zadatak")}</span>
-      <h2>{pending ? receiptHeading : !view ? t("Your campaign status", "Stanje vaše kampanje") : funded ? t("Your campaign is funded", "Vaša kampanja je financirana") : !sourcesReady ? t("Use a corrected campaign draft", "Koristite ispravljeni nacrt kampanje") : unavailable ? creationBlocked ? t("Waiting for the creation service", "Čeka se usluga izrade") : t("Launch unavailable", "Pokretanje nije dostupno") : accountReady ? t("Ready for your deposit", "Spremno za vašu uplatu") : creating ? creationQueued ? t("Your account creation is queued", "Izrada računa je na čekanju") : creationSubmitted ? t("Waiting for account confirmation", "Čeka se potvrda računa") : t("Preparing your reward account", "Priprema računa za nagrade") : t("Bring your rewards to life", "Pokrenite svoje nagrade")}</h2>
-      {view && sourcesReady && !unavailable && !pending && !funded && !creating ? <p className={s.fundingIntro}>{accountReady ? t("One step left: deposit your prize budget.", "Još jedan korak: uplatite fond nagrada.") : walletReady || plan ? t("Two steps left. We’ll guide you through them.", "Još dva koraka. Vodimo vas kroz njih.") : t("Three simple steps to fund your campaign.", "Tri jednostavna koraka za financiranje kampanje.")}</p> : null}
+      <span className={d.eyebrow}>{t("Current task", "Trenutni zadatak")}</span>
+      {view || pending ? <ol className={d.milestones} aria-label={t("Funding progress", "Napredak financiranja")}>{[t("Funding wallet connected","Novčanik za uplatu povezan"),t("Reward contract created","Ugovor nagrada izrađen"),t("Prize deposit confirmed","Uplata nagrada potvrđena")].map((label,i)=>{const done=[Boolean(plan||walletReady),accountReady,funded][i];return <li key={label} aria-current={step===i?"step":undefined} data-complete={done}><span className={s.milestoneIcon}>{done?<Check size={20} aria-label={t("Complete","Dovršeno")}/>:<Circle size={20} aria-hidden="true"/>}</span>{label}</li>;})}</ol>:null}
+      <div className={d.task}>
+      <h2>{pending ? receiptHeading : !view ? t("Your campaign status", "Stanje vaše kampanje") : funded ? t("Your campaign is funded", "Vaša kampanja je financirana") : !sourcesReady ? t("Use a corrected campaign draft", "Koristite ispravljeni nacrt kampanje") : unavailable ? creationBlocked ? t("Waiting for the creation service", "Čeka se usluga izrade") : t("Launch unavailable", "Pokretanje nije dostupno") : accountReady ? t("Deposit the prize funds", "Uplatite fond nagrada") : creating ? creationQueued ? t("Your account creation is queued", "Izrada računa je na čekanju") : creationSubmitted ? t("Waiting for account confirmation", "Čeka se potvrda računa") : t("Preparing your reward account", "Priprema računa za nagrade") : step === 0 ? t("Connect your funding wallet", "Povežite novčanik za uplatu") : t("Create the reward contract", "Izradite ugovor nagrada")}</h2>
+      {step === 0 && !pending ? <p className={s.fundingIntro}>{t("Connect the wallet you will use to deposit your prizes.", "Povežite novčanik kojim ćete uplatiti nagrade.")}</p> : null}
+      {!funded && plan && wallet?.address !== plan.funder ? <div className={s.stepAddress} aria-label={t("Saved sponsor wallet", "Spremljeni novčanik sponzora")}><span>{t("Funding wallet", "Novčanik za uplatu")}</span><p className={s.address}><RewardExplorerLink chainId={launch.setup.chainId} kind="address" value={plan.funder}/></p></div> : null}
+      {/* Keep the provider mounted when the current task changes. Unmounting it retires the selected wallet. */}
+      {sourcesReady && view?.enabled ? <div hidden={funded || Boolean(pending) || creating || (step !== 0 && walletReady)} className={s.walletDock}>
+        <SponsorWallet compact showBalance balanceRevision={record?.fundingHash ?? ""} chainId={launch.setup.chainId} hr={hr} onWallet={setWallet} requiredAddress={plan?.funder}/>
+      </div> : null}
       {!view && !error ? <p role="status">{t("Checking campaign status…", "Provjera stanja kampanje…")}</p> : null}
       {!sourcesReady ? <div role="status" className={s.notice}>
         <strong>{t("New deposits are blocked for this campaign.", "Nove uplate za ovu kampanju su onemogućene.")}</strong>
@@ -228,24 +235,17 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
         <p>{creationBlocked?t("RacesOn must resolve an earlier controller request first. No creation transaction has been sent for this campaign, and your prize funds have not moved. Refresh funding status to check availability; creation still requires your explicit action.","RacesOn prvo mora riješiti raniji zahtjev kontrolera. Transakcija izrade ove kampanje nije poslana i fond nagrada nije prenesen. Osvježite stanje financiranja za provjeru dostupnosti; izradu i dalje morate izričito pokrenuti."):t("Your campaign is saved. RacesOn needs to restore this service before you can create the account and deposit your prize budget. Please try again later.", "Kampanja je spremljena. RacesOn mora obnoviti uslugu prije izrade računa i uplate fonda nagrada. Pokušajte kasnije.")}</p>
       </div>:null}
 
-      {view || pending ? <nav className={s.fundingMilestones} aria-label={t("Funding progress", "Napredak financiranja")}>{[t("Funding wallet","Novčanik za uplatu"),t("Reward account","Račun za nagrade"),t("Prize deposit","Uplata nagrada")].map((label,i)=>{const done=[Boolean(plan||walletReady),accountReady,funded][i];return <a key={i} href={`#${journeyId}-${i}`} aria-current={step===i?"step":undefined} data-complete={done}><span>{done?<Check size={15} aria-label={t("Complete","Dovršeno")}/>:i+1}</span>{label}</a>;})}</nav>:null}
-      {view || pending ? <ol className={s.fundingSteps} aria-label={t("Funding steps", "Koraci financiranja")}>
-        <li id={`${journeyId}-0`} tabIndex={-1} data-complete={Boolean(plan || walletReady)} aria-current={step === 0 ? "step" : undefined}>
+      {view || pending ? <ol className={s.fundingSteps} hidden={!funded && step === 0} aria-label={t("Funding steps", "Koraci financiranja")}>
+        <li id={`${journeyId}-0`} hidden={!funded} tabIndex={-1} data-complete={Boolean(plan || walletReady)} aria-current={step === 0 ? "step" : undefined}>
           {marker(0, Boolean(plan || walletReady))}<div>
             <h3>{walletReady ? t("Wallet connected", "Novčanik povezan") : plan ? t("Funding wallet saved", "Novčanik za uplatu spremljen") : t("Connect your wallet", "Povežite novčanik")}</h3>
             {plan && !wallet ? <p>{funded || pending ? t("Your funding wallet is saved for this campaign.", "Novčanik za uplatu spremljen je za ovu kampanju.") : t("Use your saved wallet to continue.", "Nastavite sa spremljenim novčanikom.")}</p> : null}
-            {plan && wallet?.address !== plan.funder ? <div className={s.stepAddress} aria-label={t("Saved sponsor wallet", "Spremljeni novčanik sponzora")}><span>{t("Funding wallet", "Novčanik za uplatu")}</span><p className={s.address}><RewardExplorerLink chainId={launch.setup.chainId} kind="address" value={plan.funder}/></p></div> : null}
-            {sourcesReady && view?.enabled ? <>
-              {!funded && !pending ? <>
-              {!plan && !walletReady ? <p>{t("Connect the wallet you will use to fund this campaign.", "Povežite novčanik kojim ćete financirati ovu kampanju.")}</p> : !walletReady ? <p>{t("Connect this wallet to approve your deposit.", "Povežite ovaj novčanik za potvrdu uplate.")}</p> : null}
-              </> : null}
-              <SponsorWallet compact showBalance balanceRevision={record?.fundingHash ?? ""} chainId={launch.setup.chainId} hr={hr} onWallet={setWallet} requiredAddress={plan?.funder}/>
-            </> : null}
+            {funded && plan && wallet?.address !== plan.funder ? <div className={s.stepAddress} aria-label={t("Saved sponsor wallet", "Spremljeni novčanik sponzora")}><span>{t("Funding wallet", "Novčanik za uplatu")}</span><p className={s.address}><RewardExplorerLink chainId={launch.setup.chainId} kind="address" value={plan.funder}/></p></div> : null}
           </div>
         </li>
-        <li id={`${journeyId}-1`} tabIndex={-1} data-complete={accountReady} aria-current={step === 1 ? "step" : undefined}>
+        <li id={`${journeyId}-1`} hidden={!funded && step !== 1} tabIndex={-1} data-complete={accountReady} aria-current={step === 1 ? "step" : undefined}>
           {marker(1, accountReady)}<div>
-            <h3>{accountReady ? t("Reward account created", "Račun za nagrade izrađen") : t("Create reward account", "Izradite račun za nagrade")}</h3>
+            {funded ? <h3>{t("Reward account created", "Račun za nagrade izrađen")}</h3> : null}
 {launch.setup.chainId===10143 && view?.creation ? <p>{t("Creation uses RacesOn’s authorized Privy wallet. RacesOn pays creation gas; your prize deposit is separate.", "Izrada koristi ovlašteni RacesOn Privy novčanik. RacesOn plaća plin za izradu; vaša uplata nagrada je odvojena.")}</p> : null}
             {accountReady ? <details className={s.completedContract}><summary>{t("Account & creation receipt","Račun i potvrda izrade")}</summary><div className={s.stepAddress}><span>{t("Campaign reward account", "Račun za nagrade kampanje")}</span><p className={s.address}><RewardExplorerLink chainId={launch.setup.chainId} kind="address" value={observation!.address}/></p>{record?.deploymentHash ? <p><RewardExplorerLink chainId={launch.setup.chainId} kind="tx" value={record.deploymentHash}>{t("View account creation receipt", "Pogledaj potvrdu izrade računa")}</RewardExplorerLink></p> : null}</div></details> : null}
             {accountReady ? <p>{t("Ready to hold your campaign’s prizes.", "Spremno za fond nagrada kampanje.")}</p> : <>
@@ -274,9 +274,9 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
             {pending?.action === "deployment" ? pendingStatus : null}
           </div>
         </li>
-        <li id={`${journeyId}-2`} tabIndex={-1} data-complete={funded} data-upcoming={!accountReady && !pending} aria-current={step === 2 ? "step" : undefined}>
+        <li id={`${journeyId}-2`} hidden={!funded && step !== 2} tabIndex={-1} data-complete={funded} data-upcoming={!accountReady && !pending} aria-current={step === 2 ? "step" : undefined}>
           {marker(2, funded)}<div>
-            <h3>{funded ? t("Deposit confirmed", "Uplata potvrđena") : pending?.action === "funding" ? t("Deposit sent", "Uplata poslana") : t("Deposit prizes", "Uplatite nagrade")} <span className={s.stepAmount}>{budget} test MON</span></h3>
+            {funded ? <h3>{t("Deposit confirmed", "Uplata potvrđena")} <span className={s.stepAmount}>{budget} test MON</span></h3> : <p className={s.stepAmount}>{t("Exact deposit", "Točna uplata")}: <strong>{budget} test MON</strong></p>}
             {plan ? <div className={s.stepAddress}><span>{t("From funding wallet", "Iz novčanika za uplatu")}</span><p className={s.address}><RewardExplorerLink chainId={launch.setup.chainId} kind="address" value={plan.funder}/></p></div> : null}
             {accountReady ? <div className={s.stepAddress}><span>{t("To reward account", "Na račun za nagrade")}</span><p className={s.address}><RewardExplorerLink chainId={launch.setup.chainId} kind="address" value={observation!.address}/></p></div> : null}
             {funded && !published && record?.fundingHash && !pending ? <p><RewardExplorerLink chainId={launch.setup.chainId} kind="tx" value={record.fundingHash}>{t("View prize deposit receipt", "Pogledaj potvrdu uplate nagrada")}</RewardExplorerLink></p> : null}
@@ -315,6 +315,7 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
         : error === "sponsor_preflight_failed" ? t("Could not estimate this transaction through your wallet. No transaction was requested. Check the network connection and try Check balance.", "Transakcija nije procijenjena putem novčanika. Slanje nije zatraženo. Provjerite mrežu i pokušajte Provjeri stanje.")
         : t("Could not confirm this step. If your wallet sent a transaction, recover its hash below instead of sending again.", "Ovaj korak nije potvrđen. Ako je novčanik poslao transakciju, unesite njezin hash ispod umjesto ponovnog slanja.")}</p> : null}
 
+      </div>
       <details className={`${s.details} ${s.fundingHelp}`}><summary>{t("Details & help", "Detalji i pomoć")}</summary>
       {plan ? <>
         <div>

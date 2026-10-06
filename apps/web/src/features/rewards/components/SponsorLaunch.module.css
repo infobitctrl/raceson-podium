@@ -73,3 +73,13 @@
 
 /* Exact reference funding density; transaction controls retain their real states. */
 .fundingPanel>h2{font-size:24px;line-height:1.25;margin:12px 0}.fundingPanel .fundingIntro{font-size:14px}.fundingMilestones{gap:8px;margin:20px 0}.fundingMilestones a{border:0;border-radius:8px;min-height:48px;background:#eee9e1;font-size:12px}.fundingMilestones a[aria-current=step]{background:#fff0e5;color:#a3420d}.fundingMilestones a[aria-current=step]>span{background:#f56617;border-color:#f56617;color:#fff}.fundingPanel .fundingSteps{margin:0;gap:12px}.fundingPanel .fundingSteps>li{padding:0;border:0;border-radius:0;background:transparent;grid-template-columns:minmax(0,1fr)}.fundingPanel .fundingSteps>li:before,.fundingPanel .fundingSteps>li>.stepNumber{display:none}.fundingPanel .fundingSteps>li[data-complete=true]{padding:12px;background:#f5f3ee;border:0}.fundingPanel .fundingSteps>li[data-upcoming=true]{display:grid;padding:12px;background:#f5f3ee;border-radius:10px}.fundingPanel .fundingSteps>li[data-upcoming=true] h3{font-size:14px}.fundingPanel .fundingSteps h3{font-size:20px;margin:0 0 8px}.fundingPanel .fundingSteps>li[data-complete=true] h3{font-size:14px}.fundingPanel .fundingSteps p{font-size:14px}.primary{background:#f56617;color:#201c19}.primary:hover{background:#df5409}.summary .pots button{border-radius:8px}.header{gap:20px}.header h1{line-height:1.12}.launchTerms dt{font-size:12px}.launchTerms dd{margin-left:0}.fundingPanel .fundingHelp{padding-top:16px}@media(max-width:1023px){.layout{grid-template-columns:minmax(0,1fr)}.main,.summary{grid-column:1;grid-row:auto}.main{order:-1}}
+
+/* The live execution workspace uses the same single current-task card as the reference. */
+.fundingPanel [hidden]{display:none!important}
+.fundingPanel .milestoneIcon{border:0;width:20px;height:20px;background:transparent;color:inherit}
+.fundingPanel .walletDock{margin:16px 0 0}
+.fundingPanel .fundingSteps{margin:0;list-style:none;padding:0}
+.fundingPanel .fundingSteps>li[aria-current=step]{border:0;background:transparent;padding:0}
+.fundingPanel .fundingSteps>li>div{min-width:0}
+.fundingPanel .fundingIntro{margin:0;font-size:14px;line-height:20px;color:#62584f}
+.fundingPanel>div>h2{font-size:18px;line-height:28px;margin:0 0 4px}

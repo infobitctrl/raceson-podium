@@ -1,3 +1,4 @@
+import {useEffect} from "react";
 import {act,fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach,beforeEach, expect, it, vi} from "vitest";
 import {addGuidedGroup, createGuidedSetup} from "@raceson/domain/rewards/guided-setup-editor";
@@ -7,10 +8,13 @@ import type {SponsorExecutionView} from "../data/sponsorExecution";
 import SponsorFunding from "./SponsorFunding";
 import {ApiError} from "@/lib/api";
 import {saveSponsorReceipt,readSponsorReceipt,sponsorReceiptKey} from "../model/sponsorPendingReceipt";
-const mocks = vi.hoisted(() => ({api: vi.fn(), send: vi.fn(), check: vi.fn()}));
+const mocks = vi.hoisted(() => ({api: vi.fn(), send: vi.fn(), check: vi.fn(), walletUnmount: vi.fn()}));
 vi.mock("../data/sponsorExecution", () => ({sponsorExecution: mocks.api}));
 vi.mock("../data/sponsorTransaction", () => ({sendSponsorTransaction: mocks.send, checkSponsorTransaction: mocks.check, sponsorTransactionGasLimit: (action: string) => action === "deployment" ? 3_000_000_000_000_000_000n : 500_000_000_000_000_000n}));
-vi.mock("./SponsorWallet", () => ({default: ({onWallet, purpose}: {onWallet: (w: unknown) => void; purpose?: string}) => <button onClick={() => onWallet({address: "0x"+(purpose === "operator" ? "22" : "11").repeat(20), wallet: {id:"fixture",name:"Fixture",provider:{}}})}>{purpose === "operator" ? "Connect operator wallet" : "Connect fixture wallet"}</button>}));
+vi.mock("./SponsorWallet", () => ({default: function FixtureWallet({onWallet, purpose}: {onWallet: (w: unknown) => void; purpose?: string}) {
+ useEffect(()=>()=>{mocks.walletUnmount();onWallet(null);},[onWallet]);
+ return <button onClick={() => onWallet({address: "0x"+(purpose === "operator" ? "22" : "11").repeat(20), wallet: {id:"fixture",name:"Fixture",provider:{}}})}>{purpose === "operator" ? "Connect operator wallet" : "Connect fixture wallet"}</button>;
+}}));
 const id = (n: number) => `73000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 const plan: SponsorExecutionPlan = {version:4,launchId:id(3),setupRevision:4,configurationHash:"a".repeat(64),chainId:10143,funder:"0x"+"11".repeat(20),operator:"0x"+"22".repeat(20),
   unallocatedTreasury:"0x"+"33".repeat(20),expiredTreasury:"0x"+"11".repeat(20),claimLifetime:86400,reviewPeriods:[0,0,0,0,0,0],caps:["101","0","0","0","0","0"],budgetWei:"101"};
@@ -23,7 +27,7 @@ launch.setup.configuration.root.children.forEach((pot,index)=>{pot.shareBps=inde
 launch.setup.configuration.root.children[0].children[0].shareBps=10000;
 const deployment="0x"+"aa".repeat(32),funding="0x"+"bb".repeat(32),address="0x"+"44".repeat(20);
 const observed=(funded=false)=>({address,deploymentHash:deployment,funded,cancelled:false,fundingHash:funded?funding:null,blockNumber:"100",blockTimestamp:"1790162000",blockHash:"0x"+"cc".repeat(32),pots:[{slot:0,address:"0x"+"55".repeat(20),amountWei:"101",state:funded?1:0,paused:false,allocatedWei:"0",paidWei:"0",returnedWei:"0",remainingWei:funded?"101":"0",claimDeadline:"0",entitlementCount:"0"}]});
-beforeEach(()=>{mocks.api.mockReset();mocks.send.mockReset();mocks.check.mockReset();sessionStorage.clear();localStorage.clear();});
+beforeEach(()=>{mocks.api.mockReset();mocks.send.mockReset();mocks.check.mockReset();mocks.walletUnmount.mockReset();sessionStorage.clear();localStorage.clear();});
 afterEach(()=>{vi.useRealTimers();});
 it("shows linked source, verified account and deposit destination under their steps", async () => {
  mocks.api.mockResolvedValue({enabled:true,record:{plan,deploymentHash:deployment,fundingHash:funding},observation:observed(true)});
@@ -44,10 +48,10 @@ it("keeps the saved wallet visible while creation is pending without inventing a
  mocks.api.mockResolvedValue({enabled:true,record:{plan,deploymentHash:null,fundingHash:null},observation:null,creation:{status:"submitted",reason:null,hash:deployment}});
  render(<SponsorFunding launch={launch} hr/>);
  const steps=within(await screen.findByRole("list",{name:"Koraci financiranja"})).getAllByRole("listitem");
- expect(within(steps[0]).getByRole("link",{name:plan.funder})).toBeVisible();
- expect(within(steps[1]).queryByRole("link",{name:address})).not.toBeInTheDocument();
- expect(within(steps[2]).queryByRole("link",{name:address})).not.toBeInTheDocument();
- expect(within(steps[2]).getByText("Iz novčanika za uplatu")).toBeVisible();
+ expect(steps).toHaveLength(1);
+ expect(within(screen.getByLabelText("Spremljeni novčanik sponzora")).getByRole("link",{name:plan.funder})).toBeVisible();
+ expect(screen.queryByRole("link",{name:address})).not.toBeInTheDocument();
+ expect(screen.queryByText("Dostupno nakon izrade računa.")).not.toBeVisible();
  expect(mocks.send).not.toHaveBeenCalled();
 });
 it("verifies a submitted creation receipt without requesting another broadcast",async()=>{
@@ -166,7 +170,7 @@ it("does not offer a disabled launch button for an unconfigured new campaign",as
  mocks.api.mockResolvedValue({enabled:true,record:null,observation:null,creation:{status:"unavailable",reason:"configuration",hash:null}});
  render(<SponsorFunding launch={launch} hr={false}/>);
  await screen.findByRole("heading",{name:"Launch unavailable"});
- expect(screen.getByText(/Connect the wallet you will use to fund this campaign/)).toBeVisible();
+ expect(screen.getByText(/Connect the wallet you will use to deposit your prizes/)).toBeVisible();
  expect(screen.queryByRole("button",{name:"Create reward account"})).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole("button",{name:"Connect fixture wallet"}));
  expect(mocks.api).toHaveBeenCalledTimes(1);expect(mocks.send).not.toHaveBeenCalled();
@@ -214,8 +218,9 @@ it("does not start or retry deployment for an unbound frozen launch",async()=>{
 it("distinguishes creation confirmation from an unfunded budget and points to the next action", async () => {
  mocks.api.mockResolvedValue({enabled:true,record:{plan,deploymentHash:deployment,fundingHash:null},observation:observed()});
  render(<SponsorFunding launch={launch} hr={false}/>);
- await screen.findByRole("heading",{name:"Reward account created"});
- expect(screen.getByRole("heading",{name:"Ready for your deposit"})).toBeVisible();
+ await screen.findByRole("heading",{name:"Deposit the prize funds"});
+ expect(screen.queryByRole("heading",{name:"Reward account created"})).not.toBeInTheDocument();
+ expect(within(screen.getByRole("list",{name:"Funding steps"})).getAllByRole("listitem")).toHaveLength(1);
  expect(screen.queryByText("Deposit confirmed")).not.toBeInTheDocument();
  expect(screen.getByRole("list",{name:"Funding steps"}).querySelector('[aria-current="step"]')).toHaveTextContent("Deposit reward funds");
  expect(screen.getByRole("link",{name:"My campaigns"})).toHaveAttribute("href","/rewards/manage");
@@ -505,4 +510,33 @@ it('shows separate verified creation and deposit receipts after funding',async()
  expect(screen.getByRole('link',{name:'View account creation receipt'})).toHaveAttribute('href',`https://testnet.monadvision.com/tx/${deployment}`);
  expect(screen.getByRole('link',{name:'View prize deposit receipt'})).toHaveAttribute('href',`https://testnet.monadvision.com/tx/${funding}`);
  expect(mocks.send).not.toHaveBeenCalled();
+});
+
+
+it("shows only the current action and preserves the connected provider across stage changes",async()=>{
+ let value:SponsorExecutionView={enabled:true,record:null,observation:null,creation:{status:"ready",reason:null,hash:null}};
+ mocks.api.mockImplementation(async(_id,action)=>{
+  if(action?.action==="prepare")value={...value,record:{plan,deploymentHash:null,fundingHash:null}};
+  if(action?.action==="launch")value={...value,record:{plan,deploymentHash:deployment,fundingHash:null},observation:observed()};
+  return value;
+ });
+ render(<SponsorFunding launch={launch} hr={false}/>);
+ await screen.findByRole("heading",{name:"Connect your funding wallet"});
+ const progress=screen.getByRole("list",{name:"Funding progress"});
+ expect(within(progress).queryAllByRole("link")).toHaveLength(0);
+ expect(within(progress).getAllByRole("listitem")).toHaveLength(3);
+ expect(screen.queryByRole("button",{name:"Create reward account"})).not.toBeInTheDocument();
+ expect(screen.queryByRole("button",{name:"Deposit reward funds"})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole("button",{name:"Connect fixture wallet"}));
+ await screen.findByRole("heading",{name:"Create the reward contract"});
+ expect(screen.queryByRole("button",{name:"Connect fixture wallet"})).not.toBeInTheDocument();
+ expect(within(screen.getByRole("list",{name:"Funding steps"})).getAllByRole("listitem")).toHaveLength(1);
+ expect(mocks.walletUnmount).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole("button",{name:"Create reward account"}));
+ await screen.findByRole("heading",{name:"Deposit the prize funds"});
+ expect(screen.getByRole("button",{name:"Deposit reward funds"})).toBeEnabled();
+ expect(screen.queryByRole("button",{name:"Create reward account"})).not.toBeInTheDocument();
+ expect(within(screen.getByRole("list",{name:"Funding steps"})).getAllByRole("listitem")).toHaveLength(1);
+ expect(progress.querySelectorAll('[data-complete="true"]')).toHaveLength(2);
+ expect(mocks.walletUnmount).not.toHaveBeenCalled();expect(mocks.send).not.toHaveBeenCalled();
 });
