@@ -38,3 +38,21 @@ test('public catalogue cannot open writes, queries, source overrides or transact
  }
  assert.equal(hostedCopyRequestAllowed('POST',new URL('/api/v1/rewards/sponsor-execution','https://demo.invalid'),'sponsor-drafts-v1'),false);
 });
+
+test('active hosted operations bypass the preview directory but retain the verified catalogue route',async()=>{
+ const {dispatchHostedCopyCatalogue}=await import('../dist/routes/rewards/hosted-copy-catalogue.js');
+ const values={APP_BASE_URL:'https://podium.raceson.com',API_CORS_ORIGIN:'https://podium.raceson.com',SUPABASE_URL:'https://niklhlmljiikwbkrmapw.supabase.co',SUPABASE_ANON_KEY:'synthetic-anon-key',SUPABASE_SERVICE_ROLE_KEY:'synthetic-service-key',RACESON_REWARD_PORTAL_MODE:'testnet',RACESON_REWARD_HOSTED_COPY_MODE:'sponsor-drafts-v1',RACESON_REWARD_HOSTED_OPERATIONS:'testnet-v1',RACESON_REWARD_DEMO_ORIGIN:'https://podium.raceson.com',RACESON_REWARD_DEMO_SUPABASE_URL:'https://niklhlmljiikwbkrmapw.supabase.co'};
+ const old=Object.fromEntries(Object.keys(values).map(k=>[k,process.env[k]]));Object.assign(process.env,values);
+ let response,reads=0;
+ const deps={config:()=>({chainId:10143}),applyPrivateSessionHeaders(){},sendSuccess:(_,data)=>response={status:200,data},sendError:(_,status)=>response={status}};
+ const read=async()=>{reads++;return {catalogue:{name:'Synthetic catalogue'},directory:null};};
+ const directory=new URL('https://podium.raceson.com/api/v1/rewards/public-campaigns');
+ try{
+  assert.equal(await dispatchHostedCopyCatalogue({method:'GET'},{},directory,deps,read),false);assert.equal(reads,0);assert.equal(response,undefined);
+  assert.equal(await dispatchHostedCopyCatalogue({method:'GET'},{},new URL('https://podium.raceson.com/api/v1/rewards/demo-copy/catalogue'),deps,read),true);assert.equal(response.status,200);assert.equal(reads,1);
+  delete process.env.RACESON_REWARD_HOSTED_OPERATIONS;
+  await dispatchHostedCopyCatalogue({method:'GET'},{},directory,deps,read);assert.equal(response.status,503);
+  process.env.RACESON_REWARD_HOSTED_OPERATIONS='invalid';
+  await dispatchHostedCopyCatalogue({method:'GET'},{},directory,deps,read);assert.equal(response.status,503);
+ }finally{for(const[k,v]of Object.entries(old)){if(v===undefined)delete process.env[k];else process.env[k]=v;}}
+});

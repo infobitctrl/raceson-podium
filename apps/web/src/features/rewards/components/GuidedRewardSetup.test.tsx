@@ -228,3 +228,19 @@ it('separates track categories, preserves manual rules when switching, and updat
  fireEvent.click(screen.getByRole('checkbox',{name:'Include Long women'}));
  expect(screen.getByRole('tab',{name:'Long track'})).not.toHaveTextContent('Complete');expect(screen.getByRole('tab',{name:'Short track · Complete'})).toBeVisible();
 });
+
+it('only redistributes copied prizes among checked categories, including last removal and balance',()=>{
+ const initial=fixture(),potId=initial.setup.guided!.pots[0].nodeId;
+ for(let i=0;i<3;i++)initial.setup=addGuidedGroup(initial.setup,potId,'athlete_standings',initial.next,null);
+ initial.setup.root.children[0].children.forEach((n,i)=>{n.name=`Official category ${i+1}`;n.shareBps=0;});
+ render(<Harness campaign initial={initial} initialStep={4} copySource={{name:'League',slot:0}}/>);
+ const shares=()=>current().root.children[0].children.map(n=>n.shareBps);
+ const check=(n:number)=>fireEvent.click(screen.getByRole('checkbox',{name:`Include Official category ${n}`}));
+ const balance=screen.getByRole('button',{name:'Balance shares'});
+ expect(balance).toBeDisabled();check(1);expect(shares()).toEqual([10000,0,0]);
+ check(2);expect(shares()).toEqual([5000,5000,0]);
+ fireEvent.change(screen.getByRole('spinbutton',{name:'Official category 1 budget %'}),{target:{value:'70'}});
+ expect(shares()).toEqual([7000,3000,0]);fireEvent.click(balance);expect(shares()).toEqual([5000,5000,0]);
+ expect(screen.getByRole('checkbox',{name:'Include Official category 3'})).not.toBeChecked();
+ check(1);expect(shares()).toEqual([0,10000,0]);check(2);expect(shares()).toEqual([0,0,0]);expect(balance).toBeDisabled();
+});

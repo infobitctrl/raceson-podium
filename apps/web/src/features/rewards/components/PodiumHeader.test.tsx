@@ -90,3 +90,13 @@ it('withholds a cached club link when a fresh ownership check fails',async()=>{
  expect(await screen.findByRole('alert')).toHaveTextContent('Account navigation is temporarily unavailable');
  expect(nav().getAllByRole('link')).toHaveLength(3);
 });
+
+it.each([false,true])('uses verified non-club ownership for athlete=%s without hiding its workspace',async athlete=>{
+ state.auth.account!.hasAthleteAccess=athlete;
+ state.api.mockRejectedValue({status:403,code:'reward_club_owner_required'});
+ view();expect(await nav().findByRole('link',{name:athlete?'My rewards':'My campaigns'})).toBeVisible();
+ expect(screen.queryByRole('alert')).not.toBeInTheDocument();expect(nav().queryByRole('link',{name:'Club rewards'})).not.toBeInTheDocument();
+});
+it.each([{status:401,code:'reward_club_owner_required'},{status:403,code:'reward_account_session_required'},{status:503,code:'reward_club_owner_required'}])('does not treat an unrelated failure as non-ownership: %j',async error=>{
+ state.api.mockRejectedValue(error);view();expect(await screen.findByRole('alert')).toHaveTextContent('Account navigation is temporarily unavailable');expect(nav().getAllByRole('link')).toHaveLength(3);
+});
