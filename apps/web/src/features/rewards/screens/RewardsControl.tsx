@@ -18,7 +18,7 @@ import type {RewardWalletProvider} from "../data/browserWallet";
 import {setupAmount} from "../model/setupAmount";
 import RewardExplorerLink from "../components/RewardExplorerLink";
 import s from "./RewardsControl.module.css";
-import PodiumOperationsHeader from '../components/PodiumOperationsHeader';
+import PodiumOperationsHeader,{type OperationsAccount} from '../components/PodiumOperationsHeader';
 
 export type ControllerWallet={address:string;provider:RewardWalletProvider};
 export type ControllerConnection={subject:string;wallets:string[];request:ControllerRequest;getWallet:(address:string)=>Promise<ControllerWallet>;isCurrent:()=>boolean;signTransaction?:(address:string,transaction:{chainId:10143;to?:string;data:string;value:"0";nonce:string;gas:string;gasPrice:string})=>Promise<string>;addSigner?:(address:string,signerId:string,policyId:string)=>Promise<void>};
@@ -48,8 +48,8 @@ const message=(code:string)=>code==="controller_not_configured"?"Wallet connecte
   :code==="controller_session_changed"?"Your account or wallet changed. Reconnect before continuing."
   :"Could not verify this step. Refresh to check again. If a transaction was sent, verify its saved hash before sending another.";
 
-export function ControlShell({children}:{children:React.ReactNode}) {
-  return <><PodiumOperationsHeader/><main className={s.page}><div className={s.top}><a href="/rewards"><ArrowLeft size={16}/> Podium overview</a><span className={s.network}>Monad testnet · test MON</span></div>
+export function ControlShell({children,account}:{children:React.ReactNode;account?:OperationsAccount}) {
+  return <><PodiumOperationsHeader account={account}/><main className={s.page}><div className={s.top}><a href="/rewards"><ArrowLeft size={16}/> Podium overview</a><span className={s.network}>Monad testnet · test MON</span></div>
     <header className={s.header}><div><span className={s.eyebrow}>RacesOn Podium / Operations</span><h1>Rewards Control</h1></div><ShieldCheck size={42} strokeWidth={1.2}/></header>
     {children}<footer className={s.footer}><details><summary>About controller access</summary><p>Controller gas is paid separately. Reward funds stay in campaign contracts. Athlete wallet consent remains separate.</p></details></footer></main></>;
 }
@@ -59,7 +59,8 @@ export default function RewardsControl({connection,onLogout}:{connection:Control
   const [requestedClaim]=useState(()=>controllerClaimSelection(typeof window==='undefined'?'':window.location.search));
   const [session,setSession]=useState<ControllerSession|null>(null),[campaigns,setCampaigns]=useState<ControllerCampaign[]>([]),[selected,setSelected]=useState<string|null>(requested.campaign);
   const [error,setError]=useState<string|null>(null),[busy,setBusy]=useState(true),[loadingLabel,setLoadingLabel]=useState("Checking controller access…"),live=useRef(true);
-  const [settingsOpen,setSettingsOpen]=useState(false),[settlementOpen,setSettlementOpen]=useState(false);
+  const [settingsOpen,setSettingsOpen]=useState(()=>typeof window!=='undefined'&&window.location.hash==='#controller-wallet'),[settlementOpen,setSettlementOpen]=useState(false);
+  useEffect(()=>{const openWallet=()=>{if(window.location.hash==='#controller-wallet')setSettingsOpen(true);};window.addEventListener('hashchange',openWallet);return()=>window.removeEventListener('hashchange',openWallet);},[]);
   useEffect(()=>{live.current=true;return()=>{live.current=false;};},[]);
   async function refresh(){setBusy(true);setError(null);setSession(null);setCampaigns([]);setLoadingLabel("Checking controller access…");try{
     const verified=decodeControllerSession(await connection.request("/access"));
@@ -73,7 +74,7 @@ export default function RewardsControl({connection,onLogout}:{connection:Control
   useEffect(()=>{void refresh();},[]); // eslint-disable-line react-hooks/exhaustive-deps
   const campaign=campaigns.find(c=>c.setupId===selected);
   if(busy&&!session)return <ControllerLoading label={loadingLabel}/>;
-  return <><section className={s.account}><div><span className={s.eyebrow}>Controller account</span>
+  return <><section className={s.account} id="controller-profile"><div><span className={s.eyebrow}>Controller account</span>
       {session&&connection.wallets.includes(session.wallet)?<p className={s.verified}><CheckCircle2 size={17}/> Controller access active</p>:null}
       <details><summary>Account details</summary><p className={s.address}>{connection.subject}</p>{connection.wallets.map(w=><p className={s.address} key={w}><Wallet size={14}/> {w}</p>)}</details></div><button className={s.secondary} onClick={onLogout}>Switch account</button></section>
     {error?<div className={s.notice} role="alert"><p>{message(error)}</p><button className={s.secondary} disabled={busy} onClick={()=>void refresh()}>Retry loading workspace</button></div>:null}
@@ -85,7 +86,7 @@ export default function RewardsControl({connection,onLogout}:{connection:Control
     {publicEnv.hostedOperations&&session&&requested.campaign&&!campaign?<details className={s.section} onToggle={e=>setSettlementOpen(e.currentTarget.open)}><summary>Recover original campaign settlement</summary><p>Check the original escrow even if its setup is archived. Controller authority is verified separately.</p>{settlementOpen?<ControllerSettlement connection={connection} wallet={session.wallet} setupId={requested.campaign} slot={requested.slot??0}/>:null}</details>:null}
     {session&&campaigns.length>1?<ControllerCampaignPicker campaigns={campaigns} selected={campaign?.setupId} busy={busy} onSelect={setSelected} onRefresh={()=>void refresh()}/>:null}
     <div className={s.grid}>
-    {session&&campaign?<CampaignControl key={`${campaign.setupId}:${session.subject}`} campaign={campaign} connection={connection} session={session} requestedClaim={campaign.setupId===requested.campaign?requestedClaim:null} requestedSlot={campaign.setupId===requested.campaign?requested.slot:null}/>:campaigns.length?<section className={s.card}><h3>Select a campaign</h3><p>Review its contract and official-results handoff.</p></section>:null}</div>    <details className={s.section} onToggle={e=>setSettingsOpen(e.currentTarget.open)}><summary>Controller settings & gas</summary>
+    {session&&campaign?<CampaignControl key={`${campaign.setupId}:${session.subject}`} campaign={campaign} connection={connection} session={session} requestedClaim={campaign.setupId===requested.campaign?requestedClaim:null} requestedSlot={campaign.setupId===requested.campaign?requested.slot:null}/>:campaigns.length?<section className={s.card}><h3>Select a campaign</h3><p>Review its contract and official-results handoff.</p></section>:null}</div>    <details id="controller-wallet" className={s.section} open={settingsOpen} onToggle={e=>setSettingsOpen(e.currentTarget.open)}><summary>Controller settings & gas</summary>
     {session&&settingsOpen?<ControllerSettings key={session.wallet} connection={connection} session={session}/>:null}
     </details>
 </>;

@@ -21,6 +21,7 @@ import DemoWorkspaceReady from "./DemoWorkspaceReady";
 import ClassicRewardFrame from "./portal/ClassicRewardFrame";
 import ClassicSourceEntry from "./portal/ClassicSourceEntry";
 
+const RewardProfile = lazy(() => import("../screens/RewardProfile"));
 const RewardWalletSettings = lazy(() => import("../screens/RewardWalletSettings"));
 const WalletAdministration = lazy(() => import("../screens/WalletAdministration"));
 const HostedCopyPreview = lazy(() => import("../screens/HostedCopyPreview"));
@@ -110,7 +111,7 @@ function ManageEntry() {
 function DemoRoutes() {
   const { t, locale } = useI18n();
   const { pathname } = useLocation();
-  useRewardDocumentTitle(pathname, `${(pathname === "/rewards/setup" || pathname === "/rewards/create" || pathname.startsWith("/rewards/campaigns/")) ? (locale === "hr" ? "Sponzorska kampanja" : "Sponsor campaign") : pathname === "/rewards/admin/wallets" ? (locale === "hr" ? "Upravljanje novčanicima" : "Wallet administration") : pathname === "/rewards/test" ? (locale === "hr" ? "Testni program" : "Test programme") : pathname === "/rewards" ? (locale === "hr" ? "Početna" : "Home") : pathname === "/rewards/events" ? (locale === "hr" ? "Događaji" : "Events") : pathname === "/rewards/campaigns" ? (locale === "hr" ? "Kampanje" : "Campaigns") : pathname === "/rewards/manage" ? (locale === "hr" ? "Moje kampanje" : "My campaigns") : pathname.startsWith("/rewards/pots") ? (locale === "hr" ? "Fondovi nagrada" : "Reward pots") : t(["/rewards", "/rewards/calculator", "/rewards/manage", "/organizer/reward-planner"].includes(pathname) ? "rewards.programme.title" : pathname === "/rewards/rehearsal" ? "rewards.rehearsal.title" : pathname === "/rewards/contract" ? "rewards.canary.title" : pathname === "/organizer/rewards" ? "rewards.organizer.title" : pathname === "/club/rewards" ? "rewards.club.title" : "rewards.title")} · ${t("rewards.demo.label")} | RacesOn Podium`);
+  useRewardDocumentTitle(pathname, `${(pathname === "/rewards/setup" || pathname === "/rewards/create" || pathname.startsWith("/rewards/campaigns/")) ? (locale === "hr" ? "Sponzorska kampanja" : "Sponsor campaign") : pathname === "/rewards/profile" ? (locale === "hr" ? "Profil" : "Profile") : pathname === "/rewards/admin/wallets" ? (locale === "hr" ? "Upravljanje novčanicima" : "Wallet administration") : pathname === "/rewards/test" ? (locale === "hr" ? "Testni program" : "Test programme") : pathname === "/rewards" ? (locale === "hr" ? "Početna" : "Home") : pathname === "/rewards/events" ? (locale === "hr" ? "Događaji" : "Events") : pathname === "/rewards/campaigns" ? (locale === "hr" ? "Kampanje" : "Campaigns") : pathname === "/rewards/manage" ? (locale === "hr" ? "Moje kampanje" : "My campaigns") : pathname.startsWith("/rewards/pots") ? (locale === "hr" ? "Fondovi nagrada" : "Reward pots") : t(["/rewards", "/rewards/calculator", "/rewards/manage", "/organizer/reward-planner"].includes(pathname) ? "rewards.programme.title" : pathname === "/rewards/rehearsal" ? "rewards.rehearsal.title" : pathname === "/rewards/contract" ? "rewards.canary.title" : pathname === "/organizer/rewards" ? "rewards.organizer.title" : pathname === "/club/rewards" ? "rewards.club.title" : "rewards.title")} · ${t("rewards.demo.label")} | RacesOn Podium`);
   return <><DemoHeader /><main><DemoErrorBoundary key={pathname}>
     <Suspense fallback={<p role="status" className="p-6 text-center">{t("rewards.loading")}</p>}>
       <Routes>
@@ -135,6 +136,7 @@ function DemoRoutes() {
         <Route path="/rewards/campaigns/:id" element={publicEnv.hostedCopy?<HostedSponsorFunding/>:<SponsorLaunch />} />
         <Route path="/rewards/create" element={<ProgrammeEntry />} />
         <Route path="/rewards/manage" element={<ManageEntry />} />
+        <Route path="/rewards/profile" element={<RewardProfile />} />
         <Route path="/rewards/wallet" element={<RewardWalletSettings />} />
         <Route path="/rewards/admin/wallets" element={<WalletAdministration />} />
         {/* Retired sporting-management entry points never mount the classic workspace. */}

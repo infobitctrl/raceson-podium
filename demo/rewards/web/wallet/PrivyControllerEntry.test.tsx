@@ -1,4 +1,4 @@
-import {act,fireEvent,render,screen,waitFor} from "@testing-library/react";
+import {act,fireEvent,render,screen,waitFor,within} from "@testing-library/react";
 import {afterEach,beforeEach,expect,it,vi} from "vitest";
 import {StrictMode} from "react";
 const mocks=vi.hoisted(()=>({ready:true,walletsReady:true,linkedWallet:false,authenticated:false,custom:false,login:vi.fn(),logout:vi.fn(),create:vi.fn(),provider:vi.fn(),token:vi.fn(),wallets:[] as unknown[]}));
@@ -86,4 +86,20 @@ it('carries a selected historical controller to the authenticated API request',a
  await waitFor(()=>expect(fetch).toHaveBeenCalled());
  expect(fetch.mock.calls[0][1].headers['X-Podium-Controller-Wallet']).toBe('0x2222222222222222222222222222222222222222');
  window.history.replaceState({},'', '/');
+});
+
+it('keeps the native controller account menu separate and retires pending access on sign out',async()=>{
+ mocks.authenticated=true;let resolveToken!:(token:string)=>void;
+ mocks.token.mockImplementation(()=>new Promise<string>(resolve=>{resolveToken=resolve;}));
+ mocks.wallets=[{address:'0x1111111111111111111111111111111111111111',walletClientType:'privy',connectorType:'embedded',linked:true,imported:false}];
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ render(<Entry/>);fireEvent.click(screen.getByRole('button',{name:'Continue with Privy'}));
+ expect(within(screen.getByRole('navigation',{name:'Main navigation'})).getByRole('link',{name:'Review'})).toHaveAttribute('href','/rewards/control');
+ fireEvent.click(screen.getByLabelText('Account menu'));
+ const menu=within(screen.getByLabelText('Account menu').closest('details')!);
+ expect(menu.getAllByRole('link').map(link=>link.textContent)).toEqual(['Profile','Wallet']);
+ expect(menu.getByRole('link',{name:'Wallet'})).toHaveAttribute('href','#controller-wallet');
+ fireEvent.click(menu.getByRole('button',{name:'Sign out'}));await waitFor(()=>expect(mocks.logout).toHaveBeenCalledTimes(1));
+ await act(async()=>{resolveToken('synthetic-token');});
+ expect(fetch).not.toHaveBeenCalled();expect(mocks.create).not.toHaveBeenCalled();
 });

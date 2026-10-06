@@ -1,5 +1,5 @@
 vi.mock('../data/publicDirectory',()=>({usePublicDirectory:()=>({data:{items:[],sponsors:0,chainId:31337,checkedAt:'2026-09-28T10:00:00Z'},isPending:false,isError:false,refetch:vi.fn(),isFetching:false})}));
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/shared/i18n/I18nProvider";
 import RewardsDemoApp from "./RewardsDemoApp";
@@ -8,6 +8,7 @@ const fixture = vi.hoisted(() => ({
   user: null as { id: string } | null,
   demo: true,
   organizer: false,
+  club: false,
   athlete: true,
   authMounts: 0,
   sponsorMounts: 0,
@@ -22,6 +23,11 @@ vi.mock("@/lib/auth", () => ({
     account: fixture.user ? { userId: fixture.user.id, hasAthleteAccess: fixture.athlete, hasOrganizerAccess: fixture.organizer } : null }),
   hasOrganizerWorkspaceAccess: () => false,
 }));
+vi.mock('../data/usePodiumNavigation',()=>({usePodiumNavigation:()=>{
+ const account=fixture.user?{userId:fixture.user.id}:null;
+ const role=!account?null:fixture.organizer?'reviewer':fixture.club?'club':fixture.athlete?'athlete':'sponsor';
+ return {account,role,href:role?{reviewer:'/rewards/review',club:'/club/rewards',athlete:'/athlete/rewards',sponsor:'/rewards/manage'}[role]:null,error:false,retry:vi.fn()};
+}}));
 vi.mock("@/lib/public-env", () => ({
   publicEnv: { get rewardDemo() { return fixture.demo ? { chainId: 31337 } : null; } },
   assertPublicEnvironmentOrigin: () => fixture.originCheck(),
@@ -58,8 +64,9 @@ function mount(path: string) {
   window.history.replaceState({}, "", path);
   return render(<I18nProvider initialLocale="en"><RewardsDemoApp /></I18nProvider>);
 }
+function nav(){return within(screen.getByRole('navigation',{name:'Main navigation'}));}
 beforeEach(() => {
-  fixture.user = null; fixture.athlete = true; fixture.demo = true; fixture.organizer = false; fixture.authMounts = 0; fixture.sponsorMounts = 0;
+  fixture.user = null; fixture.athlete = true; fixture.demo = true; fixture.organizer = false; fixture.club=false; fixture.authMounts = 0; fixture.sponsorMounts = 0;
   fixture.originCheck.mockReset(); fixture.signOut.mockReset(); fixture.observedTitles = [];
 });
 
@@ -80,10 +87,10 @@ describe("independent rewards application routing", () => {
     mount(path);expect(await screen.findByRole("heading",{name:"Campaigns",level:1})).toBeVisible();expect(window.location.pathname).toBe("/rewards/campaigns");expect(screen.queryByText("Demo tools")).not.toBeInTheDocument();
   });
   it("connects club rewards only through the demo navigation and title", async () => {
-    mount("/rewards"); fireEvent.click(screen.getByText("Account",{exact:true})); fireEvent.click(await screen.findByRole("link", { name: "Club rewards" }));
+    fixture.user={id:"club-owner"};fixture.club=true;mount("/rewards"); fireEvent.click(await nav().findByRole("link", { name: "Club rewards" }));
     expect(await screen.findByRole("heading", { name: "Private club treasury" })).toBeVisible();
     expect(fixture.observedTitles.at(-1)).toEqual({path:"/club/rewards",title:"Club rewards · Testnet demo | RacesOn Podium"});
-    expect(window.location.pathname).toBe("/club/rewards"); expect(screen.getByLabelText("Account and navigation",{exact:true}).closest("details")).not.toHaveAttribute("open"); expect(document.title).toBe("Club rewards · Testnet demo | RacesOn Podium");
+    expect(window.location.pathname).toBe("/club/rewards"); expect(screen.getByLabelText("Account menu",{exact:true}).closest("details")).not.toHaveAttribute("open"); expect(document.title).toBe("Club rewards · Testnet demo | RacesOn Podium");
   });
   it("lands guests on sponsorship discovery and retains that destination at sign-in", async () => {
     mount("/");
@@ -97,12 +104,12 @@ describe("independent rewards application routing", () => {
     expect(new URLSearchParams(window.location.search).get("next")).toBe("/rewards");
   });
   it("offers operations only to staff while preserving the existing review route",async()=>{
-    fixture.user={id:"staff"};fixture.organizer=true;mount("/organizer/rewards");await screen.findByRole("heading",{name:"Private organiser review"});fireEvent.click(screen.getByText("Account",{exact:true}));expect(screen.getByRole("link",{name:"Rewards control"})).toHaveAttribute("href","/rewards/control");
+    fixture.user={id:"staff"};fixture.organizer=true;mount("/organizer/rewards");await screen.findByRole("heading",{name:"Private organiser review"});expect(nav().getByRole("link",{name:"Review"})).toHaveAttribute("href","/rewards/review");fireEvent.click(screen.getByText("Account",{exact:true}));expect(screen.queryByRole("link",{name:"Rewards control"})).not.toBeInTheDocument();
   });
   it("hides organizer navigation from an athlete account", async () => {
     fixture.user = {id:"athlete"}; mount("/athlete/rewards");
     await screen.findByRole("heading", {name:"Own allocations"});
-    expect(screen.getAllByRole("link", {name:"My campaigns"}).length).toBeGreaterThan(0);
+    expect(nav().getByRole("link", {name:"My rewards"})).toHaveAttribute("href","/athlete/rewards");
     expect(screen.queryByRole("link", {name:"Rewards control"})).not.toBeInTheDocument();
     expect(screen.queryByRole("link", {name:"Organize rewards"})).not.toBeInTheDocument();
   });
@@ -119,7 +126,9 @@ describe("independent rewards application routing", () => {
     expect(await screen.findByRole("heading", { name: "Own allocations" })).toBeVisible();
     expect(document.title).toBe("Rewards · Testnet demo | RacesOn Podium");
     fireEvent.click(screen.getByText("Account",{exact:true}));
-    fireEvent.click(screen.getByRole("link", { name: "My profile" }));
+    fireEvent.click(screen.getByRole("link", { name: "Profile" }));
+    expect(await screen.findByRole("heading",{name:"Profile",level:1})).toBeVisible();
+    fireEvent.click(screen.getByRole("link",{name:"Edit athlete profile"}));
     expect(await screen.findByRole("heading", { name: "Demo account history" })).toBeVisible();
     expect(window.location.pathname).toBe("/athlete/account");
     expect(screen.queryByRole("link", { name: "Registrations" })).not.toBeInTheDocument();
@@ -167,10 +176,18 @@ describe("independent rewards application routing", () => {
   expect(screen.queryByRole("heading",{name:"Own allocations"})).not.toBeInTheDocument();
   expect(screen.queryByRole("link",{name:"Go to available workspace"})).not.toBeInTheDocument();
   expect(screen.getByRole("link",{name:"Explore campaigns"})).toHaveAttribute("href","/rewards/campaigns");
-  expect(screen.getAllByRole("link",{name:"My campaigns"}).every(link=>link.getAttribute("href")==="/rewards/manage")).toBe(true);
+  expect(nav().getByRole("link",{name:"Review"})).toHaveAttribute("href","/rewards/review");
+  expect(nav().queryByRole("link",{name:"My campaigns"})).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("link",{name:"Explore campaigns"}));expect(await screen.findByRole("heading",{name:"Campaigns",level:1})).toBeVisible();
  });
 
 it('does not mount sponsor custom-JWT synchronization on native operational wallet administration',async()=>{
  mount('/rewards/admin/wallets');expect(await screen.findByRole('heading',{name:'Wallet administration'})).toBeVisible();expect(fixture.sponsorMounts).toBe(0);
+});
+
+it.each(['sponsor','reviewer','club'])('provides a common Profile without athlete editing for a %s account',async role=>{
+ fixture.user={id:'synthetic-'+role};fixture.athlete=false;fixture.organizer=role==='reviewer';fixture.club=role==='club';mount('/rewards/profile');
+ expect(await screen.findByRole('heading',{name:'Profile',level:1})).toBeVisible();
+ expect(screen.queryByRole('link',{name:'Edit athlete profile'})).not.toBeInTheDocument();
+ expect(document.title).toBe('Profile · Testnet demo | RacesOn Podium');
 });

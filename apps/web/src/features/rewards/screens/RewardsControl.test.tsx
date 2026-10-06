@@ -385,3 +385,13 @@ it('retains the confirmed hash if the next-state read fails and recovers by read
  fireEvent.click(screen.getByRole('button',{name:'Check confirmation now'}));
  expect(await screen.findByRole('button',{name:'Open reward claims · Privy'})).toBeDisabled();expect(sessionStorage.getItem(key)).toBeNull();
 });
+
+it('opens wallet settings from the account menu anchor using read-only access',async()=>{
+ window.history.replaceState({},'', '/rewards/control#controller-wallet');const c=connection();
+ render(<RewardsControl connection={c} onLogout={()=>{}}/>);
+ expect(await screen.findByText('Controller access active')).toBeVisible();
+ expect(document.getElementById('controller-wallet')).toHaveAttribute('open');
+ expect(c.request).toHaveBeenCalledWith('/session');
+ expect(vi.mocked(c.request).mock.calls.every(([,body])=>body===undefined)).toBe(true);
+ expect(c.getWallet).not.toHaveBeenCalled();expect(mocks.send).not.toHaveBeenCalled();
+});
