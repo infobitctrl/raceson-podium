@@ -10,7 +10,7 @@ import {dispatchRewardOperations} from './routes/rewards/operations.js';
 import { dispatchHostedCopyPreview } from './routes/rewards/hosted-copy-preview.js';
 import { hostedCopyPreviewEnabled, hostedCopyRequestAllowed,hostedCopyOperationsEnabled,hostedCopyPin } from './features/rewards/hosted-copy-preview.js';
 import {dispatchHostedCopyLaunch} from './routes/rewards/hosted-copy-launch.js';
-import {hostedCopySponsor,hostedCopySponsorExecutionRpc,hostedCopyControllerRpc,hostedCopyPublicRpc,type RewardLedgerRpc} from '@raceson/db/rewards';
+import {hostedCopySponsor,hostedCopySponsorExecutionRpc,hostedCopyControllerRpc,hostedCopyPublicRpc,hostedCopyBrandingRpc,type RewardLedgerRpc} from '@raceson/db/rewards';
 import {dispatchCampaignBranding} from './routes/rewards/campaign-branding.js';
 import {dispatchWalletAdministration} from './routes/rewards/wallet-administration.js';
 import {walletRuntime,resolveControllerPolicy} from './features/rewards/wallet-administration.js';
@@ -95,8 +95,10 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   if (url.pathname.startsWith('/api/v1/rewards/control') && await dispatchRewardController(req,res,url,{...deps,requireToken:async request=>{const token=/^Bearer ([^\s]+)$/i.exec(request.headers.authorization??"")?.[1];if(!token)throw Error("Missing bearer token");return token;},
     ...(hostedCopyOperationsEnabled(process.env,boundary.env)?{resolveRpc:(actor:{subject:string;wallet:string})=>hostedCopyControllerRpc(actor,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args)),resolveNativeClubClaimQueue:(actor:{subject:string;wallet:string},id:string,after:string|null)=>hostedCopyNativeClubClaimQueue(actor,id,after,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args)),resolveNativeClubClaimFacts:(actor:{subject:string;wallet:string},id:string)=>hostedCopyNativeClubClaimFacts(actor,id,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args)),clubReader:canaryPublicClient,resolveNativeClaimQueue:(actor:{subject:string;wallet:string},id:string,after:string|null)=>hostedCopyNativeClaimQueue(actor,id,after,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args)),resolveNativeClaimFacts:(actor:{subject:string;wallet:string},id:string)=>hostedCopyNativeClaimFacts(actor,id,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}:{}),
     controllerPolicy:token=>resolveControllerPolicy(process.env,token??'',typeof req.headers['x-podium-controller-wallet']==='string'?req.headers['x-podium-controller-wallet']:undefined),creationSigner:await resolveDeploymentSigner(process.env),reader:config?.chainId===10143?controllerPublicClient:undefined})) return true;
-  if (await dispatchCampaignBranding(req,res,url,deps)) return true;
-  if (await dispatchPublicDirectory(req,res,url,{...deps,...copiedPublic,sponsorReader:config?.chainId===10143?controllerPublicClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
+  if (await dispatchCampaignBranding(req,res,url,{...deps,...(hostedCopyOperationsEnabled(process.env,boundary.env)?{
+    resolveRpc:(identity?:import('@raceson/db/rewards').RewardAccountIdentity)=>hostedCopyBrandingRpc((name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args),identity),
+  }: {})})) return true;
+  if (await dispatchPublicDirectory(req,res,url,{...deps,...copiedPublic,awaitRefresh:hostedCopyOperationsEnabled(process.env,boundary.env),sponsorReader:config?.chainId===10143?controllerPublicClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
   if (await dispatchPublicCampaign(req,res,url,{...deps,...copiedPublic,sponsorReader:config?.chainId===10143?controllerPublicClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
   if (await dispatchSetupEvents(req, res, url, deps)) return true;
   if (await dispatchSponsorSourceV4(req, res, url, deps)) return true;

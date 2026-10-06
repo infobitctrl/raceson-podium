@@ -50,3 +50,28 @@ test('copy gate opens exact public completion and bounded award query only in ho
  for(const [m,p] of [['DELETE',path],['GET',path+'?actor=other'],['POST',path+'/pots/0/awards'],['GET',path+'/pots/6/awards'],['GET',path+'/pots/0/awards?offset=0&offset=25'],['GET',path+'/pots/0/awards?address=other']])assert.equal(allow(m,p),false);
  assert.equal(allow('POST',path,false),false);assert.equal(allow('GET',path,false),false);
 });
+
+
+test('hosted branding captures owner identity and exposes only the scoped RPC',async()=>{
+ const {hostedCopyBrandingRpc}=await import('../../../packages/db/dist/rewards/hosted-copy-public.js');
+ const {dispatchCampaignBranding}=await import('../dist/routes/rewards/campaign-branding.js');
+ const calls=[],rpc=async(n,a)=>{calls.push([n,a]);return{data:[],error:null};};
+ const guest=hostedCopyBrandingRpc(rpc),args={p_chain_id:10143,p_actor_user_id:null,p_actor_session_id:null,p_setup_id:null,p_change:null};
+ await guest('service_reward_campaign_branding',args);assert.equal(calls[0][0],'service_reward_demo_copy_campaign_branding');
+ const identity={...actor},owner=hostedCopyBrandingRpc(rpc,identity);identity.userId=other;
+ const owned={...args,p_actor_user_id:actor.userId,p_actor_session_id:actor.sessionId,p_setup_id:id};await owner('service_reward_campaign_branding',owned);
+ for(const bad of [{...args,p_chain_id:31337},{...args,p_actor_user_id:id},{...args,p_change:{}},{...args,other:true}])assert.throws(()=>guest('service_reward_campaign_branding',bad));
+ assert.throws(()=>owner('service_reward_campaign_branding',{...owned,p_actor_session_id:id}));
+ assert.throws(()=>guest('service_reward_public_directory',args));
+ let response;
+ await dispatchCampaignBranding({method:'GET'},{},new URL('https://podium.raceson.com/api/v1/rewards/campaign-branding/mine'),{
+ config:()=>({chainId:10143}),requireIdentity:async()=>actor,applyPrivateSessionHeaders(){},rpc:()=>assert.fail('generic RPC'),
+ resolveRpc:identity=>hostedCopyBrandingRpc(rpc,identity),sendSuccess:(_,data)=>response=data,sendError:()=>assert.fail('unexpected failure')});
+ assert.deepEqual(response,[]);assert.equal(calls.at(-1)[1].p_actor_user_id,actor.userId);
+});
+test('hosted branding gate permits exact reads and owner update only in enabled operations',()=>{
+ const base='/api/v1/rewards/campaign-branding',allow=(method,path,enabled=true)=>hostedCopyRequestAllowed(method,new URL(path,'https://podium.raceson.com'),'sponsor-drafts-v1',enabled);
+ for(const path of [base,base+'/mine',base+'/'+id])assert(allow('GET',path));assert(allow('PATCH',base+'/'+id));
+ for(const [m,p] of [['PATCH',base],['PATCH',base+'/mine'],['POST',base+'/'+id],['DELETE',base+'/'+id],['GET',base+'?owner='+id]])assert.equal(allow(m,p),false);
+ assert.equal(allow('GET',base,false),false);assert.equal(allow('PATCH',base+'/'+id,false),false);
+});

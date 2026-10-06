@@ -2,6 +2,19 @@ import {setupId} from '@raceson/domain/rewards/distribution-setup';
 import type {RewardAccountIdentity} from './athlete-wallets.js';
 import type {RewardLedgerRpc} from './programme-ledger.js';
 
+/** The caller identity is captured from the authenticated route, never branding input. */
+export function hostedCopyBrandingRpc(rpc:RewardLedgerRpc,identity?:RewardAccountIdentity):RewardLedgerRpc {
+ if(identity&&(!setupId(identity.userId)||!setupId(identity.sessionId)))throw Error('invalid_campaign_branding');
+ const userId=identity?.userId??null,sessionId=identity?.sessionId??null;
+ return (name,args)=>{
+  if(name!=='service_reward_campaign_branding'||args.p_chain_id!==10143||Object.keys(args).length!==5
+   ||!['p_chain_id','p_actor_user_id','p_actor_session_id','p_setup_id','p_change'].every(k=>k in args)
+   ||args.p_actor_user_id!==userId||args.p_actor_session_id!==sessionId
+   ||args.p_setup_id!==null&&!setupId(args.p_setup_id)||args.p_change!==null&&(!userId||!setupId(args.p_setup_id)))throw Error('invalid_campaign_branding');
+  return rpc('service_reward_demo_copy_campaign_branding',{p_actor_user_id:userId,p_actor_session_id:sessionId,p_setup_id:args.p_setup_id,p_change:args.p_change});
+ };
+}
+
 /** Only fixed-copy public projections. A publishing closure captures the actual
  * sponsor session; public readers cannot manufacture an authenticated writer. */
 export function hostedCopyPublicRpc(rpc:RewardLedgerRpc,identity?:RewardAccountIdentity,id?:string):RewardLedgerRpc {

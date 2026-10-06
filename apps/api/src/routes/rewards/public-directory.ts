@@ -6,8 +6,8 @@ import {observeSponsorProgramme,type SponsorChainReader} from '@raceson/rewards-
 import type {Hex} from 'viem';
 import type {OrganizerRewardRouteDependencies} from './organizer.js';
 import {publicCampaignObservation} from './public-campaign.js';
-type Deps=OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;publicRpc?:RewardLedgerRpc};
-type Entry={until:number;value?:PublicDirectory;loading?:Promise<PublicDirectory>};
+type Deps=OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;publicRpc?:RewardLedgerRpc;awaitRefresh?:boolean};
+type Entry={until:number;value?:PublicDirectory;loading?:Promise<PublicDirectory>;refresh?:Promise<void>};
 // Only public projections are cached. Publications already contain verified chain snapshots.
 // The long-running demo API owns background work; no chain facts are persisted here.
 const cache=new WeakMap<SponsorChainReader,Map<number,Entry>>();
@@ -56,7 +56,7 @@ async function loadPublished(chainId:10143|31337,deps:Deps,entry:Entry):Promise<
  let timer:ReturnType<typeof setTimeout>;
  const deadline=new Promise<never>((_,reject)=>{timer=setTimeout(()=>{expired=true;reject(Error('refresh_timeout'));},90_000);timer.unref();});
  const work=refresh().finally(()=>{entry.until=Date.now()+30_000;});
- void Promise.race([work,deadline]).then(value=>{entry.value=value;},()=>{entry.value={...latest,refreshStatus:'failed'};})
+ entry.refresh=Promise.race([work,deadline]).then(value=>{entry.value=value;},()=>{entry.value={...latest,refreshStatus:'failed'};})
   .finally(()=>{clearTimeout(timer);});
  return initial;
 }
@@ -75,7 +75,11 @@ export async function dispatchPublicDirectory(req:IncomingMessage,res:ServerResp
    const current=entry;current.until=Infinity;
    current.loading=loadPublished(config.chainId,deps,current).catch(error=>{byChain!.delete(config.chainId);throw error;}).finally(()=>{current.loading=undefined;});
   }
-  deps.sendSuccess(res,entry.loading?await entry.loading:entry.value!);
+  if(entry.loading)await entry.loading;
+  // Hosted functions may stop after a response, and a later poll may reach a
+  // different process. Complete this bounded read within the request there.
+  if(deps.awaitRefresh&&entry.refresh)await entry.refresh;
+  deps.sendSuccess(res,entry.value!);
  }catch{deps.sendError(res,503,'public_directory_unavailable','Campaigns are temporarily unavailable. Please retry.');}
  return true;
 }

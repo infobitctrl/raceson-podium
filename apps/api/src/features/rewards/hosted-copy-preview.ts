@@ -35,6 +35,8 @@ const allowed = new Map([
 export function hostedCopyRequestAllowed(method: string | undefined, url: URL, mode = "preview-v1",operations=false) {
   if(mode==='sponsor-drafts-v1'&&operations){
     const keys=[...url.searchParams.keys()];
+    if(keys.length===0&&/^\/api\/v1\/rewards\/campaign-branding(?:\/(?:mine|[0-9a-f-]{36}))?$/.test(url.pathname))
+      return method==='GET'||method==='PATCH'&&/^\/api\/v1\/rewards\/campaign-branding\/[0-9a-f-]{36}$/.test(url.pathname);
     if(url.pathname==='/api/v1/rewards/demo-copy/club-creations'&&method==='GET')
       return keys.length===0||keys.length===1&&keys[0]==='after'&&/^[0-9a-f-]{36}$/.test(url.searchParams.get('after')??'');
     if(keys.length===0&&/^\/api\/v1\/rewards\/demo-copy\/club-creations\/[0-9a-f-]{36}$/.test(url.pathname))return method==='GET'||method==='POST';

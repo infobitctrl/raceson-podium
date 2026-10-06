@@ -94,3 +94,22 @@ test('completed observations update one campaign immediately while other campaig
   {pots:[{...observed.pots[0],paidWei:'101'}]}])assert.throws(()=>mergeDirectoryObservation(directory,0,{...observed,...patch}));
  assert.throws(()=>mergeDirectoryObservation(directory,2,observed));
 });
+
+
+test('hosted request waits for bounded refresh instead of relying on later process-local polls',async()=>{
+ let rejectRead;const held=new Promise((_,reject)=>{rejectRead=reject;});const responses=[];
+ const deps={config:()=>({chainId:10143}),rpc:async()=>({data:saved,error:null}),awaitRefresh:true,
+ sponsorReader:{getChainId:()=>held},sendSuccess:(_,data)=>responses.push(data),sendError:()=>assert.fail('unexpected failure')};
+ const request=()=>dispatchPublicDirectory({method:'GET'},{setHeader(){}},new URL('http://local/api/v1/rewards/public-campaigns'),deps);
+ const first=request(),second=request();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(responses.length,0);rejectRead(Error('offline'));await Promise.all([first,second]);
+ assert.equal(responses.length,2);for(const r of responses){assert.equal(r.refreshStatus,'failed');assert.deepEqual(r.items[0].campaign,campaign);}
+});
+test('hosted stalled refresh returns preserved facts at the deadline',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});let response;
+ const deps={config:()=>({chainId:10143}),rpc:async()=>({data:saved,error:null}),awaitRefresh:true,
+ sponsorReader:{getChainId:()=>new Promise(()=>{})},sendSuccess:(_,data)=>{response=data;},sendError:()=>assert.fail('unexpected failure')};
+ const request=dispatchPublicDirectory({method:'GET'},{setHeader(){}},new URL('http://local/api/v1/rewards/public-campaigns'),deps);
+ await new Promise(resolve=>setImmediate(resolve));t.mock.timers.tick(90001);await request;
+ assert.equal(response.refreshStatus,'failed');assert.deepEqual(response.items[0].campaign,campaign);
+});
