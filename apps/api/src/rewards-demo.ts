@@ -8,7 +8,7 @@ import {dispatchRewardOperations} from './routes/rewards/operations.js';
 import { dispatchHostedCopyPreview } from './routes/rewards/hosted-copy-preview.js';
 import { hostedCopyPreviewEnabled, hostedCopyRequestAllowed,hostedCopyOperationsEnabled,hostedCopyPin } from './features/rewards/hosted-copy-preview.js';
 import {dispatchHostedCopyLaunch} from './routes/rewards/hosted-copy-launch.js';
-import {hostedCopySponsor,hostedCopySponsorExecutionRpc,hostedCopyControllerRpc,type RewardLedgerRpc} from '@raceson/db/rewards';
+import {hostedCopySponsor,hostedCopySponsorExecutionRpc,hostedCopyControllerRpc,hostedCopyPublicRpc,type RewardLedgerRpc} from '@raceson/db/rewards';
 import {dispatchCampaignBranding} from './routes/rewards/campaign-branding.js';
 import {dispatchWalletAdministration} from './routes/rewards/wallet-administration.js';
 import {walletRuntime,resolveControllerPolicy} from './features/rewards/wallet-administration.js';
@@ -66,6 +66,15 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   sendError: boundary.sendError, applyPrivateSessionHeaders: boundary.applyPrivateSessionHeaders,
   } satisfies Parameters<typeof dispatchAthleteRewardRoutes>[3];
   const config = deps.config();
+  const copiedPublic=hostedCopyPreviewEnabled(process.env,boundary.env)?{
+    publicRpc:hostedCopyPublicRpc((name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args)),
+    resolvePublicationRpc:(identity:import('@raceson/db/rewards').RewardAccountIdentity,id:string)=>hostedCopyPublicRpc((name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args),identity,id),
+    resolveSponsorRpc:async(identity:import('@raceson/db/rewards').RewardAccountIdentity,id:string)=>{
+      const rpc:RewardLedgerRpc=(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args);
+      const preflight=await hostedCopySponsor(identity,'read',id,undefined,hostedCopyPin,rpc);
+      return hostedCopySponsorExecutionRpc(identity,id,rpc,preflight.sourceFingerprint);
+    },
+  }:{};
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClaims(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchAthleteRewardRoutes(req,res,url,{...deps,
     resolveRpc:identity=>hostedCopyBeneficiaryWalletRpc(identity,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}))return true;
@@ -81,8 +90,8 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
     ...(hostedCopyOperationsEnabled(process.env,boundary.env)?{resolveRpc:(actor:{subject:string;wallet:string})=>hostedCopyControllerRpc(actor,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args)),resolveNativeClaimQueue:(actor:{subject:string;wallet:string},id:string,after:string|null)=>hostedCopyNativeClaimQueue(actor,id,after,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args)),resolveNativeClaimFacts:(actor:{subject:string;wallet:string},id:string)=>hostedCopyNativeClaimFacts(actor,id,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}:{}),
     controllerPolicy:token=>resolveControllerPolicy(process.env,token??'',typeof req.headers['x-podium-controller-wallet']==='string'?req.headers['x-podium-controller-wallet']:undefined),creationSigner:await resolveDeploymentSigner(process.env),reader:config?.chainId===10143?controllerPublicClient:undefined})) return true;
   if (await dispatchCampaignBranding(req,res,url,deps)) return true;
-  if (await dispatchPublicDirectory(req,res,url,{...deps,sponsorReader:config?.chainId===10143?controllerPublicClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
-  if (await dispatchPublicCampaign(req,res,url,{...deps,sponsorReader:config?.chainId===10143?controllerPublicClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
+  if (await dispatchPublicDirectory(req,res,url,{...deps,...copiedPublic,sponsorReader:config?.chainId===10143?controllerPublicClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
+  if (await dispatchPublicCampaign(req,res,url,{...deps,...copiedPublic,sponsorReader:config?.chainId===10143?controllerPublicClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
   if (await dispatchSetupEvents(req, res, url, deps)) return true;
   if (await dispatchSponsorSourceV4(req, res, url, deps)) return true;
   if (await dispatchSponsorClubClaimsV4(req, res, url, {...deps, sponsorReader: config?.chainId === 10143 ? canaryPublicClient : config?.chainId === 31337 ? programmeLocalReader : undefined})) return true;

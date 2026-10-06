@@ -99,6 +99,7 @@ export * from "./controller.js";
 export * from "./sponsor-club-claims-v4.js";
 export {resolveSponsorSourceV4} from "./sponsor-source-v4.js";
 export {rewardPublicCampaign,rewardPublicAwards} from './public-campaign.js';
+export {hostedCopyPublicRpc} from './hosted-copy-public.js';
 
 export {rewardPublicDirectory} from './public-directory.js';
 export {rewardWalletSettings,rewardWalletRuntime} from './wallet-settings.js';

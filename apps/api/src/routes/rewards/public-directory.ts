@@ -1,11 +1,12 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {rewardPublicDirectory} from '@raceson/db/rewards';
+import type {RewardLedgerRpc} from '@raceson/db/rewards';
 import {decodePublicDirectory,type PublicDirectory,type DirectoryCampaign} from '@raceson/domain/rewards/public-directory';
 import {observeSponsorProgramme,type SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
 import type {Hex} from 'viem';
 import type {OrganizerRewardRouteDependencies} from './organizer.js';
 import {publicCampaignObservation} from './public-campaign.js';
-type Deps=OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader};
+type Deps=OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;publicRpc?:RewardLedgerRpc};
 type Entry={until:number;value?:PublicDirectory;loading?:Promise<PublicDirectory>};
 // Only public projections are cached. Publications already contain verified chain snapshots.
 // The long-running demo API owns background work; no chain facts are persisted here.
@@ -22,7 +23,7 @@ export function mergeDirectoryObservation(directory:PublicDirectory,index:number
   checkedAt:observationTime(directory.items.map((value,position)=>position===index?{...item,campaign}:value)),refreshStatus:'refreshing'});
 }
 async function loadPublished(chainId:10143|31337,deps:Deps,entry:Entry):Promise<PublicDirectory>{
- const saved=await rewardPublicDirectory(chainId,deps.rpc);
+ const saved=await rewardPublicDirectory(chainId,deps.publicRpc??deps.rpc);
  if(saved.items.length>200)throw Error('directory_capacity'); // Never silently truncate totals.
  const items=saved.items.map(({campaign,selection,publishedAt})=>{
   const previous=entry.value?.items.find(i=>i.campaign.id===campaign.id&&i.publishedAt===publishedAt
