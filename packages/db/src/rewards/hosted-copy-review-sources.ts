@@ -20,7 +20,15 @@ export async function hostedCopyReviewSources(identity:RewardAccountIdentity,id:
   const source=id===null?null:await readFiveRoundCopyV1(pin,async()=>r.source);
   if(id===null&&r.source!==null)throw Error('hosted_copy_unavailable');
   const budget=previewRewardSetup(launch.setup.configuration);
-  return {launch,source,summary:{id:r.id,name:launch.setup.configuration.name,revision:launch.setup.revision,launchId:launch.id,
+  const configuration=launch.setup.configuration;
+  const pools=(configuration.guided?.pots??[]).flatMap(p=>{
+   const amount=budget.rows.find(row=>row.id===p.nodeId)?.amountWei;
+   if(amount===null||amount===undefined||amount<=0n)return [];
+   const node=configuration.root.children.find(n=>n.id===p.nodeId)!;
+   const name=configuration.sponsorSelection?.eventEditionId&&configuration.context?.eventName?configuration.context.eventName:node.name;
+   return [{slot:p.slot,name,budgetWei:amount.toString()}];
+  });
+  return {launch,source,execution,summary:{id:r.id,name:configuration.name,revision:launch.setup.revision,launchId:launch.id,pools,
    budgetWei:budget.budgetWei.toString(),executionState:!execution?.deploymentHash?'awaiting_contract' as const:!execution.fundingHash?'awaiting_funding' as const:'needs_chain_check' as const}};
  }));
  if(new Set(items.map(i=>i.summary.id)).size!==items.length)throw Error('hosted_copy_unavailable');

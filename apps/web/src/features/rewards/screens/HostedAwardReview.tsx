@@ -3,25 +3,27 @@ import {formatUnits} from 'viem';
 import {readHostedAwardReview,type HostedAwardDecision} from '../data/hostedAwardReview';
 import HostedAwardUpload from './HostedAwardUpload';
 import p from '../components/Podium.module.css';
+import s from './HostedReviewWorkspace.module.css';
 type View=Awaited<ReturnType<typeof readHostedAwardReview>>;
-function SlotReview({id,slot,hr}:{id:string;slot:number;hr:boolean}){
+function SlotReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expected?:{budgetWei:string;proposedWei:string}}){
+ const expectedBudget=expected?.budgetWei,expectedProposed=expected?.proposedWei;
+ const [acknowledged,setAcknowledged]=useState(false);
  const [view,setView]=useState<View|null>(null),[busy,setBusy]=useState(true),[error,setError]=useState(false),[reload,setReload]=useState(0);
  const pending=useRef<HostedAwardDecision|null>(null),generation=useRef(0);
- useEffect(()=>{const epoch=++generation.current;setBusy(true);setError(false);setView(null);pending.current=null;
-  void readHostedAwardReview(id,slot).then(v=>{if(epoch===generation.current)setView(v);}).catch(()=>{if(epoch===generation.current)setError(true);}).finally(()=>{if(epoch===generation.current)setBusy(false);});
-  return()=>{generation.current=epoch+1;};},[id,slot,reload]);
+ useEffect(()=>{const epoch=++generation.current;setBusy(true);setError(false);setView(null);pending.current=null;setAcknowledged(false);
+  void readHostedAwardReview(id,slot).then(v=>{if(expectedBudget!==undefined&&'contextHash' in v&&(v.budgetWei!==expectedBudget||v.proposedWei!==expectedProposed))throw Error('review_changed');if(epoch===generation.current)setView(v);}).catch(()=>{if(epoch===generation.current)setError(true);}).finally(()=>{if(epoch===generation.current)setBusy(false);});
+  return()=>{generation.current=epoch+1;};},[id,slot,reload,expectedBudget,expectedProposed]);
  async function save(decision:'approved'|'held'){
   const epoch=generation.current;
-  if(!pending.current){if(!view||!('contextHash' in view))return;pending.current={requestId:crypto.randomUUID(),expectedApprovalId:view.approval?.id??null,
+  if(!pending.current){if(!view||!('contextHash' in view)||decision==='approved'&&!acknowledged)return;pending.current={requestId:crypto.randomUUID(),expectedApprovalId:view.approval?.id??null,
    contextHash:view.contextHash,documentHash:view.documentHash,decision};}
   const command=pending.current;setBusy(true);setError(false);
   try{const next=await readHostedAwardReview(id,slot,command);if(epoch!==generation.current)return;pending.current=null;setView(next);}
   catch{if(epoch===generation.current){setError(true);setView(null);}}
   finally{if(epoch===generation.current)setBusy(false);}
  }
- return <section className={p.panel} aria-label={hr?'Odobrenje nagrada':'Award approval'}>
-  <h3>{hr?'Odobrenje točnih nagrada':'Approve exact awards'}</h3>
-  <p>{hr?'Odobrenje potvrđuje nagrade. Uplata, pristanak primatelja i isplata zahtijevaju zasebne korake.':'Approval records the awards. Funding, recipient consent and payment require separate steps.'}</p>
+ return <section className={s.decision} aria-label={hr?'Odobrenje nagrada':'Award approval'}>
+  <h3>{hr?'1 · Odluka pregledavatelja':'1 · Reviewer decision'}</h3>
   {busy?<p role="status">{hr?'Provjera…':'Checking…'}</p>:null}
   {error?<><p role="alert">{hr?'Odluka nije potvrđena. Ponovite istu odluku ili učitajte trenutačno stanje.':'The decision could not be confirmed. Retry the same decision or reload the current state.'}</p>
    {pending.current?<button className={p.primary} disabled={busy} onClick={()=>void save(pending.current!.decision)}>{hr?'Ponovi istu odluku':'Retry same decision'}</button>:null}
@@ -33,15 +35,15 @@ function SlotReview({id,slot,hr}:{id:string;slot:number;hr:boolean}){
     <p>{view.recipientCounts.athletes} {hr?'sportaša':'athletes'} · {view.recipientCounts.clubs} {hr?'klubova':'clubs'}</p>
     {view.reasons.length?<p>{hr?'Razlozi zadržavanja':'Hold reasons'}: {view.reasons.join(', ')}</p>:null}
     <details><summary>{hr?'Dokaz verzije':'Version evidence'}</summary><p style={{overflowWrap:'anywhere'}}>{view.documentHash}</p></details>
-    <button className={p.primary} disabled={busy||view.reasons.length>0||view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash} onClick={()=>void save('approved')}>{hr?'Odobri točne nagrade':'Approve exact awards'}</button>{' '}
+    <label className={s.acknowledgement}><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} disabled={busy}/>{hr?'Iznosi odgovaraju službenim rezultatima.':'Totals match the official results.'}</label>
+    <button className={p.primary} disabled={busy||!acknowledged||view.reasons.length>0||view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash} onClick={()=>void save('approved')}>{hr?'Odobri točne nagrade':'Approve exact awards'}</button>{' '}
     <button className={p.secondary} disabled={busy||view.approval?.current&&view.approval.decision==='held'&&view.approval.documentHash===view.documentHash} onClick={()=>void save('held')}>{hr?'Zadrži nagrade':'Hold awards'}</button>
    {view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash?<HostedAwardUpload key={view.approval.id} id={id} slot={slot} approvalId={view.approval.id} contextHash={view.contextHash} documentHash={view.documentHash} hr={hr}/>:null}
    </>}
   </>:null}
  </section>;
 }
-export default function HostedAwardReview({id,hr,initialSlot=0}:{id:string;hr:boolean;initialSlot?:number}){
- const [slot,setSlot]=useState(Number.isInteger(initialSlot)&&initialSlot>=0&&initialSlot<=5?initialSlot:0);
- return <><label>{hr?'Nagradni fond':'Prize pool'} <select value={slot} onChange={e=>setSlot(Number(e.target.value))}>
-  {Array.from({length:6},(_,i)=><option key={i} value={i}>{i===0?(hr?'Liga':'League'):`${hr?'Kolo':'Round'} ${i}`}</option>)}</select></label><SlotReview key={`${id}:${slot}`} id={id} slot={slot} hr={hr}/></>;
+export default function HostedAwardReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expected?:{budgetWei:string;proposedWei:string}}){
+ if(!Number.isInteger(slot)||slot<0||slot>5)return <p role="alert">{hr?'Odaberite sponzorirani fond.':'Select a sponsored prize pool.'}</p>;
+ return <><SlotReview key={`${id}:${slot}`} id={id} slot={slot} hr={hr} expected={expected}/><div className={s.controllerStep}><h3>{hr?'2 · Kontrolor: otvaranje preuzimanja':'2 · Controller: open claims'}</h3><p>{hr?'Nastavite nakon odobrenja nagrada i provjere uplate.':'Continue after award approval and funding verification.'}</p></div></>;
 }

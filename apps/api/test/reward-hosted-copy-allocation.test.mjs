@@ -140,6 +140,12 @@ test('review-source transport binds the reviewer session and independently verif
  const rpc=async(name,args)=>{assert.equal(name,'service_reward_demo_copy_review_sources');assert.equal(args.p_actor_user_id,identity.userId);assert.equal(args.p_actor_session_id,identity.sessionId);
   return denied?{data:null,error:{message:'reward_demo_reviewer_required'}}:{data:{version:'podium-copy-review-sources-v1',items:[item]},error:null};};
  const list=await hostedCopyReviewSources(identity,null,pin,rpc);assert.equal(list[0].summary.budgetWei,'101');assert.equal(list[0].summary.executionState,'awaiting_contract');
+ assert.deepEqual(list[0].summary.pools.map(p=>p.slot),[0]);
+ for(const node of record.configuration.root.children)node.shareBps=0;
+ record.configuration.root.children[4].shareBps=10000;record.configuration.root.children[4].children[0].shareBps=10000;
+ const single=await hostedCopyReviewSources(identity,null,pin,rpc);assert.deepEqual(single[0].summary.pools.map(p=>p.slot),[4]);assert.equal(single[0].summary.pools[0].budgetWei,'101');
+ record.configuration.root.children[0].shareBps=5000;record.configuration.root.children[4].shareBps=5000;
+ const mixed=await hostedCopyReviewSources(identity,null,pin,rpc);assert.deepEqual(mixed[0].summary.pools.map(p=>p.slot),[0,4]);assert.equal(mixed[0].summary.pools.reduce((sum,p)=>sum+BigInt(p.budgetWei),0n),101n);
  item={...item,source};const detail=await hostedCopyReviewSources(identity,record.id,pin,rpc);assert.equal(detail[0].source.results.length,15);
  item={...item,id:id(7777)};await assert.rejects(()=>hostedCopyReviewSources(identity,record.id,pin,rpc),/hosted_copy_unavailable/);
  item={id:record.id,launch,execution:null,source:{...source,sportingSha256:'c'.repeat(64)}};await assert.rejects(()=>hostedCopyReviewSources(identity,record.id,pin,rpc),/copy_projection_changed/);

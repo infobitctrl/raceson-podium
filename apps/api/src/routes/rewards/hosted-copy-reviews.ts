@@ -1,6 +1,6 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {createAdminSupabaseClient,loadServerEnv} from '@raceson/db';
-import {hostedCopyReviewSources,composeHostedCopyAllocation,hostedCopyLifecycleRpc} from '@raceson/db/rewards';
+import {hostedCopyReviewSources,composeHostedCopyAllocation,hostedCopyLifecycleRpc,hostedCopySetupNodeId} from '@raceson/db/rewards';
 import {setupId} from '@raceson/domain/rewards/distribution-setup';
 import {hostedCopyOperationsEnabled,hostedCopyPin} from '../../features/rewards/hosted-copy-preview.js';
 import {hostedCopySelections,hostedCopyUnaffiliatedReview,hostedCopyReviewNote} from '../../features/rewards/hosted-copy-review.js';
@@ -10,6 +10,8 @@ import {hostedCopyAwardReview} from '../../features/rewards/hosted-copy-approval
 import {sponsorUploadV4} from '../../features/rewards/sponsor-upload-v4-service.js';
 import {sponsorLifecycleV4} from '../../features/rewards/sponsor-lifecycle-v4-service.js';
 import type {SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
+import {hostedReviewFunding} from '../../features/rewards/hosted-copy-review-funding.js';
+import {readHostedCopyCatalogue} from '../../features/rewards/hosted-copy-catalogue.js';
 const uuid=z.string().uuid().refine(v=>!!setupId(v)),hash=z.string().regex(/^[0-9a-f]{64}$/);
 const decision=z.object({requestId:uuid,expectedApprovalId:uuid.nullable(),contextHash:hash,documentHash:hash,decision:z.enum(['approved','held'])}).strict();
 const upload=z.object({requestId:uuid,contextHash:hash,documentHash:hash}).strict();
@@ -32,13 +34,21 @@ export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerRe
   }
   if(match[2]){deps.sendSuccess(res,await hostedCopyAwardReview(actor,id!,Number(match[2]),rpc,req.method==='POST'?decision.parse(await deps.readJsonBody(req)):undefined));return true;}
   const records=await hostedCopyReviewSources(actor,id,hostedCopyPin,rpc);
+  const {catalogue}=await readHostedCopyCatalogue(env);
+  for(const record of records)for(const pool of record.summary.pools)pool.name=pool.slot===0?catalogue.name:catalogue.rounds.find(round=>round.slot===pool.slot)!.name;
   if(id===null){deps.sendSuccess(res,{version:'podium-copy-review-queue-v1',items:records.map(r=>r.summary)});return true;}
   const record=records[0]!;
   const result=composeHostedCopyAllocation(record.launch.setup,record.source!,hostedCopyPin,hostedCopySelections(hostedCopyPin),hostedCopyUnaffiliatedReview(hostedCopyPin));
+  const groups=result.allocation.groups.filter(g=>g.budgetWei>0n).map(g=>{
+   const category=catalogue.categories.find(c=>hostedCopySetupNodeId(id,`group:${g.slot}:${c.id}`)===g.nodeId);
+   const track=category&&catalogue.rounds.find(r=>r.slot===g.slot)?.tracks.find(t=>t.competitionId===category.competitionId);
+   return {...g,classification:category?{trackId:category.competitionId,trackName:track?.name??category.competitionName,categoryName:category.name}:null};
+  });
+  const funding=await hostedReviewFunding(record.execution,deps.sponsorReader);
   // Recheck live source authority after calculation before returning private rows.
   const fresh=await hostedCopyReviewSources(actor,id,hostedCopyPin,rpc);
-  if(fresh[0]!.launch.id!==record.launch.id)throw Error('reward_setup_conflict');
-  deps.sendSuccess(res,JSON.parse(JSON.stringify({...result.allocation,reviewNote:hostedCopyReviewNote(hostedCopyPin)},(_key,v)=>typeof v==='bigint'?v.toString():v)));
+  if(fresh[0]!.launch.id!==record.launch.id||JSON.stringify(fresh[0]!.execution)!==JSON.stringify(record.execution))throw Error('reward_setup_conflict');
+  deps.sendSuccess(res,JSON.parse(JSON.stringify({...result.allocation,groups,pools:record.summary.pools,funding,reviewNote:hostedCopyReviewNote(hostedCopyPin)},(_key,v)=>typeof v==='bigint'?v.toString():v)));
  }catch(error){
   const code=error&&typeof error==='object'&&'code' in error?String(error.code):error instanceof Error?error.message:'';
   if(['Unauthorized','Missing bearer token','reward_account_session_required'].includes(code))deps.sendError(res,401,'reward_auth_required','Sign in to the isolated demo.');

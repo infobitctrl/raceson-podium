@@ -3,15 +3,15 @@ import {beforeEach,expect,it,vi} from 'vitest';
 import HostedReviewQueue from './HostedReviewQueue';
 const mocks=vi.hoisted(()=>({read:vi.fn()}));
 vi.mock('../data/hostedReviewSources',()=>({readHostedReviewSources:mocks.read}));
-vi.mock('./HostedAllocationPreview',()=>({default:({id,revision,source}:{id:string;revision:number;source:string})=><p>Preview {id} r{revision} {source}</p>}));
-vi.mock('./HostedAwardReview',()=>({default:({id,initialSlot}:{id:string;initialSlot:number})=><p>Awards {id} pot {initialSlot}</p>}));
-const item={id:'copied',launchId:'retained',revision:2,name:'Copied campaign',budgetWei:'1000000000000000001',executionState:'awaiting_contract'};
+vi.mock('./HostedReviewWorkspace',()=>({default:({campaign,requestedSlot,onBack}:{campaign:{id:string;revision:number};requestedSlot:number|null;onBack:()=>void})=><div>Preview {campaign.id} r{campaign.revision} reviewer<p>Awards {campaign.id} pot {requestedSlot??'default'}</p><button onClick={onBack}>Review queue</button></div>}));
+const item={id:'copied',launchId:'retained',revision:2,name:'Copied campaign',budgetWei:'1000000000000000001',executionState:'awaiting_contract',pools:[{slot:4,name:'Sponsored race',budgetWei:'1000000000000000001'}]};
 beforeEach(()=>{mocks.read.mockReset();});
 it('opens retained contract rules through reviewer authority and preserves every wei',async()=>{
  mocks.read.mockResolvedValue({items:[item]});render(<HostedReviewQueue hr={false}/>);
- fireEvent.click(await screen.findByRole('button',{name:'Copied campaign'}));
- expect(screen.getByText('Preview copied r2 reviewer')).toBeInTheDocument();
+ await screen.findByRole('button',{name:'Copied campaign'});
  expect(screen.getByText('Awaiting contract')).toBeInTheDocument();expect(screen.getByTitle('1.000000000000000001 test MON')).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Copied campaign'}));expect(screen.getByText('Preview copied r2 reviewer')).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Review queue'}));expect(screen.getByRole('button',{name:'Copied campaign'})).toBeInTheDocument();
 });
 it('opens only an authorized requested campaign and retains the selected contract pot',async()=>{
  mocks.read.mockResolvedValue({items:[item]});render(<HostedReviewQueue hr={false} requestedCampaign={item.id} requestedSlot={4}/>);
@@ -20,7 +20,7 @@ it('opens only an authorized requested campaign and retains the selected contrac
 it('a foreign navigation hint cannot select an absent campaign or borrow another campaign',async()=>{
  mocks.read.mockResolvedValue({items:[item]});render(<HostedReviewQueue hr={false} requestedCampaign="foreign" requestedSlot={4}/>);
  await screen.findByText('The requested campaign is not available for review.');expect(screen.queryByText(/Preview copied/)).not.toBeInTheDocument();
- fireEvent.click(screen.getByRole('button',{name:'Copied campaign'}));expect(screen.getByText('Awards copied pot 0')).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Copied campaign'}));expect(screen.getByText('Awards copied pot default')).toBeInTheDocument();
 });
 it('clears selected private rows during a failed refresh and offers a fresh read',async()=>{
  mocks.read.mockRejectedValue(Error('revoked'));render(<HostedReviewQueue hr={false}/>);
