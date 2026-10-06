@@ -14,4 +14,6 @@ it('hosted result handoff retains exact campaign/pot while local navigation keep
 it('claim recovery hints require one exact approval and claim UUID',async()=>{
  const {controllerClaimSelection}=await import('./controllerLinks');expect(controllerClaimSelection(`?approval=${id}&claim=${id}`)).toEqual({approvalId:id,claimId:id});
  for(const query of [`?approval=${id}&claim=wrong`,`?approval=${id}&approval=${id}&claim=${id}`,`?claim=${id}`])expect(controllerClaimSelection(query)).toBeNull();
+ expect(controllerClaimSelection(`?approval=${id}&claim=${id}&claimKind=club`)).toEqual({approvalId:id,claimId:id,club:true});
+ for(const suffix of ['&claimKind=athlete','&claimKind=club&claimKind=club'])expect(controllerClaimSelection(`?approval=${id}&claim=${id}${suffix}`)).toBeNull();
 });

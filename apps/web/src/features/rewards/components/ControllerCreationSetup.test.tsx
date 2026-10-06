@@ -74,3 +74,9 @@ it('keeps an unsigned claim payment reserved and links its exact campaign, appro
  render(<I18nProvider initialLocale="en"><ControllerCreationSetup connection={c} session={session} onRefresh={async()=>{}}/></I18nProvider>);
  expect(await screen.findByRole('link',{name:'Review pending claim payment'})).toHaveAttribute('href',`/rewards/control?campaign=${id}&approval=${id}&claim=${claimId}&wallet=${wallet}`);expect(calls.confirm).not.toHaveBeenCalled();expect(c.signTransaction).not.toHaveBeenCalled();
 });
+it('recovers a club claim through its own exact queue without signing automatically',async()=>{
+ const c=connection(),claimId='73000000-0000-4000-8000-000000000003',claim={...pending,context:{kind:'clubClaim',setupId:id,approvalId:id,claimId,source:'immutable'}};c.request=vi.fn(async()=>({pending:claim,factory:null}));
+ render(<I18nProvider initialLocale="en"><ControllerCreationSetup connection={c} session={session} onRefresh={async()=>{}}/></I18nProvider>);
+ expect(await screen.findByRole('link',{name:'Review pending club claim payment'})).toHaveAttribute('href',`/rewards/control?campaign=${id}&approval=${id}&claim=${claimId}&wallet=${wallet}&claimKind=club`);
+ expect(screen.getByText(/Club claim payment/)).toBeVisible();expect(calls.confirm).not.toHaveBeenCalled();expect(c.signTransaction).not.toHaveBeenCalled();expect(calls.recover).not.toHaveBeenCalled();
+});

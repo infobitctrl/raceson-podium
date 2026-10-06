@@ -12,6 +12,7 @@ export function controllerSelection(search:string) {
 }
 
 export function controllerClaimSelection(search:string){
- const q=new URLSearchParams(search),approval=q.get('approval'),claim=q.get('claim');
- return q.getAll('approval').length===1&&q.getAll('claim').length===1&&setupId(approval)&&setupId(claim)?{approvalId:approval!,claimId:claim!}:null;
+ const q=new URLSearchParams(search),approval=q.get('approval'),claim=q.get('claim'),kind=q.get('claimKind');
+ if(q.getAll('claimKind').length>1||kind!==null&&kind!=='club')return null;
+ return q.getAll('approval').length===1&&q.getAll('claim').length===1&&setupId(approval)&&setupId(claim)?{approvalId:approval!,claimId:claim!,...(kind==='club'?{club:true as const}:{})}:null;
 }
