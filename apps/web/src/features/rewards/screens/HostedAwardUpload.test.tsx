@@ -1,5 +1,5 @@
 vi.mock('./HostedClubClaimReviews',()=>({default:({approvalId}:{approvalId:string})=><p>Club queue {approvalId}</p>}));
-import {fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {act,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedAwardUpload from './HostedAwardUpload';
 vi.mock('./HostedClaimReviews',()=>({default:({approvalId}:{approvalId:string})=><p>Recipient queue {approvalId}</p>}));
@@ -49,4 +49,22 @@ it('changing approval retires late private reads',async()=>{
  const {rerender}=render(<HostedAwardUpload {...props}/>);rerender(<HostedAwardUpload {...props} approvalId="new"/>);
  await screen.findByText(/decision is no longer current/);resolve(prepared);await waitFor(()=>expect(mocks.upload).toHaveBeenCalledTimes(2));
  expect(screen.queryByText('Package prepared for the controller.')).not.toBeInTheDocument();expect(mocks.handoff).not.toHaveBeenCalled();
+});
+
+it('a pending handoff replaces its button and cannot unlock the controller before confirmation',async()=>{
+ let reject!:(reason:unknown)=>void;
+ mocks.upload.mockResolvedValue(prepared);mocks.handoff.mockResolvedValueOnce(handoff).mockImplementationOnce(()=>new Promise((_,fail)=>{reject=fail;}));
+ render(<HostedAwardUpload {...props}/>);fireEvent.click(await screen.findByRole('button',{name:'Confirm results handoff'}));
+ expect(screen.getByRole('group',{name:'Preparation progress'})).toHaveAttribute('aria-busy','true');
+ expect(screen.queryByRole('button',{name:'Confirm results handoff'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('link',{name:'Open controller workspace'})).not.toBeInTheDocument();
+ await act(async()=>reject(Error('uncertain')));
+ expect(screen.getByRole('group',{name:'Preparation progress'})).toHaveAttribute('aria-busy','false');
+ expect(screen.getByRole('button',{name:'Retry same preparation'})).toBeEnabled();
+});
+it('a stale publication never unlocks the controller workspace',async()=>{
+ mocks.upload.mockResolvedValue(prepared);mocks.handoff.mockResolvedValue({...handoff,current:false,publication:{id:'stale'}});
+ render(<HostedAwardUpload {...props}/>);await screen.findByText('Package prepared for the controller.');
+ expect(screen.queryByRole('link',{name:'Open controller workspace'})).not.toBeInTheDocument();
+ expect(screen.queryByText('Recipient queue approval')).not.toBeInTheDocument();
 });

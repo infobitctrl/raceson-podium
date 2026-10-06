@@ -1,4 +1,4 @@
-import {fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {act,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedAwardReview from './HostedAwardReview';
 const mocks=vi.hoisted(()=>({read:vi.fn()}));
@@ -49,4 +49,18 @@ it('requires an explicit totals acknowledgement before approval',async()=>{
  mocks.read.mockResolvedValue(base);render(<HostedAwardReview id="setup" slot={4} hr={false}/>);
  expect(await screen.findByRole('button',{name:'Approve exact awards'})).toBeDisabled();
  fireEvent.click(screen.getByRole('checkbox'));expect(screen.getByRole('button',{name:'Approve exact awards'})).toBeEnabled();
+});
+
+it('replaces the decision button while saving and never shows approval before the exact response',async()=>{
+ let reject!:(reason:unknown)=>void;
+ mocks.read.mockResolvedValueOnce(base).mockImplementationOnce(()=>new Promise((_,fail)=>{reject=fail;}));
+ render(<HostedAwardReview id="setup" slot={0} hr={false}/>);
+ await screen.findByRole('button',{name:'Approve exact awards'});fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Approve exact awards'}));
+ expect(screen.getByRole('group',{name:'Decision progress'})).toHaveAttribute('aria-busy','true');
+ expect(screen.queryByRole('button',{name:'Approve exact awards'})).not.toBeInTheDocument();
+ expect(screen.queryByText('Allocation approved')).not.toBeInTheDocument();
+ await act(async()=>reject(Error('uncertain')));
+ expect(screen.getByRole('group',{name:'Decision progress'})).toHaveAttribute('aria-busy','false');
+ expect(screen.getAllByRole('listitem').some(x=>x.getAttribute('data-state')==='current')).toBe(false);
+ expect(screen.getByRole('button',{name:'Retry same decision'})).toBeEnabled();
 });

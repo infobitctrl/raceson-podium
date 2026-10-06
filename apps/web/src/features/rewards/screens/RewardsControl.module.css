@@ -66,3 +66,6 @@
 
 /* Base44 role canvas and controls. */
 .page{max-width:1152px;padding:32px 24px 64px;background:#faf8f4}.header h1{font-size:36px;letter-spacing:-.025em;line-height:1.12}.primary{background:#f56617;color:#201c19}.primary:hover{background:#df5409}.card,.resultsPanel,.workflowPanel{border-radius:16px}.card h2{font-size:20px}.campaigns{border-radius:16px}.campaign{border-radius:0}.tabs{padding:4px;gap:4px;border-radius:9px;background:#eee9e1}.tabs button{border:0;min-height:32px;padding:6px 12px;font-size:14px;color:#62584f}.tabs button[aria-pressed=true]{background:#faf8f4;color:#201c19;box-shadow:0 1px 2px #201c1920}.walletCard .walletBalance{font-size:28px}@media(max-width:639px){.page{padding:24px 16px 40px}.header h1{font-size:30px}.tabs button{min-width:0}}
+
+/* Keep the entire current handoff visible in the page, matching the review workspace. */
+.workflowPanel{border:2px solid #39322c;border-radius:16px;max-height:none;overflow:visible;top:80px}

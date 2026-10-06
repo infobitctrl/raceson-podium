@@ -44,21 +44,21 @@ async function start(f:ReturnType<typeof fixture>){
  render(<RewardsControl connection={f.c} onLogout={()=>{}}/>);
  await screen.findByRole('button',{name:'Start remaining wallet steps · Privy'});
  fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Start remaining wallet steps · Privy'}));
- await screen.findByRole('button',{name:'Confirm in Privy…'});
+ await screen.findByText('Confirm the transaction in the Privy wallet window to continue.');
 }
 async function confirm(f:ReturnType<typeof fixture>){
  await act(async()=>{await f.approve();});
  await screen.findByText('Waiting for transaction confirmation');
  // Exercise the same receipt checker as automatic polling, without timing flakiness.
- fireEvent.click(screen.getByRole('button',{name:'Check confirmation now'}));
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
 }
 it('one start continues through two uploads, stage and activation with one wallet approval per transaction',async()=>{
  const f=fixture();await start(f);
  for(let i=0;i<4;i++){
   expect(f.c.signTransaction).toHaveBeenCalledTimes(i+1);await confirm(f);
-  if(i<3)await screen.findByRole('button',{name:'Confirm in Privy…'});
+  if(i<3)await screen.findByText('Confirm the transaction in the Privy wallet window to continue.');
  }
- expect(await screen.findByText('Distribution published · claims open')).toBeVisible();
+ expect(await screen.findByRole('heading',{name:'Claims open'})).toBeVisible();
  expect(screen.queryByRole('button',{name:'Pause wallet steps'})).not.toBeInTheDocument();
  const calls=vi.mocked(f.c.request).mock.calls;
  expect(calls.filter(([path])=>path==='/access')).toHaveLength(1);
@@ -97,17 +97,17 @@ it('pausing during preparation prevents the pending response from opening a wall
  f.c.request=vi.fn(async(path,body)=>{const value=await request(path,body);if((body as {action?:string})?.action==='prepare'){await response;}return value;});
  render(<RewardsControl connection={f.c} onLogout={()=>{}}/>);
  await screen.findByRole('button',{name:'Start remaining wallet steps · Privy'});fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Start remaining wallet steps · Privy'}));
- await screen.findByRole('button',{name:'Preparing transaction…'});fireEvent.click(screen.getByRole('button',{name:'Pause wallet steps'}));
+ await screen.findByText('Checking account access, approved rewards and testnet gas before opening your wallet.');fireEvent.click(screen.getByRole('button',{name:'Pause wallet steps'}));
  await act(async()=>release(null));expect(await screen.findByRole('alert')).toHaveTextContent('Wallet steps paused');expect(f.c.signTransaction).not.toHaveBeenCalled();
 });
 it('reloading preserves receipt recovery but never resumes the wallet sequence automatically',async()=>{
  const f=fixture();
  const view=render(<RewardsControl connection={f.c} onLogout={()=>{}}/>);
  await screen.findByRole('button',{name:'Start remaining wallet steps · Privy'});fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Start remaining wallet steps · Privy'}));
- await screen.findByRole('button',{name:'Confirm in Privy…'});await act(async()=>{await f.approve();});
+ await screen.findByText('Confirm the transaction in the Privy wallet window to continue.');await act(async()=>{await f.approve();});
  await screen.findByText('Waiting for transaction confirmation');view.unmount();
  render(<RewardsControl connection={f.c} onLogout={()=>{}}/>);
- await screen.findByText('Waiting for transaction confirmation');fireEvent.click(screen.getByRole('button',{name:'Check confirmation now'}));
+ await screen.findByText('Waiting for transaction confirmation');fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
  expect(await screen.findByRole('button',{name:'Start remaining wallet steps · Privy'})).toBeDisabled();expect(f.c.signTransaction).toHaveBeenCalledTimes(1);
  expect(screen.queryByRole('button',{name:'Pause wallet steps'})).not.toBeInTheDocument();
 });

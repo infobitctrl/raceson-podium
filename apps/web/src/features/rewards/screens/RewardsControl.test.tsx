@@ -88,9 +88,9 @@ it("opens the linked campaign and funded pot after authorization without signing
  expect(screen.getByRole("link",{name:/Open results review/})).toHaveAttribute("href",`/rewards/manage/campaigns/${id(1)}?pot=4`);
  expect(screen.getByRole("link",{name:/View public campaign/})).toHaveAttribute("href",`/rewards/campaigns/${id(1)}/public`);
  expect(screen.getByRole("region",{name:"Reward distribution workflow"})).toBeVisible();
- expect(screen.getByRole("heading",{name:"Confirm official results"})).toBeVisible();
+ expect(screen.getByRole("heading",{name:"1 · Reviewer decision"})).toBeVisible();
  expect(screen.queryByText("Checking…")).not.toBeInTheDocument();
- expect(screen.getByText("Current")).toBeVisible();
+ expect(screen.getByText(/Available after the exact allocation is approved/)).toBeVisible();
  expect(screen.queryByText("Waiting for official results")).not.toBeInTheDocument();
  expect(c.getWallet).not.toHaveBeenCalled();expect(mocks.send).not.toHaveBeenCalled();
 });
@@ -155,7 +155,7 @@ it('checks a saved pending transaction automatically, retains it while pending, 
  render(<RewardsControl connection={c} onLogout={()=>{}}/>);
  await screen.findByText('Waiting for transaction confirmation');
  // A manual check and automatic polling share the same single-flight guard.
- fireEvent.click(screen.getByRole('button',{name:'Check confirmation now'}));
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
  await act(async()=>{await Promise.resolve();});
  expect(sessionStorage.getItem(key)).not.toBeNull();expect(screen.queryByRole('alert')).not.toBeInTheDocument();
  expect(await screen.findByRole('button',{name:'Start remaining wallet steps · Privy'},{timeout:4000})).toBeDisabled();
@@ -167,13 +167,14 @@ it.each([['stage',1,'Start remaining wallet steps · Privy'],['activate',2,'Open
  render(<RewardsControl connection={c} onLogout={()=>{}}/>);
  expect(await screen.findByRole('button',{name:label})).toBeDisabled();
  expect(screen.queryByText('Distribution published · claims open')).not.toBeInTheDocument();
- expect(screen.getByRole('heading',{name:'Claims open'}).closest('li')).toHaveAttribute('data-state','upcoming');
+ expect(screen.getByRole('heading',{name:'Open claims on the contract'})).toBeVisible();
+ expect(screen.queryByRole('heading',{name:'Claims open'})).not.toBeInTheDocument();
  expect(c.getWallet).not.toHaveBeenCalled();
 });
 it('marks claims open only after confirmed contract state and removes signing controls',async()=>{
  const c=readyConnection(),request=c.request;c.request=vi.fn(async(path,body)=>path.includes('/allocations/')?lifecycle('activate',3):request(path,body));
  render(<RewardsControl connection={c} onLogout={()=>{}}/>);
- expect(await screen.findByText('Distribution published · claims open')).toBeVisible();
+ expect(await screen.findByRole('heading',{name:'Claims open'})).toBeVisible();
  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:'Open reward claims · Privy'})).not.toBeInTheDocument();
  expect(c.getWallet).not.toHaveBeenCalled();
 });
@@ -182,7 +183,8 @@ it('does not present a stale handoff as completed or offer a signature',async()=
  render(<RewardsControl connection={c} onLogout={()=>{}}/>);
  expect(await screen.findByRole('link',{name:'Open results review'})).toBeVisible();
  expect(screen.queryByRole('button',{name:/Sign rewards/})).not.toBeInTheDocument();
- expect(screen.getByRole('heading',{name:'Confirm official results'}).closest('li')).not.toHaveAttribute('data-state','complete');
+ expect(screen.queryByText('Allocation approved')).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'Start remaining wallet steps · Privy'})).not.toBeInTheDocument();
  expect(c.getWallet).not.toHaveBeenCalled();
 });
 it('describes a paused open pot accurately',async()=>{
@@ -234,15 +236,20 @@ it('shows preparation and wallet stages, skips the unused provider, and prevents
  render(<RewardsControl connection={c} onLogout={()=>{}}/>);
  await screen.findByRole('button',{name:'Start remaining wallet steps · Privy'});
  fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Start remaining wallet steps · Privy'}));
- expect(await screen.findByRole('button',{name:'Preparing transaction…'})).toBeDisabled();
+ expect(await screen.findByRole('group',{name:'Transaction progress'})).toHaveAttribute('aria-busy','true');
  expect(c.signTransaction).not.toHaveBeenCalled();
  await act(async()=>prepared.resolve(preparedJob));
- const confirming=screen.getByRole('button',{name:'Confirm in Privy…'});expect(confirming).toBeDisabled();
- fireEvent.click(confirming);expect(c.signTransaction).toHaveBeenCalledTimes(1);expect(c.getWallet).not.toHaveBeenCalled();
+ expect(screen.getByRole('group',{name:'Transaction progress'})).toHaveAttribute('aria-busy','true');
+ expect(screen.queryByRole('button',{name:'Start remaining wallet steps · Privy'})).not.toBeInTheDocument();expect(c.signTransaction).toHaveBeenCalledTimes(1);expect(c.getWallet).not.toHaveBeenCalled();
  await act(async()=>rejectWallet({code:4001}));
  expect(screen.getByRole('alert')).toHaveTextContent('Wallet confirmation was cancelled');
- expect(screen.getByRole('button',{name:'Start remaining wallet steps · Privy'})).toBeEnabled();
+ expect(screen.getByRole('button',{name:'Retry remaining wallet steps · Privy'})).toBeEnabled();
+ expect(screen.getByRole('group',{name:'Transaction progress'})).toHaveAttribute('aria-busy','false');
  expect(c.request).not.toHaveBeenCalledWith('/transactions',expect.objectContaining({action:'submit'}));
+ c.request=vi.fn(async()=>{throw Error('controller_chain_unavailable');});
+ fireEvent.click(screen.getByRole('button',{name:'Review official distribution'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('testnet could not be reached');
+ expect(screen.queryByRole('group',{name:'Transaction progress'})).not.toBeInTheDocument();
 });
 it('explains insufficient controller gas before any wallet signature',async()=>{
  const c=readyConnection(),request=c.request;c.signTransaction=vi.fn();
@@ -260,13 +267,14 @@ it('times out unsigned checks and ignores a late prepare response without openin
  await screen.findByRole('button',{name:'Start remaining wallet steps · Privy'});
  vi.useFakeTimers();fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Start remaining wallet steps · Privy'}));
  await act(async()=>{await Promise.resolve();});
- expect(screen.getByRole('button',{name:'Preparing transaction…'})).toBeDisabled();
+ expect(screen.getByRole('group',{name:'Transaction progress'})).toHaveAttribute('aria-busy','true');
  await act(async()=>{await vi.advanceTimersByTimeAsync(15_000);});
  expect(screen.getByText(/These checks are taking longer/)).toBeVisible();
  await act(async()=>{await vi.advanceTimersByTimeAsync(45_000);});
  expect(screen.getByRole('alert')).toHaveTextContent('No wallet signature was requested');
  await act(async()=>prepared.resolve(preparedJob));
- expect(c.signTransaction).not.toHaveBeenCalled();expect(screen.getByRole('button',{name:'Start remaining wallet steps · Privy'})).toBeEnabled();
+ expect(c.signTransaction).not.toHaveBeenCalled();expect(screen.getByRole('button',{name:'Retry remaining wallet steps · Privy'})).toBeEnabled();
+ expect(screen.getByRole('group',{name:'Transaction progress'})).toHaveAttribute('aria-busy','false');
 });
 it('blocks an account change during preparation before opening the wallet',async()=>{
  const c=readyConnection(),request=c.request,prepared=deferred<unknown>();let current=true;
@@ -274,7 +282,7 @@ it('blocks an account change during preparation before opening the wallet',async
  render(<RewardsControl connection={c} onLogout={()=>{}}/>);
  await screen.findByRole('button',{name:'Start remaining wallet steps · Privy'});
  fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Start remaining wallet steps · Privy'}));
- await screen.findByRole('button',{name:'Preparing transaction…'});
+ await screen.findByText('Checking account access, approved rewards and testnet gas before opening your wallet.');
  current=false;await act(async()=>prepared.resolve(preparedJob));
  expect(screen.getByRole('alert')).toHaveTextContent('account or wallet changed');expect(c.signTransaction).not.toHaveBeenCalled();
 });
@@ -326,7 +334,7 @@ it('distinguishes receipt verification from loading the next step without openin
  });
  render(<RewardsControl connection={c} onLogout={()=>{}}/>);
  await screen.findByText('Waiting for transaction confirmation');
- fireEvent.click(screen.getByRole('button',{name:'Check confirmation now'}));
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
  expect(await screen.findByText(/Checking the finalized receipt/)).toBeVisible();
  expect(screen.queryByText(/Transaction confirmed. Loading/)).not.toBeInTheDocument();
  await act(async()=>receipt.resolve(job));
@@ -345,7 +353,7 @@ it('advances a confirmed journal stage with a read, without verifying and postin
  });
  render(<RewardsControl connection={c} onLogout={()=>{}}/>);
  await screen.findByText('Waiting for transaction confirmation');
- fireEvent.click(screen.getByRole('button',{name:'Check confirmation now'}));
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
  expect(await screen.findByRole('button',{name:'Open reward claims · Privy'})).toBeDisabled();
  expect(sessionStorage.getItem(key)).toBeNull();expect(c.getWallet).not.toHaveBeenCalled();
  expect(c.request).toHaveBeenCalledWith('/transactions',{action:'resume',id:job.id});
@@ -362,7 +370,7 @@ it.each(['pending','wrong hash','wrong scope'] as const)('retains saved transact
  await screen.findByText('Waiting for transaction confirmation');
  await act(async()=>{await Promise.resolve();});
  const before=reads.mock.calls.length;
- fireEvent.click(screen.getByRole('button',{name:'Check confirmation now'}));
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
  await act(async()=>{await Promise.resolve();});
  expect(reads).toHaveBeenCalledTimes(before);expect(sessionStorage.getItem(key)).not.toBeNull();
  expect(screen.queryByRole('button',{name:'Open reward claims · Privy'})).not.toBeInTheDocument();expect(c.getWallet).not.toHaveBeenCalled();
@@ -380,9 +388,9 @@ it('retains the confirmed hash if the next-state read fails and recovers by read
  });
  render(<RewardsControl connection={c} onLogout={()=>{}}/>);
  await screen.findByText('Waiting for transaction confirmation');
- fireEvent.click(screen.getByRole('button',{name:'Check confirmation now'}));
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
  expect(await screen.findByRole('alert')).toHaveTextContent('testnet could not be reached');expect(sessionStorage.getItem(key)).not.toBeNull();
- fireEvent.click(screen.getByRole('button',{name:'Check confirmation now'}));
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
  expect(await screen.findByRole('button',{name:'Open reward claims · Privy'})).toBeDisabled();expect(sessionStorage.getItem(key)).toBeNull();
 });
 
