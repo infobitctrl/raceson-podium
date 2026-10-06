@@ -36,3 +36,11 @@ it('retains server errors and rejects a changed session after the response',asyn
  let current=true;fetch.mockResolvedValue({ok:true,json:async()=>{current=false;return {data:{private:true}};}});
  await expect(createControllerRequest(async()=>'synthetic-token',()=>current)('/campaigns')).rejects.toThrow('controller_session_changed');
 });
+it('native claim transport permits exact bounded paths and refuses query or identity overrides before token lookup',async()=>{
+ const id='7d000000-0000-4000-8000-000000000009',token=vi.fn(async()=>'synthetic-token'),fetch=vi.fn().mockResolvedValue({ok:true,json:async()=>({data:{scoped:true}})});vi.stubGlobal('fetch',fetch);
+ const request=createControllerRequest(token,()=>true);
+ await request(`/claims?approvalId=${id}`);await request(`/claims?approvalId=${id}&after=${id}`);await request(`/claims/${id}`,{action:'operator',signature:'synthetic'});
+ expect(token).toHaveBeenCalledTimes(3);
+ for(const path of ['/claims',`/claims?approvalId=${id}&actor=wrong`,`/claims?approvalId=${id}&approvalId=${id}`,`/claims/${id}?wallet=wrong`])await expect(request(path)).rejects.toThrow('controller_session_changed');
+ await expect(request(`/claims?approvalId=${id}`,{})).rejects.toThrow('controller_session_changed');expect(token).toHaveBeenCalledTimes(3);
+});

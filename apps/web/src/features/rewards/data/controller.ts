@@ -6,9 +6,15 @@ import {decodeSponsorLifecycleView} from "./sponsorLifecycleCodec";
 
 export type ControllerSession={subject:string;wallet:string;chainId:10143;creation?:{configured:boolean;address:string|null;balanceWei:string|null;setup?:{factory:string;signerId:string;policyId:string}}};
 export type ControllerRequest=(path:string,body?:unknown)=>Promise<unknown>;
+const controllerUuid='[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+function allowedControllerPath(path:string,body:unknown){
+ if(/^\/(access|session|campaigns|transactions)(\/[a-z0-9/-]+)?$/.test(path))return true;
+ if(new RegExp(`^/claims/${controllerUuid}$`).test(path))return true;
+ return body===undefined&&new RegExp(`^/claims\\?approvalId=${controllerUuid}(?:&after=${controllerUuid})?$`).test(path);
+}
 export function createControllerRequest(getToken:()=>Promise<string|null>,current:()=>boolean,selectedWallet?:string):ControllerRequest {
   return async(path,body)=>{
-    if(!/^\/(access|session|campaigns|transactions)(\/[a-z0-9/-]+)?$/.test(path)||!current())throw Error("controller_session_changed");
+    if(!allowedControllerPath(path,body)||!current())throw Error("controller_session_changed");
     // Bound token lookup, transport and response parsing. Aborting the browser
     // request does not cancel server work: signed submissions remain recoverable.
     const signedSubmission=path==='/transactions'&&typeof body==='object'&&body!==null&&'action' in body&&body.action==='submit';

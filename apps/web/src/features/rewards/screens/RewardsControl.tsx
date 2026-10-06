@@ -1,10 +1,11 @@
+import ControllerClaims from './ControllerClaims';
 import RewardReviewViews from '../components/RewardReviewViews';
 import ControllerSigningStatus,{type SigningPhase} from "../components/ControllerSigningStatus";
 import ControllerCampaignPicker from "../components/ControllerCampaignPicker";
 import ControllerWorkflow from "../components/ControllerWorkflow";
 import ControllerLoading,{ControllerResultsLoading} from "../components/ControllerLoading";
 import tableStyle from "../components/RewardResultsTable.module.css";
-import {controllerSelection,resultsHandoffLink} from "../model/controllerLinks";
+import {controllerClaimSelection,controllerSelection,resultsHandoffLink} from "../model/controllerLinks";
 import {publicEnv} from '@/lib/public-env';
 import ControllerSettings from "../components/ControllerSettings";
 import {controllerJobSchema,confirmControllerJob} from "../data/controllerTransactions";
@@ -54,6 +55,7 @@ export function ControlShell({children}:{children:React.ReactNode}) {
 
 export default function RewardsControl({connection,onLogout}:{connection:ControllerConnection;onLogout:()=>void}) {
   const [requested]=useState(()=>controllerSelection(typeof window==='undefined'?'':window.location.search));
+  const [requestedClaim]=useState(()=>controllerClaimSelection(typeof window==='undefined'?'':window.location.search));
   const [session,setSession]=useState<ControllerSession|null>(null),[campaigns,setCampaigns]=useState<ControllerCampaign[]>([]),[selected,setSelected]=useState<string|null>(requested.campaign);
   const [error,setError]=useState<string|null>(null),[busy,setBusy]=useState(true),[loadingLabel,setLoadingLabel]=useState("Checking controller access…"),live=useRef(true);
   const [settingsOpen,setSettingsOpen]=useState(false);
@@ -81,15 +83,15 @@ export default function RewardsControl({connection,onLogout}:{connection:Control
     {session&&requested.campaign&&!campaigns.some(c=>c.setupId===requested.campaign)?<p className={s.notice} role="status">The linked campaign is not assigned to this controller account. Switch to its designated controller or select an assigned campaign below.</p>:null}
     {session&&campaigns.length>1?<ControllerCampaignPicker campaigns={campaigns} selected={campaign?.setupId} busy={busy} onSelect={setSelected} onRefresh={()=>void refresh()}/>:null}
     <div className={s.grid}>
-    {session&&campaign?<CampaignControl key={`${campaign.setupId}:${session.subject}`} campaign={campaign} connection={connection} session={session} requestedSlot={campaign.setupId===requested.campaign?requested.slot:null}/>:campaigns.length?<section className={s.card}><h3>Select a campaign</h3><p>Review its contract and official-results handoff.</p></section>:null}</div>    <details className={s.section} onToggle={e=>setSettingsOpen(e.currentTarget.open)}><summary>Controller settings & gas</summary>
+    {session&&campaign?<CampaignControl key={`${campaign.setupId}:${session.subject}`} campaign={campaign} connection={connection} session={session} requestedClaim={campaign.setupId===requested.campaign?requestedClaim:null} requestedSlot={campaign.setupId===requested.campaign?requested.slot:null}/>:campaigns.length?<section className={s.card}><h3>Select a campaign</h3><p>Review its contract and official-results handoff.</p></section>:null}</div>    <details className={s.section} onToggle={e=>setSettingsOpen(e.currentTarget.open)}><summary>Controller settings & gas</summary>
     {session&&settingsOpen?<ControllerSettings key={session.wallet} connection={connection} session={session}/>:null}
     </details>
 </>;
 }
 
 type Pending={requestId:string;transactionHash:string;operation:"deployment"|"upload"|"stage"|"activate";start:number;end:number;approvalId?:string;journalId?:string};
-function CampaignControl({campaign,connection,session,requestedSlot}:{campaign:ControllerCampaign;connection:ControllerConnection;session:ControllerSession;requestedSlot:number|null}) {
-  const [execution,setExecution]=useState(campaign.execution),[slot,setSlot]=useState(()=>requestedSlot!==null&&BigInt(campaign.execution.plan.caps[requestedSlot])>0n?requestedSlot:campaign.pots.find(p=>p.ready&&BigInt(campaign.execution.plan.caps[p.slot])>0n)?.slot??campaign.execution.plan.caps.findIndex(cap=>BigInt(cap)>0n)),[allocation,setAllocation]=useState<ControllerAllocation|null>(null);
+function CampaignControl({campaign,connection,session,requestedSlot,requestedClaim}:{requestedClaim:ReturnType<typeof controllerClaimSelection>;campaign:ControllerCampaign;connection:ControllerConnection;session:ControllerSession;requestedSlot:number|null}) {
+  const [execution,setExecution]=useState(campaign.execution),[slot,setSlot]=useState(()=>campaign.pots.find(p=>p.approvalId===requestedClaim?.approvalId)?.slot??(requestedSlot!==null&&BigInt(campaign.execution.plan.caps[requestedSlot])>0n?requestedSlot:campaign.pots.find(p=>p.ready&&BigInt(campaign.execution.plan.caps[p.slot])>0n)?.slot??campaign.execution.plan.caps.findIndex(cap=>BigInt(cap)>0n))),[allocation,setAllocation]=useState<ControllerAllocation|null>(null);
   const [reviewed,setReviewed]=useState(false),[signingPhase,setSigningPhase]=useState<SigningPhase|null>(null);
   const [continuing,setContinuing]=useState(false),sequence=useRef<{approvalId:string;documentHash:string}|null>(null);
   const [busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[pending,setPending]=useState<Pending|null>(null),[notice,setNotice]=useState<string|null>(null);
@@ -205,5 +207,6 @@ function CampaignControl({campaign,connection,session,requestedSlot}:{campaign:C
       {recoveryAction==="upload"?<div className={s.row}><label className={s.field}>Start index<input type="number" min={0} value={start} onChange={e=>setStart(Number(e.target.value))}/></label><label className={s.field}>End index<input type="number" min={0} value={end} onChange={e=>setEnd(Number(e.target.value))}/></label></div>:null}
       <button disabled={busy||!!pending||!/^0x[0-9a-f]{64}$/.test(recovery)||recoveryAction!=="deployment"&&!selected?.approvalId} className={s.secondary} onClick={()=>void run(()=>verify({requestId:crypto.randomUUID(),transactionHash:recovery,operation:recoveryAction,start:recoveryAction==="upload"?start:0,end:recoveryAction==="upload"?end:0,...(recoveryAction!=="deployment"?{approvalId:selected!.approvalId}:{})}))}>Verify existing transaction</button></details>
     </aside></div>
+    {publicEnv.hostedOperations&&selected?.ready?<ControllerClaims connection={connection} wallet={session.wallet} setupId={campaign.setupId} approvalId={selected.approvalId} requestedClaimId={requestedClaim?.approvalId===selected.approvalId?requestedClaim.claimId:null} disabled={busy||!!pending}/>:null}
   </section>;
 }

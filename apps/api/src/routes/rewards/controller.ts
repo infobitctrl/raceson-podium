@@ -64,7 +64,7 @@ export async function dispatchRewardController(req:IncomingMessage,res:ServerRes
     }
     if(m[1]==="transactions"&&!m[2]){
       if(!deps.reader)throw Error("controller_chain_unavailable");
-      const d={actor,reader:deps.reader,rpc,assertActive};
+      const d={actor,reader:deps.reader,rpc,assertActive,...(deps.resolveNativeClaimFacts?{nativeClaim:{origin:deps.config()!.origin,facts:(id:string)=>deps.resolveNativeClaimFacts!(actor,id)}}:{})};
       deps.sendSuccess(res,req.method==="GET"?await controllerTransactionStatus(d):await advanceControllerTransaction(d,await deps.readJsonBody(req)));return true;
     }
     if(m[1]==="access"&&!m[2]&&req.method==="GET") {

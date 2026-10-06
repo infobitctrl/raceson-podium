@@ -94,3 +94,19 @@ export async function sponsorClaimFromFactsV4(scope:SponsorClaimScopeV4,change:S
  return copy({schema:"raceson-sponsor-claim-view-v4",claimId:f.claimId,approvalId:f.approvalId,role:scope.role,chainId:scope.chainId,current:f.current,status:availability,
   sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,operatorAddress:f.plan.operator,address:f.destination.address,claim:p?.claim??null,context:p?.context??null,signing,transaction,receipt:f.events.receipt??null});
 }
+
+/** Exact payment bytes and immutable, non-secret source binding for the native
+ * nonce journal. Readiness/consent checks happen before gas is reserved. */
+export async function verifiedSponsorClaimExecutionV4(claimId:string,deps:Deps&{readFacts:(write?:FactWrite)=>Promise<Facts>},requireUnpaid=true){
+ const f=await deps.readFacts();check(f.claimId===claimId&&f.plan.chainId===10143&&f.current&&!f.events.revoked);
+ await wallet(f,deps.origin);const p=await proofs(f);check(p&&f.events.recipient&&f.events.operator);
+ if(requireUnpaid){check(!f.events.receipt);await live(f,deps);}
+ const proofBinding=(role:'recipient'|'operator')=>{const v=f.events[role] as {digest:string;signer:string};return{digest:v.digest,signer:v.signer};};
+ const source=canonical({claimId:f.claimId,setupId:f.setupId,approvalId:f.approvalId,sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,
+  packageHash:f.packageHash,claim:p.claim,recipient:proofBinding('recipient'),operator:proofBinding('operator')});
+ const transaction={chainId:10143 as const,from:f.plan.operator,to:p.i.campaignAddress,value:'0' as const,
+  data:encodeSponsorClaimV4(p.context,p.claim,{operator:(f.events.operator as {signature:Hex}).signature,recipient:(f.events.recipient as {signature:Hex}).signature})};
+ const after=await deps.readFacts();check(after.current===f.current&&after.sourceStamp===f.sourceStamp&&after.profileFingerprint===f.profileFingerprint&&after.packageHash===f.packageHash
+  &&canonical(after.events)===canonical(f.events),'reward_planning_revision_changed');
+ return{setupId:f.setupId,approvalId:f.approvalId,sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,source,transaction};
+}

@@ -11,3 +11,7 @@ it('hosted result handoff retains exact campaign/pot while local navigation keep
  expect(controllerSelection(new URL(resultsHandoffLink(id,4,true),'https://podium.raceson.com').search)).toEqual({campaign:id,slot:4});
  expect(rewardsControlLink(id,4)).toBe(`/rewards/control?campaign=${id}&pot=4`);
 });
+it('claim recovery hints require one exact approval and claim UUID',async()=>{
+ const {controllerClaimSelection}=await import('./controllerLinks');expect(controllerClaimSelection(`?approval=${id}&claim=${id}`)).toEqual({approvalId:id,claimId:id});
+ for(const query of [`?approval=${id}&claim=wrong`,`?approval=${id}&approval=${id}&claim=${id}`,`?claim=${id}`])expect(controllerClaimSelection(query)).toBeNull();
+});

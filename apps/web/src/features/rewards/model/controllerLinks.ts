@@ -10,3 +10,8 @@ export function controllerSelection(search:string) {
  return {campaign:query.getAll('campaign').length===1&&setupId(id)?id:null,
   slot:query.getAll('pot').length===1&&pot!==null&&/^[0-5]$/.test(pot)?Number(pot):null};
 }
+
+export function controllerClaimSelection(search:string){
+ const q=new URLSearchParams(search),approval=q.get('approval'),claim=q.get('claim');
+ return q.getAll('approval').length===1&&q.getAll('claim').length===1&&setupId(approval)&&setupId(claim)?{approvalId:approval!,claimId:claim!}:null;
+}
