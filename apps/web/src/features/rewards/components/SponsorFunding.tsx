@@ -2,7 +2,7 @@ import {walletActionLabel} from "../model/walletActionLabel";
 import SponsorCompleteSetup from "./SponsorCompleteSetup";
 import RewardExplorerLink from "./RewardExplorerLink";
 import {useEffect, useId, useRef, useState, type ReactNode} from "react";
-import {ArrowRight, Check, Circle, RefreshCw} from "lucide-react";
+import {ArrowRight, Check, Circle, LoaderCircle, RefreshCw} from "lucide-react";
 import {ApiError} from "@/lib/api";
 import {sponsorLaunchSourcesReady, type SponsorLaunch} from "@raceson/domain/rewards/sponsor-launch";
 import {decodeCopySponsorLaunchBinding,type CopySponsorLaunchBinding} from '@raceson/domain/rewards/copy-sponsor-launch';
@@ -40,6 +40,13 @@ function creationCheckAction(view:SponsorExecutionView):SponsorExecutionAction|u
   if(view.creation?.hash)return {action:"deployment",hash:view.creation.hash};
   return view.creation?.status==="processing"?{action:"launch"}:undefined;
 }
+function TransactionProgress({phase,hr,creation=false,paused=false,children}:{phase:0|2|3;hr:boolean;creation?:boolean;paused?:boolean;children:ReactNode}) {
+  const labels=hr?[creation?"Priprema":"Potvrda u novčaniku","Poslano","Potvrđivanje","Potvrđeno"]:[creation?"Preparing":"Wallet confirmation","Submitted","Confirming","Confirmed"];
+  return <div className={s.transactionProgress} role="group" aria-label={hr?creation?"Napredak izrade ugovora":"Napredak uplate":creation?"Contract creation progress":"Prize deposit progress"}>
+    <ol aria-label={hr?"Napredak transakcije":"Transaction progress"}>{labels.map((label,index)=><li key={label} data-complete={phase===3||index<phase} aria-current={index===phase&&phase!==3?"step":undefined}><span>{phase===3||index<phase?<Check size={16} aria-hidden="true"/>:index===phase?paused?<Circle size={16} aria-hidden="true"/>:<span className={s.transactionSpinner}><LoaderCircle size={16} aria-hidden="true"/></span>:index+1}</span>{label}</li>)}</ol>
+    {children}
+  </div>;
+}
 export default function SponsorFunding(props:Props){
   return <FundingWorkspace key={sponsorReceiptKey(props.launch)} {...props}/>;
 }
@@ -49,6 +56,7 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
   const sourcesReady = sponsorLaunchSourcesReady(launch.setup)||copyReady;
   const [view, setView] = useState<SponsorExecutionView | null>(null), [wallet, setWallet] = useState<{wallet: DetectedRewardWallet; address: string} | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [pending, setPending] = useState<Pending | null>(null);
+  const [requestingCreation,setRequestingCreation]=useState(false),[requestingDeposit,setRequestingDeposit]=useState(false);
   const [recovery, setRecovery] = useState("");
   const [receiptProblem,setReceiptProblem]=useState<(Pending&{kind:ReceiptIssue})|null>(null);
   const receiptIssue=receiptProblem&&pending?.hash===receiptProblem.hash&&pending.action===receiptProblem.action?receiptProblem.kind:null;
@@ -126,6 +134,21 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
     try {await action();} catch (e) {if (live.current) {setError(e instanceof Error ? e.message : "failed");if(pausesReceipt(e))setReceiptPaused(true);}}
     finally {flight.current = false; if (live.current) setBusy(false);}
   }
+  async function requestCreation(prepare:boolean) {
+    setRequestingCreation(true);
+    try {
+      if(prepare){
+        const selected=walletRef.current;if(!selected||!sourcesReady)return;
+        const next=await sponsorExecution(launch.setup.id,{action:"prepare",launchId:launch.id,funder:selected.address});
+        if(!live.current)return;setView(next);
+      }
+      const started=await sponsorExecution(launch.setup.id,{action:"launch"});if(live.current)setView(started);
+    } finally {if(live.current)setRequestingCreation(false);}
+  }
+  async function refreshStatus() {
+    const next=await sponsorExecution(launch.setup.id,view?creationCheckAction(view):undefined);
+    if(live.current){setView(next);setCheckFailed(false);}
+  }
   async function verify(p: Pending) {
     let next:SponsorExecutionView;
     try {next=await sponsorExecution(launch.setup.id,p);}
@@ -195,17 +218,17 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
     :receiptIssue==="mismatch"?t("This receipt could not be matched to the saved campaign. Check the network and hash. Use transaction help below to verify the correct hash.","Potvrda nije povezana sa spremljenom kampanjom. Provjerite mrežu i hash. Za provjeru ispravnog hasha koristite pomoć s transakcijom ispod.")
     :receiptIssue==="unavailable"?t("The receipt service is temporarily unavailable. Your transaction may still complete. Keep its hash and retry verification.","Usluga provjere potvrde trenutačno nije dostupna. Transakcija još može biti izvršena. Sačuvajte hash i ponovite provjeru.")
     :null;
-  const pendingStatus = pending ? <div role="status" className={s.stepStatus}>
+  const pendingStatus = pending ? <TransactionProgress phase={2} hr={hr} creation={pending.action==="deployment"} paused={receiptPaused||Boolean(receiptIssue&&receiptIssue!=="pending")}><div role="status" className={s.transactionStatus}>
         {receiptDetail?<p>{receiptDetail}</p>:<p>{pending.action === "funding" ? t("Your deposit has been sent. We’ll update this page as soon as it’s confirmed.", "Uplata je poslana. Stranicu ćemo ažurirati čim bude potvrđena.") : t("Your reward account is being confirmed. We’ll update this page when it’s ready.", "Potvrda računa za nagrade je u tijeku. Stranicu ćemo ažurirati čim bude spreman.")}</p>}
         <p>{receiptCheck ? t("Checking confirmation…", "Provjera potvrde…") : receiptPaused ? t("Automatic checks paused. Check confirmation to try again.", "Automatske provjere su pauzirane. Ponovno provjerite potvrdu.") : receiptFailed ? t("We’re still checking. You don’t need to deposit again.", "I dalje provjeravamo. Ne morate ponovno uplatiti.") : t("You can leave this page and return through My campaigns.", "Možete napustiti stranicu i vratiti se putem Mojih kampanja.")}</p>
         {!durable ? <p>{t("Browser storage is unavailable. Keep this transaction hash before closing the tab.", "Pohrana preglednika nije dostupna. Sačuvajte hash transakcije prije zatvaranja kartice.")}</p> : null}
-        <button className={s.secondary} disabled={busy||receiptCheck} onClick={() => {setReceiptPaused(false);void run(() => verify(pending));}}>{t("Check confirmation", "Provjeri potvrdu")}</button>
+        </div><div className={s.transactionActions}><button className={s.secondary} disabled={busy||receiptCheck} onClick={() => {setReceiptPaused(false);void run(() => verify(pending));}}>{t("Check confirmation", "Provjeri potvrdu")}</button></div>
         <details className={s.details} open={!durable || Boolean(receiptIssue && receiptIssue !== "pending")}>
           <summary>{t("Transaction details", "Detalji transakcije")}</summary>
           <p>{t("No new transaction will be sent automatically. Verification only checks the saved hash.", "Nova transakcija neće biti poslana automatski. Provjera koristi samo spremljeni hash.")}</p>
           <p className={s.address}><RewardExplorerLink chainId={launch.setup.chainId} kind="tx" value={pending.hash}/></p>
         </details>
-      </div> : null;
+      </TransactionProgress> : null;
   return <>
     {plan && observation && funded ? <SponsorDistribution launch={launch} plan={plan} observation={observation} hr={hr}/> : null}
     {funded ? allocation : null}
@@ -220,7 +243,7 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
       {step === 0 && !pending ? <p className={s.fundingIntro}>{t("Connect the wallet you will use to deposit your prizes.", "Povežite novčanik kojim ćete uplatiti nagrade.")}</p> : null}
       {!funded && plan && wallet?.address !== plan.funder ? <div className={s.stepAddress} aria-label={t("Saved sponsor wallet", "Spremljeni novčanik sponzora")}><span>{t("Funding wallet", "Novčanik za uplatu")}</span><p className={s.address}><RewardExplorerLink chainId={launch.setup.chainId} kind="address" value={plan.funder}/></p></div> : null}
       {/* Keep the provider mounted when the current task changes. Unmounting it retires the selected wallet. */}
-      {sourcesReady && view?.enabled ? <div hidden={funded || Boolean(pending) || creating || (step !== 0 && walletReady)} className={s.walletDock}>
+      {sourcesReady && view?.enabled ? <div hidden={funded || Boolean(pending) || creating || requestingCreation || requestingDeposit || (step !== 0 && walletReady)} className={s.walletDock}>
         <SponsorWallet compact showBalance balanceRevision={record?.fundingHash ?? ""} chainId={launch.setup.chainId} hr={hr} onWallet={setWallet} requiredAddress={plan?.funder}/>
       </div> : null}
       {!view && !error ? <p role="status">{t("Checking campaign status…", "Provjera stanja kampanje…")}</p> : null}
@@ -251,24 +274,19 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
             {accountReady ? <p>{t("Ready to hold your campaign’s prizes.", "Spremno za fond nagrada kampanje.")}</p> : <>
               {step === 0 && !record ? <p>{t("Available after connecting your wallet.", "Dostupno nakon povezivanja novčanika.")}</p> : null}
               <div hidden={step === 0 && !record}>
-              {!creating && !unavailable ? <p>{t("A dedicated account holds this campaign’s prizes. RacesOn covers the setup fee.", "Poseban račun čuva nagrade ove kampanje. RacesOn pokriva trošak izrade.")}</p> : null}
-              {!creating && !unavailable ? <p>{t("No prize funds move in this step.", "U ovom koraku nema prijenosa fonda nagrada.")}</p> : null}
-              {creating ? <div role="status" className={s.stepStatus}>
+              {!creating && !requestingCreation && !unavailable ? <p>{t("A dedicated account holds this campaign’s prizes. RacesOn covers the setup fee.", "Poseban račun čuva nagrade ove kampanje. RacesOn pokriva trošak izrade.")}</p> : null}
+              {!creating && !requestingCreation && !unavailable ? <p>{t("No prize funds move in this step.", "U ovom koraku nema prijenosa fonda nagrada.")}</p> : null}
+              {creating || requestingCreation ? <TransactionProgress phase={creationSubmitted?2:0} hr={hr} creation><div role="status" className={s.transactionStatus}>
                 <strong>{creationQueued ? t("Waiting for the creation service", "Čeka se usluga izrade") : creationSubmitted ? t("Creation requested · confirmation pending", "Izrada zatražena · čeka se potvrda") : t("Creation requested · preparing transaction", "Izrada zatražena · priprema transakcije")}</strong>
                 <p>{creationQueued ? t("RacesOn has an earlier controller request to resolve before it can create your account. No creation transaction has been sent for this campaign. Your prize funds have not moved.", "RacesOn mora riješiti raniji zahtjev kontrolera prije izrade računa. Transakcija izrade ove kampanje nije poslana. Fond nagrada nije prenesen.") : creationSubmitted ? t("Your reward account is not confirmed yet. This page checks automatically and will show the deposit button when it is ready.", "Račun za nagrade još nije potvrđen. Ova stranica automatski provjerava stanje i prikazat će gumb za uplatu kada račun bude spreman.") : t("RacesOn is preparing the creation transaction. Network confirmation has not started. The deposit step will unlock after account creation is verified.", "RacesOn priprema transakciju izrade. Mrežna potvrda još nije započela. Uplata će biti dostupna nakon potvrde izrade računa.")}</p>
                 <small>{checkFailed ? t("The last check failed. Refresh status to try again.", "Posljednja provjera nije uspjela. Osvježite stanje.") : checking ? t("Checking creation status…", "Provjera stanja izrade…") : t("We’ll check again automatically. You can return through My campaigns.", "Automatski ćemo ponovno provjeriti. Možete se vratiti putem Mojih kampanja.")}</small>
-              </div> : null}
+              </div><div className={s.transactionActions}><button className={s.secondary} disabled={busy||checking} onClick={()=>void run(refreshStatus)}><RefreshCw size={15} aria-hidden="true"/>{busy||checking?t("Checking status…","Provjera stanja…"):t("Refresh status","Osvježi stanje")}</button>{view?.creation?.hash?<RewardExplorerLink chainId={launch.setup.chainId} kind="tx" value={view.creation.hash}>{t("View transaction","Pogledaj transakciju")}</RewardExplorerLink>:null}</div></TransactionProgress> : null}
               {view?.creation?.status === "failed" ? <p role="status" className={s.notice}>{view?.creation.reason === "balance" ? t("Creation fees are temporarily unavailable. Your reward funds have not moved. Try again later.", "Sredstva za izradu trenutno nisu dostupna. Fond nagrada nije prenesen. Pokušajte kasnije.")
                 : view?.creation.reason === "capacity" ? t("Today's account creation limit has been reached. Try again tomorrow.", "Dosegnuto je dnevno ograničenje izrade računa. Pokušajte sutra.")
                 : view?.creation.reason === "reverted" ? t("Account creation failed. RacesOn needs to resolve it before you can deposit.", "Izrada računa nije uspjela. RacesOn mora riješiti problem prije uplate.")
                 : t("Account creation is not confirmed. Retry to check and resume the same request.", "Izrada računa nije potvrđena. Pokušajte ponovno za nastavak istog zahtjeva.")}</p> : null}
-              {sourcesReady && view?.enabled && !record && !unavailable ? <button className={s.primary} disabled={!wallet || busy || view?.creation?.status !== "ready"} onClick={() => void run(async () => {
-                const selected = walletRef.current; if (!selected || !sourcesReady) return;
-                const next = await sponsorExecution(launch.setup.id, {action: "prepare", launchId: launch.id, funder: selected.address});
-                if (live.current) {setView(next); const started=await sponsorExecution(launch.setup.id,{action:"launch"});if(live.current)setView(started);}
-              })}>{busy ? t("Requesting account…", "Zahtjev za račun…") : t("Create reward account", "Izradi račun za nagrade")}<ArrowRight size={17} aria-hidden="true"/></button> : null}
-              {sourcesReady && record && !unavailable && view?.creation && ["ready", "failed"].includes(view?.creation.status) && view?.creation.reason !== "reverted" ? <button className={s.primary} disabled={busy} onClick={()=>void run(async()=>{const next=await sponsorExecution(launch.setup.id,{action:"launch"});if(live.current)setView(next);})}>{busy ? t("Checking request…", "Provjera zahtjeva…") : view?.creation.status === "failed" ? t("Retry creation", "Pokušaj ponovno") : t("Create reward account", "Izradi račun za nagrade")}<ArrowRight size={17} aria-hidden="true"/></button> : null}
-              {view?.creation?.hash ? <details className={s.details}><summary>{t("Creation transaction", "Transakcija izrade")}</summary><RewardExplorerLink chainId={launch.setup.chainId} kind="tx" value={view?.creation.hash}/></details> : null}
+              {sourcesReady && view?.enabled && !record && !unavailable && !requestingCreation ? <button className={s.primary} disabled={!wallet || busy || view?.creation?.status !== "ready"} onClick={() => void run(()=>requestCreation(true))}>{t("Create reward account", "Izradi račun za nagrade")}<ArrowRight size={17} aria-hidden="true"/></button> : null}
+              {sourcesReady && record && !unavailable && !requestingCreation && view?.creation && ["ready", "failed"].includes(view?.creation.status) && view?.creation.reason !== "reverted" ? <button className={s.primary} disabled={busy} onClick={()=>void run(()=>requestCreation(false))}>{view?.creation.status === "failed" ? t("Retry creation", "Pokušaj ponovno") : t("Create reward account", "Izradi račun za nagrade")}<ArrowRight size={17} aria-hidden="true"/></button> : null}
               </div>
             </>}
             {pending?.action === "deployment" ? pendingStatus : null}
@@ -294,12 +312,13 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
                 : t("Add test MON to the funding wallet for the prize deposit and network fee. Nothing was sent.", "Dodajte test MON u novčanik za fond nagrada i mrežnu naknadu. Ništa nije poslano.")
                 : t("Ready for wallet confirmation. Fees will be checked again before sending.", "Spremno za potvrdu u novčaniku. Naknade će se ponovno provjeriti prije slanja.")}</p>
           </div> : null}
-          {!deployment ? <div className={s.actions}>
+          {requestingDeposit ? <TransactionProgress phase={0} hr={hr}><p role="status" className={s.transactionStatus}>{t("Checking your deposit request. Confirm in your wallet when prompted; nothing is sent until you approve.","Provjeravamo zahtjev za uplatu. Potvrdite u novčaniku kada se zatraži; ništa se ne šalje bez potvrde.")}</p></TransactionProgress>:null}
+          {!deployment && !requestingDeposit ? <div className={s.actions}>
           <button className={s.secondary} disabled={busy || !view?.enabled || activeWallet?.address !== requiredAddress || Boolean(record?.deploymentHash && !observation)}
             onClick={() => void run(() => send(record?.deploymentHash ? "funding" : "deployment", true))}>{t("Check balance", "Provjeri stanje")}</button>
           <button className={s.primary}
           disabled={busy || Boolean(readiness?.blocker) || !view?.enabled || activeWallet?.address !== requiredAddress || Boolean(record?.deploymentHash && !observation)}
-          onClick={() => void run(() => send(record?.deploymentHash ? "funding" : "deployment"))}>
+          onClick={() => void run(async()=>{setRequestingDeposit(true);try{await send(record?.deploymentHash ? "funding" : "deployment");}finally{if(live.current)setRequestingDeposit(false);}})}>
           {walletActionLabel(busy ? t("Checking wallet / transaction…", "Provjera novčanika / transakcije…") : record?.deploymentHash ? t("Deposit reward funds", "Uplati fond nagrada") : t("Create campaign contract", "Izradi ugovor kampanje"),activeWallet?.wallet)}</button></div> : null}
             </> : null}
             {pending?.action === "funding" ? pendingStatus : null}
@@ -334,10 +353,7 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
     </details>
     {!funded ? <>{allocation}<details className={`${d.card} ${d.history}`}><summary>{t("History", "Povijest")} <small>· {t("1 completed", "1 dovršeno")}</small></summary><ul className={d.historyList}><li><Check size={14}/>{t("Rules saved", "Pravila spremljena")}</li></ul></details></> : null}
       <div className={`${s.actions} ${s.fundingFooter}`}>
-        <button className={s.textButton} disabled={busy || checking || receiptCheck} onClick={() => void run(async () => {
-          const next = await sponsorExecution(launch.setup.id, view ? creationCheckAction(view) : undefined);
-          if (live.current) {setView(next);setCheckFailed(false);}
-        })}><RefreshCw size={16}/>{busy || checking ? t("Checking status…", "Provjera stanja…") : funded ? t("Refresh campaign status", "Osvježi stanje kampanje") : t("Refresh funding status", "Osvježi stanje financiranja")}</button>
+        {!creating&&!requestingCreation?<button className={s.textButton} disabled={busy || checking || receiptCheck} onClick={() => void run(refreshStatus)}><RefreshCw size={16}/>{busy || checking ? t("Checking status…", "Provjera stanja…") : funded ? t("Refresh campaign status", "Osvježi stanje kampanje") : t("Refresh funding status", "Osvježi stanje financiranja")}</button>:null}
         <a className={s.textButton} href="/rewards/manage">{t("My campaigns", "Moje kampanje")}</a>
       </div>
   </>;

@@ -47,7 +47,7 @@ it("shows linked source, verified account and deposit destination under their st
 it("keeps the saved wallet visible while creation is pending without inventing a reward address", async () => {
  mocks.api.mockResolvedValue({enabled:true,record:{plan,deploymentHash:null,fundingHash:null},observation:null,creation:{status:"submitted",reason:null,hash:deployment}});
  render(<SponsorFunding launch={launch} hr/>);
- const steps=within(await screen.findByRole("list",{name:"Koraci financiranja"})).getAllByRole("listitem");
+ const steps=Array.from((await screen.findByRole("list",{name:"Koraci financiranja"})).children).filter(el=>!el.hasAttribute("hidden"));
  expect(steps).toHaveLength(1);
  expect(within(screen.getByLabelText("Spremljeni novčanik sponzora")).getByRole("link",{name:plan.funder})).toBeVisible();
  expect(screen.queryByRole("link",{name:address})).not.toBeInTheDocument();
@@ -76,7 +76,7 @@ it("manual refresh recovers an existing submitted deployment while a tab is hidd
   mocks.api.mockResolvedValueOnce({enabled:true,record:{plan,deploymentHash:null,fundingHash:null},observation:null,creation:{status:"submitted",reason:null,hash:deployment}})
    .mockResolvedValue({enabled:true,record:{plan,deploymentHash:deployment,fundingHash:null},observation:observed()});
   render(<SponsorFunding launch={launch} hr={false}/>);await screen.findByText(/Creation requested · confirmation pending/);
-  fireEvent.click(screen.getByRole("button",{name:"Refresh funding status"}));
+  fireEvent.click(screen.getByRole("button",{name:"Refresh status"}));
   await screen.findByRole("button",{name:"Deposit reward funds"});
   expect(mocks.api).toHaveBeenLastCalledWith(launch.setup.id,{action:"deployment",hash:deployment});expect(mocks.send).not.toHaveBeenCalled();
  } finally { vi.restoreAllMocks(); }
@@ -236,7 +236,7 @@ it("shows an interrupted confirmation check without claiming failure or allowing
  await act(async()=>vi.advanceTimersByTimeAsync(15000));
  expect(screen.getByText(/The last check failed/)).toBeVisible();
  expect(screen.queryByRole("button",{name:"Deposit reward funds"})).not.toBeInTheDocument();
- expect(screen.getByRole("button",{name:"Refresh funding status"})).toBeEnabled();
+ expect(screen.getByRole("button",{name:"Refresh status"})).toBeEnabled();
  expect(mocks.send).not.toHaveBeenCalled();
 });
 
@@ -474,8 +474,13 @@ it("distinguishes a controller queue from network confirmation and retries witho
  expect(screen.getByRole("heading",{name:"Your account creation is queued"})).toBeVisible();
  expect(screen.getByText(/No creation transaction has been sent for this campaign/)).toBeVisible();
  expect(screen.queryByText(/confirmation pending/)).not.toBeInTheDocument();
+ const progress=screen.getByRole("group",{name:"Contract creation progress"});
+ expect(within(progress).getByText("Preparing")).toHaveAttribute("aria-current","step");
+ expect(within(progress).getByText("Submitted")).toHaveAttribute("data-complete","false");
  expect(screen.queryByRole("button",{name:"Deposit reward funds"})).not.toBeInTheDocument();
  await act(async()=>vi.advanceTimersByTimeAsync(15000));
+ expect(within(progress).getByText("Confirming")).toHaveAttribute("aria-current","step");
+ expect(within(progress).getByText("Confirmed")).toHaveAttribute("data-complete","false");
  expect(screen.getByText(/Creation requested · confirmation pending/)).toBeVisible();
  expect(mocks.api).toHaveBeenLastCalledWith(launch.setup.id,{action:"launch"});expect(mocks.send).not.toHaveBeenCalled();
 });
@@ -539,4 +544,63 @@ it("shows only the current action and preserves the connected provider across st
  expect(within(screen.getByRole("list",{name:"Funding steps"})).getAllByRole("listitem")).toHaveLength(1);
  expect(progress.querySelectorAll('[data-complete="true"]')).toHaveLength(2);
  expect(mocks.walletUnmount).not.toHaveBeenCalled();expect(mocks.send).not.toHaveBeenCalled();
+});
+
+
+it('replaces a creation request with progress, then checks the same hash before unlocking deposit',async()=>{
+ const prepared={enabled:true,record:{plan,deploymentHash:null,fundingHash:null},observation:null,creation:{status:'ready' as const,reason:null,hash:null}};
+ let finish!:(value:SponsorExecutionView)=>void;
+ mocks.api.mockImplementation(async(_id,action)=>{
+  if(action?.action==='prepare')return prepared;
+  if(action?.action==='launch')return new Promise<SponsorExecutionView>(resolve=>{finish=resolve;});
+  if(action?.action==='deployment')return {...prepared,record:{plan,deploymentHash:deployment,fundingHash:null},observation:observed(),creation:{status:'ready',reason:null,hash:null}};
+  return {...prepared,record:null};
+ });
+ render(<SponsorFunding launch={launch} hr={false}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Connect fixture wallet'}));
+ fireEvent.click(screen.getByRole('button',{name:'Create reward account'}));
+ const progress=await screen.findByRole('group',{name:'Contract creation progress'});
+ expect(within(progress).getByText('Preparing')).toHaveAttribute('aria-current','step');
+ expect(within(progress).getByText('Submitted')).toHaveAttribute('data-complete','false');
+ expect(screen.queryByRole('button',{name:'Create reward account'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'Deposit reward funds'})).not.toBeInTheDocument();
+ await act(async()=>finish({...prepared,creation:{status:'submitted',reason:null,hash:deployment}}));
+ expect(within(progress).getByText('Submitted')).toHaveAttribute('data-complete','true');
+ expect(within(progress).getByText('Confirming')).toHaveAttribute('aria-current','step');
+ expect(within(progress).getByText('Confirmed')).toHaveAttribute('data-complete','false');
+ expect(within(progress).getByRole('link',{name:'View transaction'})).toHaveAttribute('href',`https://testnet.monadvision.com/tx/${deployment}`);
+ fireEvent.click(within(progress).getByRole('button',{name:'Refresh status'}));
+ await screen.findByRole('heading',{name:'Deposit the prize funds'});
+ expect(screen.queryByRole('group',{name:'Contract creation progress'})).not.toBeInTheDocument();
+ expect(mocks.api.mock.calls.filter(([,action])=>action?.action==='launch')).toHaveLength(1);
+ expect(mocks.api).toHaveBeenLastCalledWith(launch.setup.id,{action:'deployment',hash:deployment});
+ expect(mocks.send).not.toHaveBeenCalled();expect(mocks.walletUnmount).not.toHaveBeenCalled();
+});
+
+it('replaces the deposit button while the wallet is outstanding and preserves progress for its pending receipt',async()=>{
+ let finish!:(hash:string)=>void;let confirmed=false;
+ const initial={enabled:true,record:{plan,deploymentHash:deployment,fundingHash:null},observation:observed()};
+ mocks.api.mockImplementation(async(_id,action)=>{
+  if(action?.action==='funding'){
+   if(!confirmed)throw new ApiError('Pending',{status:425,code:'sponsor_receipt_pending'});
+   return {...initial,record:{plan,deploymentHash:deployment,fundingHash:funding},observation:observed(true)};
+  }
+  return initial;
+ });
+ mocks.send.mockImplementation(()=>new Promise<string>(resolve=>{finish=resolve;}));
+ render(<SponsorFunding launch={launch} hr={false}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Connect fixture wallet'}));
+ fireEvent.click(screen.getByRole('button',{name:'Deposit reward funds'}));
+ const progress=await screen.findByRole('group',{name:'Prize deposit progress'});
+ expect(within(progress).getByText('Wallet confirmation')).toHaveAttribute('aria-current','step');
+ expect(within(progress).getByText('Submitted')).toHaveAttribute('data-complete','false');
+ expect(screen.queryByRole('button',{name:'Deposit reward funds'})).not.toBeInTheDocument();
+ await act(async()=>finish(funding));
+ const receipt=screen.getByRole('group',{name:'Prize deposit progress'});
+ expect(within(receipt).getByText('Confirming')).toHaveAttribute('aria-current','step');
+ expect(within(receipt).getByText('Confirmed')).toHaveAttribute('data-complete','false');
+ expect(readSponsorReceipt(launch)).toEqual({action:'funding',hash:funding});
+ confirmed=true;fireEvent.click(within(receipt).getByRole('button',{name:'Check confirmation'}));
+ await screen.findByText(/All selected pots are funded/);
+ expect(mocks.send).toHaveBeenCalledTimes(1);expect(readSponsorReceipt(launch)).toBeNull();
 });

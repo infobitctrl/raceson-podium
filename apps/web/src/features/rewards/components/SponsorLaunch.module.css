@@ -83,3 +83,15 @@
 .fundingPanel .fundingSteps>li>div{min-width:0}
 .fundingPanel .fundingIntro{margin:0;font-size:14px;line-height:20px;color:#62584f}
 .fundingPanel>div>h2{font-size:18px;line-height:28px;margin:0 0 4px}
+.transactionProgress{border:1px solid #e5dfd6;border-radius:12px;padding:16px;margin:16px 0 0;min-width:0}
+.transactionProgress>ol{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;list-style:none;margin:0 0 12px;padding:0;font-size:12px;line-height:16px;text-align:center}
+.transactionProgress>ol>li{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;color:#62584f}
+.transactionProgress>ol>li>span{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#eee9e1;font-size:12px}
+.transactionProgress>ol>li[aria-current=step]{color:#201c19}.transactionProgress>ol>li[aria-current=step]>span{background:#f56617}.transactionSpinner{display:grid;place-items:center;animation:transactionSpin 1s linear infinite}
+.transactionProgress>ol>li[data-complete=true]>span{background:#ecf7f1;color:#147d64}
+.fundingPanel .transactionStatus{border:0;border-radius:8px;padding:10px 12px;margin:0;background:#eee9e1;font-size:13px;line-height:20px}
+.fundingPanel .transactionStatus p{margin:6px 0}.fundingPanel .transactionStatus p:first-child{margin-top:0}.fundingPanel .transactionStatus p:last-child{margin-bottom:0}
+.transactionActions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:12px}.transactionActions button{display:inline-flex;align-items:center;gap:6px}.transactionActions a{overflow-wrap:anywhere}
+@keyframes transactionSpin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.transactionSpinner{animation:none}}
+@media(max-width:639px){.transactionProgress{padding:12px}.transactionProgress>ol{font-size:11px;gap:4px}}
