@@ -4,6 +4,7 @@ import type {RewardWalletProvider} from "../data/browserWallet";
 import {readSponsorWalletBalance} from "../data/sponsorWalletBalance";
 import {setupAmount} from "../model/setupAmount";
 import s from "./SponsorLaunch.module.css";
+import ReceiveTestMon from './ReceiveTestMon';
 
 export default function SponsorWalletBalance({provider, address, chainId, hr}: {provider: RewardWalletProvider; address: string; chainId: number; hr: boolean}) {
   const [attempt, setAttempt] = useState(0);
@@ -26,5 +27,6 @@ export default function SponsorWalletBalance({provider, address, chainId, hr}: {
     {current?.balance !== null && current?.balance !== undefined ? <small role="status">{checking ? t("Refreshing…", "Osvježavanje…") : `${t("Updated", "Ažurirano")} ${new Date(current.checkedAt).toLocaleTimeString(hr ? "hr-HR" : "en-GB")}`}</small> : null}
     {current?.balance === null ? <p role="status">{t("Balance unavailable. Refresh to try again.", "Stanje nije dostupno. Osvježite za ponovni pokušaj.")}</p> : null}
     <p>{t("Wallet funds are separate from deposited prizes. Allow extra for the deposit fee.", "Sredstva novčanika odvojena su od uplaćenih nagrada. Ostavite dodatno za naknadu uplate.")}</p>
+    <ReceiveTestMon key={`${chainId}:${address}`} address={address} chainId={chainId} hr={hr}/>
   </div>;
 }

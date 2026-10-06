@@ -1,0 +1,7 @@
+.receive { margin-top: 1rem; padding: 1rem; border: 1px solid #e7dfd8; border-radius: 14px; }
+.receive summary { cursor: pointer; font-weight: 650; }
+.receive p { margin: .75rem 0 0; }
+.address { overflow-wrap: anywhere; word-break: break-word; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 1rem; }
+.actions button, .actions a { padding: .65rem .85rem; border: 1px solid #d9cfc6; border-radius: 10px; background: white; color: inherit; font: inherit; cursor: pointer; text-decoration: none; }
+.actions button:focus-visible, .actions a:focus-visible { outline: 2px solid #ef6512; outline-offset: 3px; }
