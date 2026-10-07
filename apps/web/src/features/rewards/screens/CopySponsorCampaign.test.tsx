@@ -50,10 +50,10 @@ it('discards a late save reply after the authenticated user changes',async()=>{
 it('saves sponsor promotion before leaving setup and does not rewrite unchanged prize rules',async()=>{
  render(view());await screen.findByText('Saved · revision 2');
  fireEvent.change(screen.getByLabelText('Sponsor name'),{target:{value:'Trail partners'}});
- fireEvent.change(screen.getByLabelText('Website'),{target:{value:'https://example.com/trail'}});
+ fireEvent.change(screen.getByLabelText('Website'),{target:{value:'example.com/trail'}});
  fireEvent.change(screen.getByLabelText('About your promotion'),{target:{value:'Meet us at the finish line.'}});
  fireEvent.click(screen.getByText('Continue to funding'));await screen.findByRole('heading',{name:'Funding'});
- expect(mocks.save).not.toHaveBeenCalled();expect(mocks.brandingSave).toHaveBeenCalledWith(id,{name:'Trail partners',logo:null,website:'https://example.com/trail',promotion:'Meet us at the finish line.',expectedRevision:0});
+ expect(mocks.save).not.toHaveBeenCalled();expect(mocks.brandingSave).toHaveBeenCalledWith(id,{name:'Trail partners',logo:null,website:'example.com/trail',promotion:'Meet us at the finish line.',expectedRevision:0});
 });
 it('keeps a failed promotion save in setup and retries without a new economic revision',async()=>{
  mocks.brandingSave.mockRejectedValueOnce(Error('offline'));
@@ -70,8 +70,8 @@ it('recovers an exact confirmed branding revision after a lost reply',async()=>{
  render(view());await screen.findByText('Saved · revision 2');fireEvent.change(screen.getByLabelText('Sponsor name'),{target:{value:'Confirmed sponsor'}});fireEvent.click(screen.getByText('Continue to funding'));
  await screen.findByRole('heading',{name:'Funding'});expect(mocks.brandingSave).toHaveBeenCalledOnce();expect(mocks.save).not.toHaveBeenCalled();
 });
-it('blocks incomplete or unsafe promotion fields before any save',async()=>{
+it('blocks incomplete promotion fields before any save',async()=>{
  render(view());await screen.findByText('Saved · revision 2');fireEvent.change(screen.getByLabelText('Website'),{target:{value:'javascript:alert(1)'}});
- expect(await screen.findByRole('alert')).toHaveTextContent('HTTPS website');fireEvent.click(screen.getByText('Continue to funding'));
+ expect(await screen.findByRole('alert')).toHaveTextContent('sponsor name');fireEvent.click(screen.getByText('Continue to funding'));
  expect(mocks.brandingSave).not.toHaveBeenCalled();expect(mocks.save).not.toHaveBeenCalled();expect(screen.getByLabelText('Route')).toHaveTextContent('/rewards/create');
 });

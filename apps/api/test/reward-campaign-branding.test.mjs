@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {decodeBrandingChange,decodeCampaignBranding,validBrandingLogo} from '@raceson/domain/rewards/campaign-branding';
+import {decodeBrandingChange,decodeCampaignBranding,validBrandingLogo,sponsorWebsiteHref} from '@raceson/domain/rewards/campaign-branding';
 import {dispatchCampaignBranding} from '../dist/routes/rewards/campaign-branding.js';
 const id='72000000-0000-4000-8000-000000000003',user='72000000-0000-4000-8000-000000000001',session='72000000-0000-4000-8000-000000000002';
 test('branding accepts trimmed names and removal; rejects scripts, remote logos and extra economic/owner fields',()=>{
@@ -29,10 +29,15 @@ test('logo decoding bounds the stored PNG dimensions and rejects truncated data'
  const image=Buffer.from(png.slice(22),'base64');image.writeUInt32BE(4000,16);
  assert.equal(validBrandingLogo('data:image/png;base64,'+image.toString('base64')),false);
 });
-test('promotion accepts plain multiline text and HTTPS websites, preserves legacy payloads and rejects unsafe or oversized fields',()=>{
+test('promotion preserves website text without format checks and rejects oversized fields',()=>{
  const base={name:'Sponsor',logo:null,expectedRevision:0};
  assert.deepEqual(decodeBrandingChange({...base,website:'https://example.com/offer?q=trail',promotion:'Trail offer\nMeet us at the finish.'}),{...base,website:'https://example.com/offer?q=trail',promotion:'Trail offer\nMeet us at the finish.'});
- for(const website of ['javascript:alert(1)','http://example.com','https://name:password@example.com','https://example.com/ bad','https://','https://'+'a'.repeat(301)])assert.throws(()=>decodeBrandingChange({...base,website}));
+ for(const website of ['example.com','www.example.com/trail','http://example.com','javascript:alert(1)','https://name:password@example.com','https://example.com/ bad','https://','my adress'])assert.equal(decodeBrandingChange({...base,website}).website,website);
+ for(const website of ['a'.repeat(301),'bad\u0001text',123])assert.throws(()=>decodeBrandingChange({...base,website}));
+ assert.equal(sponsorWebsiteHref('example.com/trail'),'https://example.com/trail');
+ assert.equal(sponsorWebsiteHref('http://example.com'),'http://example.com');
+ for(const website of ['javascript:alert(1)','data:text/html,hello','https://name:password@example.com','my adress','https://'])assert.equal(sponsorWebsiteHref(website),null);
+
  for(const promotion of ['a'.repeat(1201),'bad\u0001text',123])assert.throws(()=>decodeBrandingChange({...base,promotion}));
  assert.equal(decodeCampaignBranding([{id,name:'Sponsor',logo:null,revision:1,website:null,promotion:'<b>Plain text</b>'}])[0].promotion,'<b>Plain text</b>');
  assert.equal(decodeCampaignBranding([{id,name:'Sponsor',logo:null,revision:1}]).length,1);

@@ -20,7 +20,7 @@ export async function dispatchCampaignBranding(req:IncomingMessage,res:ServerRes
   else if(['reward_demo_account_required','reward_demo_sponsor_required'].includes(code))deps.sendError(res,403,'reward_demo_sponsor_required','Use the provisioned sponsor account to edit sponsor details.');
   else if(code==='reward_setup_not_found')deps.sendError(res,404,code,'Campaign not found.');
   else if(code==='campaign_branding_conflict')deps.sendError(res,409,code,'Sponsor details changed. Reload before saving.');
-  else if(code==='invalid_campaign_branding')deps.sendError(res,400,code,'Check the sponsor name, image, HTTPS website and promotion message.');
+  else if(code==='invalid_campaign_branding')deps.sendError(res,400,code,'Check the sponsor name, image, website and promotion message.');
   else deps.sendError(res,503,'campaign_branding_unavailable','Sponsor details are temporarily unavailable.');
  }
  return true;

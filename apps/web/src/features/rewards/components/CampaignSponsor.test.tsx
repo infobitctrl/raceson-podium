@@ -64,11 +64,16 @@ it('conflict reloads server details without losing the draft or claiming success
  await waitFor(()=>expect(mocks.read.mock.calls.length).toBeGreaterThanOrEqual(4));
 });
 it('shows saved website and plain promotion publicly and keeps them when editing',async()=>{
- const promotion='Trail offer\n<script>plain text</script>',website='https://example.com/trail';
+ const promotion='Trail offer\n<script>plain text</script>',website='example.com/trail';
  mocks.read.mockResolvedValue([{...record,website,promotion}]);mocks.save.mockResolvedValue({...record,website,promotion,revision:4});
  render(<CampaignSponsor id={id}/>);
- const link=await screen.findByRole('link',{name:'Visit sponsor website'});expect(link).toHaveAttribute('href',website);expect(link).toHaveAttribute('rel','noopener noreferrer');
+ const link=await screen.findByRole('link',{name:'Visit sponsor website'});expect(link).toHaveAttribute('href','https://example.com/trail');expect(link).toHaveAttribute('rel','noopener noreferrer');
  expect(screen.getByText(/<script>plain text<\/script>/)).toBeVisible();expect(document.querySelector('script')).toBeNull();
- fireEvent.click(screen.getByRole('button',{name:/Edit sponsor/}));expect(screen.getByLabelText('Website')).toHaveValue(website);expect(screen.getByLabelText('About your promotion')).toHaveValue(promotion);
+ fireEvent.click(screen.getByRole('button',{name:/Edit sponsor/}));expect(screen.getByLabelText('Website')).toHaveValue(website);expect(screen.getByLabelText('Website')).toHaveAttribute('type','text');expect(screen.getByLabelText('Website')).toHaveAttribute('spellcheck','false');expect(screen.getByLabelText('About your promotion')).toHaveValue(promotion);
  fireEvent.click(screen.getByRole('button',{name:'Save sponsor'}));await waitFor(()=>expect(mocks.save).toHaveBeenCalledWith(id,{name:record.name,logo:null,website,promotion,expectedRevision:3}));
+});
+
+it('renders non-web website text without an executable link',async()=>{
+ mocks.read.mockResolvedValue([{...record,website:'javascript:alert(1)'}]);render(<CampaignSponsor id={id}/>);
+ expect(await screen.findByText('javascript:alert(1)')).toBeVisible();expect(screen.queryByRole('link',{name:'Visit sponsor website'})).not.toBeInTheDocument();
 });

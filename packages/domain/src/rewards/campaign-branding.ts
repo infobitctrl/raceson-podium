@@ -3,10 +3,18 @@ export type SponsorPromotion={name:string;logo:string|null;website?:string|null;
 export type CampaignBranding={id:string;name:string|null;logo:string|null;revision:number;website?:string|null;promotion?:string|null};
 export type BrandingChange=SponsorPromotion&{expectedRevision:number};
 export function validSponsorWebsite(value:unknown):value is string|null {
- if(value===null)return true;
- if(typeof value!=='string'||value.length>300||!/^https:\/\/[A-Za-z0-9][A-Za-z0-9.-]*(?::[0-9]{1,5})?(?:[/?#][^\s\u0000-\u001f\u007f]*)?$/.test(value))return false;
- try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password&&Boolean(url.hostname);}catch{return false;}
+ return value===null||typeof value==='string'&&value.length<=300&&!/[\u0000-\u001f\u007f]/.test(value);
 }
+/** Website text is stored unchanged; only safe web destinations become links. */
+export function sponsorWebsiteHref(value:string|null|undefined):string|null {
+ if(!value||!validSponsorWebsite(value))return null;
+ const text=value.trim();
+ if(!text||/[\s\\]/.test(text))return null;
+ const candidate=/^https?:\/\//i.test(text)?text:/^[a-z][a-z0-9+.-]*:/i.test(text)?null:`https://${text}`;
+ if(!candidate)return null;
+ try{const url=new URL(candidate);return ['https:','http:'].includes(url.protocol)&&!url.username&&!url.password&&Boolean(url.hostname)?candidate:null;}catch{return null;}
+}
+
 export function validSponsorPromotion(value:unknown):value is string|null {
  return value===null||typeof value==='string'&&value.length<=1200&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value);
 }
