@@ -142,3 +142,19 @@ it('keeps the hosted reward dialog open during an explicit request and never cre
  expect(m.claim.mock.calls[0][2].action).toBe('request');expect(m.sign).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
  finish({...view,status:'awaiting_review',signing:null});
 });
+
+
+it('the hosted athlete checklist resets explicit consent on a wallet change and retires readiness after failed signing',async()=>{
+ const current={...view,chainId:31337,context:{verifyingContract:'0xcontract'},claim:{...view.claim,expiresAt:'10000'}};
+ m.claim.mockResolvedValue(current);m.sign.mockRejectedValue({code:4001});
+ render(<ClaimDetail athletePresentation id={id} role="recipient" hr={false} chainId={31337}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Connect wallet'}));
+ const button=screen.getByRole('button',{name:'Sign reward consent'});expect(button).toBeDisabled();
+ fireEvent.click(screen.getByRole('checkbox'));expect(button).toBeEnabled();
+ fireEvent.click(screen.getByRole('button',{name:'Connect wallet'}));expect(screen.getByRole('checkbox')).not.toBeChecked();
+ fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(button);
+ await screen.findByText('The claim changed or could not be verified. Refresh before continuing.');expect(screen.queryByText('Verified sporting identity')).not.toBeInTheDocument();
+ expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();expect(m.send).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
+ await screen.findByText('Verified sporting identity');expect(screen.getByRole('checkbox')).not.toBeChecked();expect(screen.getByRole('button',{name:'Sign reward consent'})).toBeDisabled();
+});

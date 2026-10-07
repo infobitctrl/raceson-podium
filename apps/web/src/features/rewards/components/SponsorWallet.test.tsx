@@ -154,3 +154,14 @@ it('shows funding funds on connection and rereads them after a verified deposit 
  expect(screen.queryByRole('link',{name:address})).not.toBeInTheDocument();
  expect(p.request.mock.calls.every(([call])=>['eth_requestAccounts','eth_accounts','eth_chainId','eth_getBalance'].includes(call.method))).toBe(true);
 });
+
+
+it('the claim checklist owns the connected summary while Change and disconnect remain functional',async()=>{
+ const p=provider(),wallet={id:'privy:test',name:'Privy',provider:p},onWallet=vi.fn();mocks.embedded={status:'ready',wallet,address};
+ render(<SponsorWallet compact hideConnectedSummary chainId={10143} hr={false} purpose="recipient" onWallet={onWallet}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Continue with Privy'}));
+ await screen.findByRole('button',{name:'Change'});expect(onWallet).toHaveBeenLastCalledWith({wallet,address});
+ expect(screen.queryByText('Privy wallet connected and ready to use.')).not.toBeInTheDocument();expect(screen.queryByRole('link',{name:address})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Change'}));expect(screen.getByRole('button',{name:'Advanced · external wallet'})).toBeVisible();
+ act(()=>p.listeners.get('disconnect')?.());expect(onWallet).toHaveBeenLastCalledWith(null);expect(screen.queryByRole('button',{name:'Done'})).not.toBeInTheDocument();
+});

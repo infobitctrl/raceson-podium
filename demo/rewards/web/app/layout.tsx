@@ -10,6 +10,7 @@ import "./podium.css";
 import "../../../../apps/web/src/features/rewards/components/Podium.module.css";
 import "../../../../apps/web/src/features/rewards/components/AthleteRewards.module.css";
 import "../../../../apps/web/src/features/rewards/components/RewardWalletSetup.module.css";
+import "../../../../apps/web/src/features/rewards/components/AthleteClaimReview.module.css";
 import "../../../../apps/web/src/features/rewards/components/RewardActionProgress.module.css";
 import "../../../../apps/web/src/features/rewards/components/PodiumHeader.module.css";
 import "../../../../apps/web/src/features/rewards/screens/SponsorDiscovery.module.css";

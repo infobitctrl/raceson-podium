@@ -5,9 +5,10 @@ import {useCallback, useEffect, useRef, useState} from "react";
 import {useRewardEmbeddedWallet, useRewardWallets} from "./RewardEmbeddedWalletContext";
 import s from "./SponsorLaunch.module.css";
 import type {DetectedRewardWallet} from "../data/browserWallet";
+import {LoaderCircle} from 'lucide-react';
 
 /** Connection is a wallet preview, not a persisted funding destination or consent. */
-export default function SponsorWallet({chainId, hr, onWallet, requiredAddress, compact = false, showBalance = false, balanceRevision = "", purpose = "sponsor"}: {chainId: number; hr: boolean; requiredAddress?: string; compact?: boolean; showBalance?: boolean; balanceRevision?: string; purpose?: "sponsor" | "operator" | "recipient"; onWallet?: (value: {wallet: DetectedRewardWallet; address: string} | null) => void}) {
+export default function SponsorWallet({chainId, hr, onWallet, requiredAddress, compact = false, hideConnectedSummary = false, showBalance = false, balanceRevision = "", purpose = "sponsor"}: {chainId: number; hr: boolean; requiredAddress?: string; compact?: boolean; hideConnectedSummary?: boolean; showBalance?: boolean; balanceRevision?: string; purpose?: "sponsor" | "operator" | "recipient"; onWallet?: (value: {wallet: DetectedRewardWallet; address: string} | null) => void}) {
   const [editing, setEditing] = useState(false);
   const [external, setExternal] = useState(false), [choice, setChoice] = useState("");
   const [pendingPrivy, setPendingPrivy] = useState(false);
@@ -67,8 +68,8 @@ export default function SponsorWallet({chainId, hr, onWallet, requiredAddress, c
     {!compact ? <><h2>{purpose === "sponsor" ? t("Your reward wallet", "Vaš novčanik za nagrade") : purpose === "operator" ? t("Operator wallet", "Operatorski novčanik") : t("Your reward wallet", "Vaš novčanik za nagrade")}</h2>
     <p>{purpose === "sponsor" ? t("Connect now or come back later. A deposit always needs your confirmation.", "Povežite sada ili kasnije. Uplata uvijek zahtijeva vašu potvrdu.") : t("Each signature or transaction needs your confirmation.", "Svaki potpis ili transakcija zahtijeva vašu potvrdu.")}</p>
     </> : null}
-    {compact && address ? <><p role="status">{!external ? t("Privy wallet connected and ready to use.", "Privy novčanik je povezan i spreman za korištenje.") : t("Your wallet is connected and ready to use.", "Novčanik je povezan i spreman za korištenje.")}</p><button className={`${s.textButton} ${s.walletOptions}`} aria-expanded={editing} onClick={() => setEditing(value => !value)}>{editing ? t("Done", "Gotovo") : t("Change", "Promijeni")}</button></> : null}
-    {compact && address ? <div className={s.stepAddress}><span>{!external ? t("Privy wallet", "Privy novčanik") : t("Connected wallet", "Povezani novčanik")}</span><p className={s.address}><RewardExplorerLink chainId={chainId} kind="address" value={address}/></p></div> : null}
+    {compact && address ? <>{!hideConnectedSummary?<p role="status">{!external ? t("Privy wallet connected and ready to use.", "Privy novčanik je povezan i spreman za korištenje.") : t("Your wallet is connected and ready to use.", "Novčanik je povezan i spreman za korištenje.")}</p>:null}<button className={`${s.textButton} ${s.walletOptions}`} aria-expanded={editing} onClick={() => setEditing(value => !value)}>{editing ? t("Done", "Gotovo") : t("Change", "Promijeni")}</button></> : null}
+    {compact && address && !hideConnectedSummary ? <div className={s.stepAddress}><span>{!external ? t("Privy wallet", "Privy novčanik") : t("Connected wallet", "Povezani novčanik")}</span><p className={s.address}><RewardExplorerLink chainId={chainId} kind="address" value={address}/></p></div> : null}
     {showBalance && address && selected ? <SponsorWalletBalance key={balanceRevision} provider={selected.provider} address={address.toLowerCase()} chainId={chainId} hr={hr}/> : null}
     <div hidden={compact && Boolean(address) && !editing}>
     {chainId === 10143 ? <div>
@@ -77,7 +78,9 @@ export default function SponsorWallet({chainId, hr, onWallet, requiredAddress, c
       {embedded.status === "unconfigured" ? <p>{t("Privy is unavailable in this environment. Connect an existing wallet below.", "Privy nije dostupan u ovom okruženju. Povežite postojeći novčanik u nastavku.")}</p>
         : !external && address ? <p className={s.success}>{t("Privy wallet connected", "Privy novčanik povezan")}</p>
           : <button className={s.primary} disabled={busy || embedded.status === "loading"}
+            aria-busy={hideConnectedSummary&&(busy||embedded.status==='loading')}
             onClick={continueWithPrivy}>
+            {hideConnectedSummary&&(busy||embedded.status==='loading')?<LoaderCircle size={16} className="animate-spin" aria-hidden="true"/>:null}
             <img src={privySymbol} width={20} height={26} className="shrink-0" alt="" aria-hidden="true"/>
             {busy && !external ? t("Connecting…", "Povezivanje…")
               : embedded.status === "loading" ? t("Opening Privy…", "Otvaranje Privyja…")
@@ -99,7 +102,7 @@ export default function SponsorWallet({chainId, hr, onWallet, requiredAddress, c
           <option value="">{t("Select wallet", "Odaberite novčanik")}</option>{wallets.map(w => <option key={w.id} value={w.id}>{w.name ?? t("Browser wallet", "Novčanik preglednika")}</option>)}
         </select></label>
         {!wallets.length ? <p>{t("No connected wallet found.", "Nije pronađen povezani novčanik.")}</p> : null}
-        <button className={s.secondary} disabled={!selected || busy} onClick={() => void connect()}>{busy ? t("Connecting…", "Povezivanje…") : t("Connect wallet", "Poveži novčanik")}</button>
+        <button className={s.secondary} disabled={!selected || busy} aria-busy={hideConnectedSummary&&busy} onClick={() => void connect()}>{hideConnectedSummary&&busy?<LoaderCircle size={16} className="animate-spin" aria-hidden="true"/>:null}{busy ? t("Connecting…", "Povezivanje…") : t("Connect wallet", "Poveži novčanik")}</button>
       </> : null}
     </div>
     </div>
