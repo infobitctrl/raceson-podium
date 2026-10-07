@@ -33,6 +33,7 @@ const allowed = new Map([
 /** First hosted slice permits ordinary sessions and this read only. In particular,
  * registration/recovery delivery, auto-bootstrap, provider tokens and signing stay closed. */
 export function hostedCopyRequestAllowed(method: string | undefined, url: URL, mode = "preview-v1",operations=false) {
+  if(mode==='sponsor-drafts-v1'&&url.pathname==='/api/v1/public/auth/demo-account-sign-in')return method==='POST'&&[...url.searchParams].length===0;
   if(mode==='sponsor-drafts-v1'&&operations){
     const keys=[...url.searchParams.keys()];
     if(keys.length===0&&/^\/api\/v1\/rewards\/campaign-branding(?:\/(?:mine|[0-9a-f-]{36}))?$/.test(url.pathname))

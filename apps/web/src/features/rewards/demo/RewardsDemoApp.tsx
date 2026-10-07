@@ -1,6 +1,7 @@
 "use client";
 
 import PodiumHeader from "../components/PodiumHeader";
+import {DemoAccountSwitchProvider, DemoAccountSwitchNavigation} from '../components/DemoAccountSwitchProvider';
 import { useRewardDocumentTitle } from "./useRewardDocumentTitle";
 
 import { Component, Suspense, lazy, useState, type ReactNode } from "react";
@@ -180,9 +181,9 @@ function ConfiguredDemo() {
   const [client] = useState(() => new QueryClient());
   if (!publicEnv.rewardDemo) throw new Error("reward_demo_configuration_required");
   assertPublicEnvironmentOrigin();
-  return <QueryClientProvider client={client}><AuthProvider><AccountLocaleSynchronizer />
-    <BrowserRouter><WalletSessionBoundary><TooltipProvider><Toaster /><Sonner /><DemoRoutes /></TooltipProvider></WalletSessionBoundary></BrowserRouter>
-  </AuthProvider></QueryClientProvider>;
+  return <QueryClientProvider client={client}><DemoAccountSwitchProvider><AuthProvider><AccountLocaleSynchronizer />
+    <BrowserRouter><DemoAccountSwitchNavigation/><WalletSessionBoundary><TooltipProvider><Toaster /><Sonner /><DemoRoutes /></TooltipProvider></WalletSessionBoundary></BrowserRouter>
+  </AuthProvider></DemoAccountSwitchProvider></QueryClientProvider>;
 }
 
 export default function RewardsDemoApp() {

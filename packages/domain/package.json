@@ -6,6 +6,7 @@
   "type": "module",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./rewards/demo-accounts": "./dist/rewards/demo-accounts.js",
     "./rewards/five-round-copy-setup-v1": "./dist/rewards/five-round-copy-setup-v1.js",
     "./rewards/five-round-copy-v1": "./dist/rewards/five-round-copy-v1.js",
     "./rewards/participation-review": "./dist/rewards/participation-review.js",

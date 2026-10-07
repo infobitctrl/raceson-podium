@@ -1,3 +1,4 @@
+import {dispatchDemoAccountSignIn} from './routes/rewards/demo-account-sign-in.js';
 import {dispatchHostedCopyClubClaims} from './routes/rewards/hosted-copy-club-claims.js';
 import {dispatchHostedCopyClubCreation} from './routes/rewards/hosted-copy-club-creation.js';
 import {dispatchHostedCopyClaims} from './routes/rewards/hosted-copy-claims.js';
@@ -68,6 +69,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   sendError: boundary.sendError, applyPrivateSessionHeaders: boundary.applyPrivateSessionHeaders,
   } satisfies Parameters<typeof dispatchAthleteRewardRoutes>[3];
   const config = deps.config();
+  if (await dispatchDemoAccountSignIn(req,res,url,{...deps,config,env:boundary.env,enabled:hostedCopyPreviewEnabled(process.env,boundary.env)})) return true;
   const copiedPublic=hostedCopyPreviewEnabled(process.env,boundary.env)?{
     publicRpc:hostedCopyPublicRpc((name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args)),
     resolvePublicationRpc:(identity:import('@raceson/db/rewards').RewardAccountIdentity,id:string)=>hostedCopyPublicRpc((name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args),identity,id),

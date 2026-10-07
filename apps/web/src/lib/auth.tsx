@@ -190,6 +190,7 @@ export function hasOrganizerWorkspaceAccess(
 type SignInInput = {
   identifier: string;
   password: string;
+  demoAccountSwitch?: boolean;
 };
 
 type SignUpInput = {
@@ -803,10 +804,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let result: PasswordSessionResponse;
     try {
       result = await apiRequest<PasswordSessionResponse>({
-        path: "/v1/public/auth/sign-in",
+        path: input.demoAccountSwitch ? "/v1/public/auth/demo-account-sign-in" : "/v1/public/auth/sign-in",
         method: "POST",
         accessToken: null,
-        body: input,
+        body: {identifier: input.identifier, password: input.password},
       });
     } catch (caughtError) {
       if (isSupabaseNetworkError(caughtError)) {
