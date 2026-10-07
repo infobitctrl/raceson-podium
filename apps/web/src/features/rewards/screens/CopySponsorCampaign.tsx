@@ -8,6 +8,9 @@ import {useSponsorCatalogue} from '../data/copyCatalogue';
 import {readRewardSetup,saveRewardSetup} from '../data/distributionSetups';
 import {useRewardSessionEpoch} from '../model/useRewardSessionEpoch';
 import SponsorCampaignStudio from '../components/SponsorCampaignStudio';
+import SponsorPromotionFields,{SponsorPromotionPreview} from '../components/SponsorPromotionFields';
+import {useSponsorPromotion} from '../data/useSponsorPromotion';
+import promotionStyle from '../components/SponsorPromotionFields.module.css';
 import s from '../components/Podium.module.css';
 
 function Editor(){
@@ -37,17 +40,28 @@ function Editor(){
   return()=>{current=false;};
  // Query changes between editor steps do not reload an unsaved campaign.
  },[id,copy?.sourceSeasonId,reload]);
+ const promotion=useSponsorPromotion(id??undefined);
  const dirty=!!draft&&JSON.stringify(draft.configuration)!==JSON.stringify(saved?.configuration);
- useEffect(()=>{if(!dirty)return;const leave=(e:BeforeUnloadEvent)=>{e.preventDefault();};window.addEventListener('beforeunload',leave);return()=>window.removeEventListener('beforeunload',leave);},[dirty]);
+ useEffect(()=>{if(!dirty&&!promotion.dirty)return;const leave=(e:BeforeUnloadEvent)=>{e.preventDefault();};window.addEventListener('beforeunload',leave);return()=>window.removeEventListener('beforeunload',leave);},[dirty,promotion.dirty]);
  async function save(continueToFunding=false){
-  if(!draft||lock.current||conflict)return;
-  if(continueToFunding&&saved&&!dirty){navigate(`/rewards/campaigns/${saved.id}`,{replace:true});return;}
-  if(!pending.current)resumeFunding.current=continueToFunding;
-  try{pending.current??={requestId:crypto.randomUUID(),expectedRevision:saved?.revision??0,configuration:decodeRewardSetup(draft.configuration)};}catch{setError('Check the budget and reward shares.');return;}
-  lock.current=true;setBusy(true);setError('');
-  try{const record=await saveRewardSetup(draft.id,pending.current);if(alive.current){pending.current=null;setSaved(record);setDraft(record);if(continueToFunding||resumeFunding.current)navigate(`/rewards/campaigns/${record.id}`,{replace:true});else{setStep(5);setSearch({setup:record.id},{replace:true});}}}
-  catch(e){if(alive.current){if(e instanceof ApiError&&[400,401,403,404,409].includes(e.status)){pending.current=null;resumeFunding.current=false;if(e.status===409)setConflict(true);setError(e.status===409?'This campaign changed. Reopen the saved revision.':'The campaign could not be saved. Check your sponsor session and reward settings.');}else setError('Save is not confirmed. Retry the same save before editing.');}}
-  finally{lock.current=false;if(alive.current)setBusy(false);}
+  if(!draft||lock.current||conflict||promotion.loading||promotion.failed||promotion.reading||!promotion.valid)return;
+  resumeFunding.current=resumeFunding.current||continueToFunding;
+  if(!saved||dirty){try{pending.current??={requestId:crypto.randomUUID(),expectedRevision:saved?.revision??0,configuration:decodeRewardSetup(draft.configuration)};}catch{setError('Check the budget and reward shares.');return;}}
+  lock.current=true;setBusy(true);setError('');let rulesConfirmed=false;
+  try{
+   const record=pending.current?await saveRewardSetup(draft.id,pending.current):saved!;
+   if(!alive.current)return;
+   pending.current=null;setSaved(record);setDraft(record);rulesConfirmed=true;
+   await promotion.persist(record.id);
+   if(!alive.current)return;
+   if(continueToFunding||resumeFunding.current)navigate(`/rewards/campaigns/${record.id}`,{replace:true});
+   else{setStep(5);setSearch({setup:record.id},{replace:true});}
+   resumeFunding.current=false;
+  }catch(e){if(alive.current){
+   if(rulesConfirmed)setError('Reward rules are saved. Sponsor details were not confirmed. Retry saving; your prize rules will stay at the saved revision.');
+   else if(e instanceof ApiError&&[400,401,403,404,409].includes(e.status)){pending.current=null;resumeFunding.current=false;if(e.status===409)setConflict(true);setError(e.status===409?'This campaign changed. Reopen the saved revision.':'The campaign could not be saved. Check your sponsor session and reward settings.');}
+   else setError('Save is not confirmed. Retry the same save before editing.');
+  }}finally{lock.current=false;if(alive.current)setBusy(false);}
  }
  if(!draft||!copy)return <article className={s.page}><h1>Set up your rewards</h1><p role={error||catalogueError?'alert':'status'}>{error|| (catalogueError?'The verified event catalogue could not be loaded.':busy||catalogueLoading?'Loading campaign…':'Opening event…')}</p>{error||catalogueError?<button onClick={()=>setReload(n=>n+1)}>Try again</button>:null}</article>;
  const c=draft.configuration,round=copy.rounds.find(r=>r.eventEditionId===c.sponsorSelection?.eventEditionId),track=round?.tracks.find(t=>t.raceId===c.sponsorSelection?.raceId);
@@ -57,11 +71,12 @@ function Editor(){
  const tracks=(track?[track]:round?.tracks??[]).map(t=>({id:t.raceId,name:t.name,categoryIds:sorted.filter(cat=>cat.competitionId===t.competitionId).map(cat=>cat.id),nodeIds:selectedPot?.children.filter((_n,i)=>sorted[i]?.competitionId===t.competitionId).map(n=>n.id)??[]}));
  const categoryKeys=Object.fromEntries(c.root.children.flatMap(p=>p.children.map((n,i)=>[n.id,sorted[i]?.id??`type:${c.guided?.groups.find(g=>g.nodeId===n.id)?.type}`])));
  const visibleGroups=track?new Set(c.root.children.flatMap(p=>p.children.filter((_n,i)=>sorted[i]?.competitionId===track.competitionId).map(n=>n.id))):undefined;
- return <><SponsorCampaignStudio campaign configuration={c} copySource={{name:track?.name??round?.name??copy.name,slot:round?.slot??0,visibleGroups,tracks,categoryKeys}} setupId={saved?.id}
-  onChange={configuration=>{if(!busy&&!pending.current&&!conflict){setDraft({...draft,configuration});setError('');}}} step={step} onStep={setStep} disabled={busy||!!pending.current||conflict} hr={hr} selection={null} initialProgramme={null} onLoaded={()=>{}}
-  busy={busy} canSave={true} isSaved={!!saved&&!dirty} revision={saved?.revision??null} saveStatus={saved&&!dirty?`Saved · revision ${saved.revision}`:'Unsaved changes'} onFinish={()=>void save(true)}
+ const promotionEditor=<section className={promotionStyle.section}><h2>{hr?'Sponzor i promocija':'Sponsor & promotion'} <small>{hr?'(neobavezno)':'(optional)'}</small></h2><p>{hr?'Predstavite svoj brend na javnoj kampanji. Podaci se spremaju s kampanjom.':'Introduce your brand on the public campaign. These details are saved with your campaign.'}</p>{promotion.loading?<p role="status">Loading sponsor details…</p>:promotion.failed?<p role="alert">Sponsor details could not be loaded. <button onClick={promotion.retry}>Try again</button></p>:<SponsorPromotionFields value={promotion.value} onChange={promotion.setValue} disabled={busy||!!pending.current||conflict} hr={hr} onPreparing={promotion.setReading}/>} {!promotion.valid?<p role="alert">{hr?'Unesite naziv sponzora, HTTPS web-stranicu i poruku do 1200 znakova.':'Add a sponsor name, an HTTPS website and a message up to 1200 characters.'}</p>:null}</section>;
+ return <><SponsorCampaignStudio sponsorDetails={{editor:promotionEditor,review:<SponsorPromotionPreview value={promotion.value} hr={hr}/>}} campaign configuration={c} copySource={{name:track?.name??round?.name??copy.name,slot:round?.slot??0,visibleGroups,tracks,categoryKeys}} setupId={saved?.id}
+  onChange={configuration=>{if(!busy&&!pending.current&&!conflict){setDraft({...draft,configuration});setError('');}}} step={step} onStep={setStep} disabled={busy||!!pending.current||conflict||promotion.loading||promotion.failed||promotion.reading} hr={hr} selection={null} initialProgramme={null} onLoaded={()=>{}}
+  busy={busy} canSave={promotion.valid} isSaved={!!saved&&!dirty&&!promotion.dirty} revision={saved?.revision??null} saveStatus={saved&&!dirty&&!promotion.dirty?`Saved · revision ${saved.revision}`:'Unsaved changes'} onFinish={()=>void save(true)}
   error={error?<p role="alert">{error}{conflict?<button onClick={()=>setReload(n=>n+1)}>Reopen saved revision</button>:null}</p>:null}
-  saveAction={<button className={s.primary} disabled={busy||conflict||!dirty} onClick={()=>void save()}>{pending.current?'Retry save':'Save campaign'}</button>}/>
+  saveAction={<button className={s.primary} disabled={busy||conflict||promotion.loading||promotion.failed||promotion.reading||!promotion.valid||!dirty&&!promotion.dirty} onClick={()=>void save()}>{pending.current?'Retry save':'Save campaign'}</button>}/>
   </>;
 }
 export default function CopySponsorCampaign(){

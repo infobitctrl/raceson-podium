@@ -7,3 +7,5 @@
 .unavailable{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;color:#62584f;font-size:12px;line-height:1.5}.unavailable button{font:inherit;text-decoration:underline;text-underline-offset:3px;min-height:32px;border:0;padding:0;background:transparent;color:inherit}.featured[data-unavailable=true] .logo{background:#eee8de;color:#62584f}
 
 .featured .unavailable{margin:8px 0 0;font-size:12px;line-height:1.4}.featured .unavailable button{min-height:24px}
+
+.website{display:inline-block;margin-top:12px;font-size:13px;font-weight:600;color:#a9400c;text-decoration:underline;text-underline-offset:3px}.promotion{margin-top:10px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.65;color:#62584f}

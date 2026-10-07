@@ -11,6 +11,6 @@ export async function rewardCampaignBranding(chainId:10143|31337,identity?:Rewar
  });
  if(r.error)throw Error((r.error as {message?:string}).message??'campaign_branding_unavailable');
  const records=decodeCampaignBranding(r.data);
- if(id&&records.some(r=>r.id!==id)||body&&(records.length!==1||records[0].revision!==body.expectedRevision+1||records[0].name!==body.name||records[0].logo!==body.logo))throw Error('invalid_campaign_branding');
+ if(id&&records.some(r=>r.id!==id)||body&&(records.length!==1||records[0].revision!==body.expectedRevision+1||records[0].name!==body.name||records[0].logo!==body.logo||body.website!==undefined&&records[0].website!==body.website||body.promotion!==undefined&&records[0].promotion!==body.promotion))throw Error('invalid_campaign_branding');
  return records;
 }

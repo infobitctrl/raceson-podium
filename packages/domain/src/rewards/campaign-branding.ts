@@ -1,6 +1,15 @@
 import {setupId} from './distribution-setup.js';
-export type CampaignBranding={id:string;name:string|null;logo:string|null;revision:number};
-export type BrandingChange={name:string;logo:string|null;expectedRevision:number};
+export type SponsorPromotion={name:string;logo:string|null;website?:string|null;promotion?:string|null};
+export type CampaignBranding={id:string;name:string|null;logo:string|null;revision:number;website?:string|null;promotion?:string|null};
+export type BrandingChange=SponsorPromotion&{expectedRevision:number};
+export function validSponsorWebsite(value:unknown):value is string|null {
+ if(value===null)return true;
+ if(typeof value!=='string'||value.length>300||!/^https:\/\/[A-Za-z0-9][A-Za-z0-9.-]*(?::[0-9]{1,5})?(?:[/?#][^\s\u0000-\u001f\u007f]*)?$/.test(value))return false;
+ try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password&&Boolean(url.hostname);}catch{return false;}
+}
+export function validSponsorPromotion(value:unknown):value is string|null {
+ return value===null||typeof value==='string'&&value.length<=1200&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value);
+}
 export function validBrandingLogo(value:unknown):value is string|null {
  if(value===null)return true;
  if(typeof value!=='string'||value.length>90000||!/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/.test(value))return false;
@@ -12,17 +21,17 @@ export function validBrandingLogo(value:unknown):value is string|null {
 }
 export function decodeBrandingChange(value:unknown):BrandingChange {
  const c=value as BrandingChange;
- if(!c||Object.keys(c).sort().join()!=='expectedRevision,logo,name'||typeof c.name!=='string'||!c.name.trim()||c.name.trim().length>80||/[\u0000-\u001f\u007f]/.test(c.name)||!validBrandingLogo(c.logo)||!Number.isInteger(c.expectedRevision)||c.expectedRevision<0||c.expectedRevision>99999999)throw Error('invalid_campaign_branding');
+ if(!c||!['expectedRevision','logo','name'].every(key=>Object.hasOwn(c,key))||Object.keys(c).some(key=>!['expectedRevision','logo','name','website','promotion'].includes(key))||typeof c.name!=='string'||!c.name.trim()||c.name.trim().length>80||/[\u0000-\u001f\u007f]/.test(c.name)||!validBrandingLogo(c.logo)||!Number.isInteger(c.expectedRevision)||c.expectedRevision<0||c.expectedRevision>99999999||c.website!==undefined&&!validSponsorWebsite(c.website)||c.promotion!==undefined&&!validSponsorPromotion(c.promotion))throw Error('invalid_campaign_branding');
  return {...c,name:c.name.trim()};
 }
 export function decodeCampaignBranding(value:unknown):CampaignBranding[] {
  if(!Array.isArray(value))throw Error('invalid_campaign_branding');
  const ids=new Set<string>();
  return value.map(c=>{
-  if(!c||Object.keys(c).sort().join()!=='id,logo,name,revision'||!setupId(c.id)||ids.has(c.id))throw Error('invalid_campaign_branding');
+  if(!c||!['id','logo','name','revision'].every(key=>Object.hasOwn(c,key))||Object.keys(c).some(key=>!['id','logo','name','revision','website','promotion'].includes(key))||!setupId(c.id)||ids.has(c.id)||c.website!==undefined&&!validSponsorWebsite(c.website)||c.promotion!==undefined&&!validSponsorPromotion(c.promotion))throw Error('invalid_campaign_branding');
   ids.add(c.id);
-  if(c.revision===0){if(c.name!==null||c.logo!==null)throw Error('invalid_campaign_branding');}
-  else {decodeBrandingChange({name:c.name,logo:c.logo,expectedRevision:c.revision});if(c.revision<1)throw Error('invalid_campaign_branding');}
+  if(c.revision===0){if(c.name!==null||c.logo!==null||c.website!=null||c.promotion!=null)throw Error('invalid_campaign_branding');}
+  else {decodeBrandingChange({name:c.name,logo:c.logo,expectedRevision:c.revision,website:c.website,promotion:c.promotion});if(c.revision<1)throw Error('invalid_campaign_branding');}
   return c;
  });
 }

@@ -5,7 +5,7 @@ export async function readCampaignBranding(mine=false){return decodeCampaignBran
 export async function saveCampaignBranding(id:string,change:BrandingChange){
  if(!setupId(id))throw Error('invalid_campaign_branding');
  const body=decodeBrandingChange(change),rows=decodeCampaignBranding(await apiRequest({path:`/v1/rewards/campaign-branding/${id}`,method:'PATCH',body,cache:'no-store'}));
- if(rows.length!==1||rows[0].id!==id||rows[0].name!==body.name||rows[0].logo!==body.logo||rows[0].revision!==body.expectedRevision+1)throw Error('invalid_campaign_branding');
+ if(rows.length!==1||rows[0].id!==id||rows[0].name!==body.name||rows[0].logo!==body.logo||body.website!==undefined&&rows[0].website!==body.website||body.promotion!==undefined&&rows[0].promotion!==body.promotion||rows[0].revision!==body.expectedRevision+1)throw Error('invalid_campaign_branding');
  return rows[0];
 }
 /** Decode and re-encode the chosen raster locally; never load arbitrary remote URLs. */

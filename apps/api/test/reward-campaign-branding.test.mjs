@@ -29,3 +29,12 @@ test('logo decoding bounds the stored PNG dimensions and rejects truncated data'
  const image=Buffer.from(png.slice(22),'base64');image.writeUInt32BE(4000,16);
  assert.equal(validBrandingLogo('data:image/png;base64,'+image.toString('base64')),false);
 });
+test('promotion accepts plain multiline text and HTTPS websites, preserves legacy payloads and rejects unsafe or oversized fields',()=>{
+ const base={name:'Sponsor',logo:null,expectedRevision:0};
+ assert.deepEqual(decodeBrandingChange({...base,website:'https://example.com/offer?q=trail',promotion:'Trail offer\nMeet us at the finish.'}),{...base,website:'https://example.com/offer?q=trail',promotion:'Trail offer\nMeet us at the finish.'});
+ for(const website of ['javascript:alert(1)','http://example.com','https://name:password@example.com','https://example.com/ bad','https://','https://'+'a'.repeat(301)])assert.throws(()=>decodeBrandingChange({...base,website}));
+ for(const promotion of ['a'.repeat(1201),'bad\u0001text',123])assert.throws(()=>decodeBrandingChange({...base,promotion}));
+ assert.equal(decodeCampaignBranding([{id,name:'Sponsor',logo:null,revision:1,website:null,promotion:'<b>Plain text</b>'}])[0].promotion,'<b>Plain text</b>');
+ assert.equal(decodeCampaignBranding([{id,name:'Sponsor',logo:null,revision:1}]).length,1);
+ assert.throws(()=>decodeCampaignBranding([{id,name:null,logo:null,revision:0,promotion:'unsaved'}]));
+});

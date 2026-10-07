@@ -18,6 +18,7 @@ const SeasonPicker = lazy(()=>import("../screens/CreateRewardProgramme"));
 
 export type GuidedRewardSetupProps = {
  copySource?:{name:string;slot:number;categoryKeys?:import("../model/copyExistingRoundRules").ExistingCategoryKeys;visibleGroups?:Set<string>;tracks?:import("../model/sponsorTrackAllocation").SponsorTrack[]};
+  sponsorDetails?:{editor:ReactNode;review:ReactNode};
   setupId?:string; sourceLocked?:boolean;
   campaign?:boolean; configuration:RewardDistributionSetup; onChange:(value:RewardDistributionSetup)=>void;
   step:number; onStep:(step:number,round?:number)=>void; disabled:boolean; hr:boolean;
