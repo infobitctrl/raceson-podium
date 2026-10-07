@@ -30,3 +30,9 @@ it('shows identity and wallet control separately without marking unchecked conse
  expect(container.querySelectorAll('[data-state="complete"]')).toHaveLength(2);
  expect(container.querySelector('[aria-current="step"]')).toHaveTextContent('Your consent');
 });
+
+
+it('labels a prepared rehearsal without claiming verified sporting identity',()=>{
+ render(<RewardClaimProgress hr={false} pending={null} view={{status:'awaiting_consent',current:true,receipt:null,rehearsalPolicy:'podium-demo-alias-rehearsal-v1'}}/>);
+ expect(screen.getByText('Demo eligibility rehearsed')).toBeVisible();expect(screen.queryByText('Sporting identity reviewed')).not.toBeInTheDocument();expect(screen.getByText(/Original athlete identity and age are not verified/)).toBeVisible();
+});
