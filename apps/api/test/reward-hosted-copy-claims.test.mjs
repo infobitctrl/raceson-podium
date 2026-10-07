@@ -109,3 +109,24 @@ test('reviewer read cannot expose signing data even when backed by the shared cl
  assert.equal(view.signing,null);assert.equal(view.transaction,null);
  await assert.rejects(sponsorClaimFromFactsV4({chainId:10143,claimId:cid,role:'operator'},{action:'operator',signature:'0x'+'a'.repeat(130)},{origin,readFacts:read,signer:false}));
 });
+
+test('demo rehearsal is a hosted server fact and never creates readiness, consent or payment by itself',async()=>{
+ const raw=await facts();raw.rehearsalPolicy='podium-demo-alias-rehearsal-v1';let writes=0;
+ const read=hostedCopyClaimFacts(actor,cid,'recipient',async(_n,a)=>{if(a.p_action)writes++;return{data:raw,error:null};});
+ const v=await sponsorClaimFromFactsV4({chainId:10143,claimId:cid,role:'recipient'},undefined,{origin,readFacts:read});
+ assert.equal(v.rehearsalPolicy,raw.rehearsalPolicy);assert.equal(v.status,'held');assert.equal(v.signing,null);assert.equal(v.transaction,null);assert.equal(writes,0);
+ raw.rehearsalPolicy='anything';await assert.rejects(read(),/invalid_sponsor_claim/);
+ delete raw.rehearsalPolicy;assert.equal((await read()).rehearsalPolicy,null);
+});
+test('rehearsal preparation refuses generic facts, wrong claim, chain, schema and fabricated evidence',async()=>{
+ const f=await facts(),scope={chainId:10143,claimId:cid,role:'operator'};
+ const attestation={schemaVersion:4,policy:'podium-demo-alias-rehearsal-v1',chainId:10143,claimId:cid};
+ let writes=0;const deps={origin,readFacts:async write=>{if(write)writes++;return f;}};
+ const change={action:'prepare',sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,attestation};
+ await assert.rejects(sponsorClaimFromFactsV4(scope,change,deps),/invalid_sponsor_claim/);
+ f.rehearsalPolicy=attestation.policy;
+ for(const patch of [{chainId:31337},{claimId:id(10)},{schemaVersion:2},{verifiedDateOfBirth:'1990-01-01'},{identityEvidenceRef:id(12)}])
+  await assert.rejects(sponsorClaimFromFactsV4(scope,{...change,attestation:{...attestation,...patch}},deps),/invalid_sponsor_claim/);
+ // Correct policy still cannot override a held source, missing reader or cryptographic proof.
+ await assert.rejects(sponsorClaimFromFactsV4(scope,change,deps),/reward_sponsor_claim_not_ready/);assert.equal(writes,0);
+});

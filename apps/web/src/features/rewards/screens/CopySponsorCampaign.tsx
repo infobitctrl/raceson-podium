@@ -55,8 +55,9 @@ function Editor(){
  const selectedPot=c.root.children.find(p=>c.guided?.pots.some(g=>g.nodeId===p.id&&g.slot===round?.slot));
  // The frozen copy template orders fixed category nodes by competition UUID, then classification UUID.
  const tracks=(track?[track]:round?.tracks??[]).map(t=>({id:t.raceId,name:t.name,categoryIds:sorted.filter(cat=>cat.competitionId===t.competitionId).map(cat=>cat.id),nodeIds:selectedPot?.children.filter((_n,i)=>sorted[i]?.competitionId===t.competitionId).map(n=>n.id)??[]}));
+ const categoryKeys=Object.fromEntries(c.root.children.flatMap(p=>p.children.map((n,i)=>[n.id,sorted[i]?.id??`type:${c.guided?.groups.find(g=>g.nodeId===n.id)?.type}`])));
  const visibleGroups=track?new Set(c.root.children.flatMap(p=>p.children.filter((_n,i)=>sorted[i]?.competitionId===track.competitionId).map(n=>n.id))):undefined;
- return <><SponsorCampaignStudio campaign configuration={c} copySource={{name:track?.name??round?.name??copy.name,slot:round?.slot??0,visibleGroups,tracks}} setupId={saved?.id}
+ return <><SponsorCampaignStudio campaign configuration={c} copySource={{name:track?.name??round?.name??copy.name,slot:round?.slot??0,visibleGroups,tracks,categoryKeys}} setupId={saved?.id}
   onChange={configuration=>{if(!busy&&!pending.current&&!conflict){setDraft({...draft,configuration});setError('');}}} step={step} onStep={setStep} disabled={busy||!!pending.current||conflict} hr={hr} selection={null} initialProgramme={null} onLoaded={()=>{}}
   busy={busy} canSave={true} isSaved={!!saved&&!dirty} revision={saved?.revision??null} saveStatus={saved&&!dirty?`Saved · revision ${saved.revision}`:'Unsaved changes'} onFinish={()=>void save(true)}
   error={error?<p role="alert">{error}{conflict?<button onClick={()=>setReload(n=>n+1)}>Reopen saved revision</button>:null}</p>:null}

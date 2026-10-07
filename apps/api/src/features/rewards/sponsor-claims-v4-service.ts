@@ -6,7 +6,7 @@ import {readSponsorAthleteClaimV4} from "@raceson/rewards-chain/sponsor-claim-re
 import {sponsorClaimMessagesV4,verifySponsorClaimProofV4,encodeSponsorClaimV4} from "@raceson/rewards-chain/sponsor-claims-v4";
 import {observeSponsorProgrammePot,type SponsorChainReader} from "@raceson/rewards-chain/sponsor-v4";
 import {parseAbi,type Hex} from "viem";
-type Facts=Awaited<ReturnType<typeof sponsorClaimFactsV4>>;
+type Facts=Awaited<ReturnType<typeof sponsorClaimFactsV4>>&{rehearsalPolicy?:"podium-demo-alias-rehearsal-v1"|null};
 type Deps={rpc?:RewardLedgerRpc;reader?:SponsorChainReader;origin:string};
 function check(v:unknown,code="reward_sponsor_claim_not_ready"):asserts v{if(!v)throw new RewardLedgerStoreError(code);}
 export type SponsorClaimChangeV4={action:"request";approvalId:string;entitlementId:Hex;destinationId:string}|{action:"prepare";sourceStamp:string;profileFingerprint:string;attestation:unknown}
@@ -66,7 +66,13 @@ export async function sponsorClaimFromFactsV4(scope:SponsorClaimScopeV4,change:S
  await wallet(f,deps.origin);
  if(change?.action==="prepare"){
   check(scope.role==="operator"&&change.sourceStamp===f.sourceStamp&&change.profileFingerprint===f.profileFingerprint);
-  const attestation=decodeRewardReadinessAttestationV3(change.attestation);requireReadinessPolicyChainV3(attestation,scope.chainId);check(attestation.schemaVersion!==3,"invalid_sponsor_claim");
+  const raw=change.attestation as Record<string,unknown>|null;
+  let attestation:ReturnType<typeof decodeRewardReadinessAttestationV3>|{schemaVersion:4;policy:'podium-demo-alias-rehearsal-v1';chainId:10143;claimId:string};
+  if(raw?.policy==='podium-demo-alias-rehearsal-v1'){
+   check(f.rehearsalPolicy===raw.policy&&scope.chainId===10143&&f.plan.chainId===10143&&raw.chainId===10143&&raw.schemaVersion===4&&raw.claimId===f.claimId
+    &&Object.keys(raw).sort().join(',')==='chainId,claimId,policy,schemaVersion','invalid_sponsor_claim');
+   attestation={schemaVersion:4,policy:raw.policy,chainId:10143,claimId:f.claimId};
+  }else{attestation=decodeRewardReadinessAttestationV3(change.attestation);requireReadinessPolicyChainV3(attestation,scope.chainId);check(attestation.schemaVersion!==3,"invalid_sponsor_claim");}
   if(!f.events.intent){check(f.current&&deps.reader);const {i,allocation}=sponsorClaimBindingV4(f);
    // The entitlement is bound by SQL to this request, independently of browser input.
    const entitlementId=f.entitlementId;
@@ -92,7 +98,7 @@ export async function sponsorClaimFromFactsV4(scope:SponsorClaimScopeV4,change:S
  }catch(e){if(e instanceof Error&&["reward_sponsor_claim_not_ready","sponsor_claim_unavailable","sponsor_entitlement_unavailable"].includes(e.message))availability="held";else throw e;}}
  const after=await deps.readFacts();check(canonical(after.events)===canonical(f.events)&&after.current===f.current&&after.sourceStamp===f.sourceStamp&&after.profileFingerprint===f.profileFingerprint,"reward_planning_revision_changed");
  return copy({schema:"raceson-sponsor-claim-view-v4",claimId:f.claimId,approvalId:f.approvalId,role:scope.role,chainId:scope.chainId,current:f.current,status:availability,
-  sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,operatorAddress:f.plan.operator,address:f.destination.address,claim:p?.claim??null,context:p?.context??null,signing,transaction,receipt:f.events.receipt??null});
+  rehearsalPolicy:f.rehearsalPolicy??null,sourceStamp:f.sourceStamp,profileFingerprint:f.profileFingerprint,operatorAddress:f.plan.operator,address:f.destination.address,claim:p?.claim??null,context:p?.context??null,signing,transaction,receipt:f.events.receipt??null});
 }
 
 /** Exact payment bytes and immutable, non-secret source binding for the native

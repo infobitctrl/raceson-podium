@@ -13,12 +13,21 @@ async function call(rpc:RewardLedgerRpc,name:Parameters<RewardLedgerRpc>[0],args
   'reward_recipient_consent_required','controller_scope_required',
  ].includes(code)?code:'reward_ledger_unavailable');}return copy(r.data);
 }
+const rehearsalPolicy='podium-demo-alias-rehearsal-v1' as const;
+/** Only the hosted SQL boundary can expose the provisioned-alias policy. */
+function decodeHostedClaimFacts(value:unknown,scope:Parameters<typeof decodeSponsorClaimFactsV4>[1],userId?:string){
+ const {rehearsalPolicy:policy,...facts}=copy(value) as Record<string,unknown>;
+ if(policy!==undefined&&policy!==null&&policy!==rehearsalPolicy)throw Error('invalid_sponsor_claim');
+ const decoded=decodeSponsorClaimFactsV4(facts,scope,userId);
+ if(policy&&(decoded.plan.chainId!==10143||decoded.challenge.origin!=='https://podium.raceson.com'))throw Error('invalid_sponsor_claim');
+ return {...decoded,rehearsalPolicy:policy===rehearsalPolicy?rehearsalPolicy:null};
+}
 export function hostedCopyClaimFacts(identity:RewardAccountIdentity,claimId:string,role:'recipient'|'reviewer',rpc:RewardLedgerRpc){
  const userId=uuid(identity.userId),sessionId=uuid(identity.sessionId),id=uuid(claimId);
  if(!['recipient','reviewer'].includes(role))throw Error('reward_claim_scope_required');
  return async(write?:Write)=>{
   if(write&&!(role==='recipient'?['request','recipient']:['intent','revoked']).includes(write.action))throw Error('reward_claim_scope_required');
-  return decodeSponsorClaimFactsV4(await call(rpc,'service_reward_demo_copy_claim',{
+  return decodeHostedClaimFacts(await call(rpc,'service_reward_demo_copy_claim',{
    p_actor_user_id:userId,p_actor_session_id:sessionId,p_claim_id:id,p_role:role,
    p_action:write?.action??null,p_body_text:write?canonical(copy(write.body)):null,
   }),{chainId:10143,claimId:id,role:role==='recipient'?'recipient':'operator'},userId);
@@ -29,7 +38,7 @@ export function hostedCopyNativeClaimFacts(actor:{subject:string;wallet:string},
  if(!/^did:privy:[a-zA-Z0-9_-]{1,100}$/.test(subject)||!/^0x[0-9a-f]{40}$/.test(wallet))throw Error('controller_scope_required');
  return async(write?:Write)=>{
   if(write&&!['operator','receipt'].includes(write.action))throw Error('reward_claim_scope_required');
-  const f=decodeSponsorClaimFactsV4(await call(rpc,'service_reward_demo_copy_native_claim',{
+  const f=decodeHostedClaimFacts(await call(rpc,'service_reward_demo_copy_native_claim',{
    p_subject:subject,p_operator:wallet,p_claim_id:id,p_action:write?.action??null,p_body_text:write?canonical(copy(write.body)):null,
   }),{chainId:10143,claimId:id,role:'operator'});
   if(f.plan.operator!==wallet||f.plan.chainId!==10143)throw Error('controller_scope_required');

@@ -21,7 +21,7 @@ export async function programmeRequest(setupId:string,slot:number,step:"review"|
  const v=await apiRequest({path,cache:"no-store",...(body?{method:"POST" as const,body}:{})});
  return step==="review"?review.parse(v):step==="upload"?upload.parse(v):lifecycle.parse(v);
 }
-export const sponsorClaimSchema=z.object({schema:z.literal("raceson-sponsor-claim-view-v4"),claimId:uuid,approvalId:uuid,chainId:z.union([z.literal(31337),z.literal(10143)]),role:z.enum(["recipient","operator"]),current:z.boolean(),status:z.enum(["awaiting_review","held","paid","ready_to_pay","awaiting_operator","awaiting_consent"]),sourceStamp:hash,profileFingerprint:hash,operatorAddress:z.string().regex(/^0x[0-9a-f]{40}$/),address:z.string(),
+export const sponsorClaimSchema=z.object({rehearsalPolicy:z.literal("podium-demo-alias-rehearsal-v1").nullable().optional(),schema:z.literal("raceson-sponsor-claim-view-v4"),claimId:uuid,approvalId:uuid,chainId:z.union([z.literal(31337),z.literal(10143)]),role:z.enum(["recipient","operator"]),current:z.boolean(),status:z.enum(["awaiting_review","held","paid","ready_to_pay","awaiting_operator","awaiting_consent"]),sourceStamp:hash,profileFingerprint:hash,operatorAddress:z.string().regex(/^0x[0-9a-f]{40}$/),address:z.string(),
  claim:z.object({entitlementId:hex,recipient:z.string(),amount:wei,pot:z.enum(["race","league"]),nonce:wei,issuedAt:wei,expiresAt:wei,allocationDigest:hex}).nullable(),
  context:z.object({environment:z.enum(["local-simulation","monad-testnet"]),chainId:z.union([z.literal(31337),z.literal(10143)]),verifyingContract:z.string()}).nullable(),
  signing:z.unknown().nullable(),transaction:tx.nullable(),receipt:z.object({transactionHash:hex,amountWei:wei,recipient:z.string(),blockNumber:wei,blockHash:hex}).nullable()});
