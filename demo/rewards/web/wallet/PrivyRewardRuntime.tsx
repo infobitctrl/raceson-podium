@@ -157,7 +157,8 @@ function AuthenticatedWallet({ configuration, sessionKey, walletUserId, onState 
         : wallet ? connected?.session === authSession && connected.address === wallet.address ? connected.value : { status: "loading", wallet: null }
           : hasLinkedEmbedded ? { status: "error", wallet: null } : { status: "ready", wallet: null, create },
   [authenticated, failure, providerMismatch, privy.ready, state.status, embedded.length, identityMatches, walletsReady, creating, wallet, connected, authSession, create, hasLinkedEmbedded, initializing, initializationTimedOut]);
-  useEffect(() => onState(sessionKey, value), [sessionKey, value, onState]);
+  const reported = useMemo(() => ({...value, reviewerConnected:identityMatches}), [value,identityMatches]);
+  useEffect(() => onState(sessionKey, reported), [sessionKey, reported, onState]);
   return null;
 }
 

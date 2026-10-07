@@ -4,6 +4,7 @@ import { discoverRewardWallets, type DetectedRewardWallet } from "../data/browse
 
 export type RewardEmbeddedState = {
   status: "unconfigured" | "off" | "loading" | "ready" | "error";
+  reviewerConnected?: boolean;
   errorReason?: "initialization_timeout";
   wallet: DetectedRewardWallet | null;
   address?: string;

@@ -1,4 +1,5 @@
 vi.mock('./HostedClubClaimReviews',()=>({default:({approvalId}:{approvalId:string})=><p>Club queue {approvalId}</p>}));
+vi.mock('./HostedReviewPublication',()=>({default:()=> <p>Publication controls</p>}));
 import {act,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedAwardUpload from './HostedAwardUpload';
@@ -10,15 +11,15 @@ const base={current:true,prepared:null,contextHash:props.contextHash,documentHas
 const prepared={...base,prepared:{id:'package',packageHash:'e'.repeat(64)}};
 const handoff={current:true,publication:null,publicationHash:'f'.repeat(64)};
 beforeEach(()=>{mocks.upload.mockReset();mocks.handoff.mockReset();});
-it('completes results review before offering separate contract tools',async()=>{
+it('completes results review before offering reviewer-owned publication',async()=>{
  mocks.upload.mockResolvedValueOnce(base).mockResolvedValue(prepared);mocks.handoff.mockResolvedValueOnce(handoff).mockResolvedValueOnce({...handoff,publication:{id:'publication'}});
  render(<HostedAwardUpload {...props}/>);fireEvent.click(await screen.findByRole('button',{name:'Verify funding and prepare package'}));
- await screen.findByText('Package prepared for the controller.');expect(mocks.handoff).toHaveBeenCalledTimes(1);
+ await screen.findByText('Award package prepared.');expect(mocks.handoff).toHaveBeenCalledTimes(1);
  expect(mocks.upload.mock.calls[1][1]).toEqual({requestId:expect.any(String),contextHash:props.contextHash,documentHash:props.documentHash});
  expect(screen.queryByRole('link',{name:'Controller tools'})).not.toBeInTheDocument();expect(screen.queryByText('Recipient queue approval')).not.toBeInTheDocument();
- fireEvent.click(screen.getByRole('button',{name:'Confirm results handoff'}));expect(await screen.findByRole('link',{name:'Controller tools'})).toHaveAttribute('href','/rewards/control?campaign=setup&pot=0');
+ fireEvent.click(screen.getByRole('button',{name:'Confirm results handoff'}));await screen.findByText('Publication controls');expect(screen.queryByRole('link',{name:'Controller tools'})).not.toBeInTheDocument();
  expect(screen.getByText('Results review complete. Approved awards are ready for contract publication.')).toBeVisible();
- expect(screen.getByText('Separate contract operations').closest('details')).not.toHaveAttribute('open');
+ expect(screen.queryByText('Separate contract operations')).not.toBeInTheDocument();
  expect(screen.queryByText(/Continue in the controller workspace/)).not.toBeInTheDocument();
  expect(screen.getByText('Recipient queue approval')).toBeVisible();expect(screen.getByText('Club queue approval')).toBeVisible();
  expect(mocks.handoff.mock.calls[1][1]).toEqual({action:'publication',requestId:expect.any(String),documentHash:handoff.publicationHash});
@@ -27,14 +28,14 @@ it('completes results review before offering separate contract tools',async()=>{
 it('an uncertain prepare hides private evidence and retries the same commitment',async()=>{
  mocks.upload.mockResolvedValueOnce(base).mockRejectedValueOnce(Error('uncertain')).mockResolvedValueOnce(prepared);mocks.handoff.mockResolvedValue(handoff);
  render(<HostedAwardUpload {...props}/>);fireEvent.click(await screen.findByRole('button',{name:'Verify funding and prepare package'}));
- fireEvent.click(await screen.findByRole('button',{name:'Retry same preparation'}));await screen.findByText('Package prepared for the controller.');
+ fireEvent.click(await screen.findByRole('button',{name:'Retry same preparation'}));await screen.findByText('Award package prepared.');
  expect(mocks.upload.mock.calls[2][1]).toEqual(mocks.upload.mock.calls[1][1]);
 });
 it('an uncertain publication hides prepared evidence and retries the same publication UUID',async()=>{
  mocks.upload.mockResolvedValue(prepared);mocks.handoff.mockResolvedValueOnce(handoff).mockRejectedValueOnce(Error('uncertain')).mockResolvedValueOnce({...handoff,publication:{id:'publication'}});
  render(<HostedAwardUpload {...props}/>);fireEvent.click(await screen.findByRole('button',{name:'Confirm results handoff'}));
- const retry=await screen.findByRole('button',{name:'Retry same preparation'});expect(screen.queryByText('Package prepared for the controller.')).not.toBeInTheDocument();
- fireEvent.click(retry);await screen.findByRole('link',{name:'Controller tools'});
+ const retry=await screen.findByRole('button',{name:'Retry same preparation'});expect(screen.queryByText('Award package prepared.')).not.toBeInTheDocument();
+ fireEvent.click(retry);await screen.findByText('Publication controls');
  await waitFor(()=>expect(mocks.handoff).toHaveBeenCalledTimes(3));expect(mocks.handoff.mock.calls[2][1]).toEqual(mocks.handoff.mock.calls[1][1]);
 });
 it('reload retires an uncertain command and rechecks current funding without another write',async()=>{
@@ -45,13 +46,13 @@ it('reload retires an uncertain command and rechecks current funding without ano
 });
 it('changed review digest fails closed before revealing package or publication evidence',async()=>{
  mocks.upload.mockResolvedValue({...prepared,documentHash:'a'.repeat(64)});render(<HostedAwardUpload {...props}/>);
- await screen.findByRole('alert');expect(mocks.handoff).not.toHaveBeenCalled();expect(screen.queryByText('Package prepared for the controller.')).not.toBeInTheDocument();
+ await screen.findByRole('alert');expect(mocks.handoff).not.toHaveBeenCalled();expect(screen.queryByText('Award package prepared.')).not.toBeInTheDocument();
 });
 it('changing approval retires late private reads',async()=>{
  let resolve!:(v:unknown)=>void;mocks.upload.mockImplementationOnce(()=>new Promise(r=>resolve=r)).mockResolvedValue({...base,current:false});
  const {rerender}=render(<HostedAwardUpload {...props}/>);rerender(<HostedAwardUpload {...props} approvalId="new"/>);
  await screen.findByText(/decision is no longer current/);resolve(prepared);await waitFor(()=>expect(mocks.upload).toHaveBeenCalledTimes(2));
- expect(screen.queryByText('Package prepared for the controller.')).not.toBeInTheDocument();expect(mocks.handoff).not.toHaveBeenCalled();
+ expect(screen.queryByText('Award package prepared.')).not.toBeInTheDocument();expect(mocks.handoff).not.toHaveBeenCalled();
 });
 
 it('a pending handoff replaces its button and cannot unlock the controller before confirmation',async()=>{
@@ -67,7 +68,7 @@ it('a pending handoff replaces its button and cannot unlock the controller befor
 });
 it('a stale publication never unlocks the controller workspace',async()=>{
  mocks.upload.mockResolvedValue(prepared);mocks.handoff.mockResolvedValue({...handoff,current:false,publication:{id:'stale'}});
- render(<HostedAwardUpload {...props}/>);await screen.findByText('Package prepared for the controller.');
+ render(<HostedAwardUpload {...props}/>);await screen.findByText('Award package prepared.');
  expect(screen.queryByRole('link',{name:'Controller tools'})).not.toBeInTheDocument();
  expect(screen.queryByText('Recipient queue approval')).not.toBeInTheDocument();
 });

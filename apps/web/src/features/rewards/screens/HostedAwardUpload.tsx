@@ -1,8 +1,7 @@
 import HostedClubClaimReviews from './HostedClubClaimReviews';
+import HostedReviewPublication from './HostedReviewPublication';
 import HostedClaimReviews from './HostedClaimReviews';
 import {useEffect,useRef,useState} from 'react';
-import Link from 'next/link';
-import {rewardsControlLink} from '../model/controllerLinks';
 import {readHostedAwardUpload,readHostedAwardHandoff,type HostedUploadScope} from '../data/hostedAwardUpload';
 import p from '../components/Podium.module.css';
 import s from './HostedReviewWorkspace.module.css';
@@ -39,16 +38,16 @@ export default function HostedAwardUpload({id,slot,approvalId,contextHash,docume
   }catch{if(generation===epoch.current){setError(true);setView(null);setHandoff(null);}}
   finally{if(generation===epoch.current)setBusy(false);}
  }
- return <section className={p.panel} aria-label={hr?'Predaja kontroloru':'Controller handoff'}><h3>{hr?'Pripremi odobrene nagrade':'Prepare approved awards'}</h3>
+ return <section className={p.panel} aria-label={hr?'Priprema i objava nagrada':'Award preparation and publication'}><h3>{hr?'Pripremi odobrene nagrade':'Prepare approved awards'}</h3>
   <p>{hr?'Provjerite uplatu, pripremite nagrade i potvrdite predaju rezultata.':'Verify funding, prepare the awards and confirm the results handoff.'}</p>
   {busy||error?<RewardActionProgress paused={error&&!busy} messageRole={error&&!busy?'alert':'status'} label={hr?'Napredak pripreme':'Preparation progress'} labels={hr?['Provjera','Priprema','Potvrđeno']:['Checking','Preparing','Confirmed']} stage={pending.current?1:0} message={error?(hr?'Priprema nije potvrđena. Ponovite istu pripremu ili učitajte trenutačno stanje.':'Preparation could not be confirmed. Retry the same preparation or reload the current state.'):pending.current?.kind==='handoff'?(hr?'Potvrđivanje predaje službenih rezultata. Pričekajte odgovor poslužitelja.':'Confirming the official results handoff. Wait for the server response.'):pending.current?(hr?'Provjera uplate i priprema odobrenog paketa.':'Verifying funding and preparing the approved package.'):(hr?'Provjera trenutačne pripreme i predaje.':'Checking the current package and handoff.')}/>:null}
   {error&&!busy?<>
    {pending.current?<button className={p.primary} disabled={busy} onClick={()=>void act(pending.current!.kind)}>{hr?'Ponovi istu pripremu':'Retry same preparation'}</button>:null}
    <button className={p.secondary} disabled={busy} onClick={()=>setReload(n=>n+1)}>{hr?'Učitaj ponovno':'Reload preparation'}</button></>:null}
   {view&&!busy?view.current?<>
-   {view.prepared?<><p className={s.confirmed}><Check size={18} aria-hidden="true"/>{hr?'Paket je pripremljen za kontrolora.':'Package prepared for the controller.'}</p><details><summary>{hr?'Dokaz paketa':'Package evidence'}</summary><p style={{overflowWrap:'anywhere'}}>{view.prepared.packageHash}</p></details></>:<button className={p.primary} disabled={busy} onClick={()=>void act('upload')}>{hr?'Provjeri uplatu i pripremi paket':'Verify funding and prepare package'}</button>}
-   {handoff?.current?handoff.publication?<><p>{hr?'Pregled rezultata je dovršen. Odobrene nagrade spremne su za objavu na ugovoru.':'Results review complete. Approved awards are ready for contract publication.'}</p><HostedClaimReviews approvalId={approvalId} hr={hr}/><HostedClubClaimReviews approvalId={approvalId} hr={hr}/></>:<button className={p.primary} disabled={busy} onClick={()=>void act('handoff')}>{hr?'Potvrdi predaju rezultata':'Confirm results handoff'}</button>:null}
-   {handoff?.current&&handoff.publication?<details className={s.controllerStep}><summary>{hr?'Zasebne radnje na ugovoru':'Separate contract operations'}</summary><p>{hr?'Kontrolor učitava odobrene nagrade i otvara preuzimanje. Trenutačni testnet tijek zatim traži zaseban potpis kontrolora i transakciju za svaku isplatu nakon pristanka primatelja.':'The controller uploads the approved awards and opens claims. The current testnet flow then requires a separate controller signature and transaction for each payment after recipient consent.'}</p><Link className={p.secondary} href={rewardsControlLink(id,slot)}>{hr?'Alati kontrolora':'Controller tools'}</Link></details>:<p>{hr?'Potvrdite predaju rezultata kako biste dovršili pregled.':'Confirm the results handoff to finish this review.'}</p>}
+   {view.prepared?<><p className={s.confirmed}><Check size={18} aria-hidden="true"/>{hr?'Paket nagrada je pripremljen.':'Award package prepared.'}</p><details><summary>{hr?'Dokaz paketa':'Package evidence'}</summary><p style={{overflowWrap:'anywhere'}}>{view.prepared.packageHash}</p></details></>:<button className={p.primary} disabled={busy} onClick={()=>void act('upload')}>{hr?'Provjeri uplatu i pripremi paket':'Verify funding and prepare package'}</button>}
+   {handoff?.current?handoff.publication?<><p>{hr?'Pregled rezultata je dovršen. Odobrene nagrade spremne su za objavu na ugovoru.':'Results review complete. Approved awards are ready for contract publication.'}</p><HostedReviewPublication id={id} slot={slot} approvalId={approvalId} documentHash={documentHash} hr={hr}/><HostedClaimReviews approvalId={approvalId} hr={hr}/><HostedClubClaimReviews approvalId={approvalId} hr={hr}/></>:<button className={p.primary} disabled={busy} onClick={()=>void act('handoff')}>{hr?'Potvrdi predaju rezultata':'Confirm results handoff'}</button>:null}
+   {!handoff?.publication?<p>{hr?'Potvrdite predaju rezultata kako biste dovršili pregled.':'Confirm the results handoff to finish this review.'}</p>:null}
   </>:<p>{hr?'Ova odluka više nije važeća. Učitajte trenutačni pregled.':'This award decision is no longer current. Reload the review.'}</p>:null}
  </section>;
 }

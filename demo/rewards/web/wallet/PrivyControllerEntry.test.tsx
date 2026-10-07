@@ -15,10 +15,16 @@ it("mounts direct Privy only after opt-in, with automatic wallet creation disabl
  expect(mocks.provider.mock.calls[0][0].config.embeddedWallets.ethereum.createOnLogin).toBe("off");
  fireEvent.click(screen.getByRole("button",{name:"Sign in with Privy"}));expect(mocks.login).toHaveBeenCalledTimes(1);expect(mocks.create).not.toHaveBeenCalled();
 });
-it("never treats a retained sponsor custom-auth session as a controller account",async()=>{
+it("does not create a substitute wallet or switch accounts for a reviewer awaiting handover",async()=>{
  mocks.authenticated=true;mocks.custom=true;render(<Entry/>);fireEvent.click(screen.getByRole("button",{name:"Continue with Privy"}));
- expect(screen.getByRole("heading",{name:"Use your controller account"})).toBeVisible();expect(screen.queryByRole("button",{name:"Create controller wallet · Privy"})).not.toBeInTheDocument();
- fireEvent.click(screen.getByRole("button",{name:"Switch Privy account"}));await waitFor(()=>expect(mocks.logout).toHaveBeenCalledTimes(1));expect(mocks.create).not.toHaveBeenCalled();
+ expect(screen.getByRole("heading",{name:"Reviewer wallet ownership"})).toBeVisible();expect(screen.getByRole('link',{name:'Back to award review'})).toHaveAttribute('href','/rewards/review');
+ expect(screen.queryByRole("button",{name:"Create controller wallet · Privy"})).not.toBeInTheDocument();expect(mocks.logout).not.toHaveBeenCalled();expect(mocks.create).not.toHaveBeenCalled();
+});
+it('uses a retained reviewer wallet session without another login, while the server enforces assignment',async()=>{
+ mocks.authenticated=true;mocks.custom=true;mocks.token.mockResolvedValue('reviewer-token');mocks.wallets=[{address:'0x1111111111111111111111111111111111111111',walletClientType:'privy',connectorType:'embedded',linked:true,imported:false}];
+ const fetch=vi.fn().mockResolvedValue({ok:false,json:async()=>({error:{code:'controller_auth_required'}})});vi.stubGlobal('fetch',fetch);
+ render(<Entry/>);fireEvent.click(screen.getByRole('button',{name:'Continue with Privy'}));await waitFor(()=>expect(fetch).toHaveBeenCalled());
+ expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer reviewer-token');expect(mocks.login).not.toHaveBeenCalled();expect(mocks.logout).not.toHaveBeenCalled();expect(mocks.create).not.toHaveBeenCalled();
 });
 it("creates a wallet only on the signed-in controller's explicit action",async()=>{
  mocks.authenticated=true;render(<Entry/>);fireEvent.click(screen.getByRole("button",{name:"Continue with Privy"}));

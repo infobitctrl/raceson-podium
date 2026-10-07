@@ -86,7 +86,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
     resolveRpc:identity=>hostedCopyBeneficiaryWalletRpc(identity,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchClubRewardRoutes(req,res,url,{...deps,
     resolveRpc:identity=>hostedCopyClubWalletRpc(identity,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}))return true;
-  if (await dispatchHostedCopyReviews(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
+  if (await dispatchHostedCopyReviews(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined,publicationReader:config?.chainId===10143?controllerPublicClient:undefined}))return true;
   if (await dispatchHostedCopyCatalogue(req, res, url, deps)) return true;
   if (await dispatchHostedCopyAllocation(req, res, url, deps)) return true;
   if (await dispatchHostedCopySponsor(req, res, url, deps)) return true;
