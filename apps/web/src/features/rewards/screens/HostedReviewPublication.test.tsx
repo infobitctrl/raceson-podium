@@ -17,12 +17,12 @@ it('reads without publication and requires the reviewer to explicitly start',asy
 });
 it('explains unavailable handover without offering publication',async()=>{
  mocks.read.mockResolvedValue({...base,ownership:'transfer_required'});render(<HostedReviewPublication {...props}/>);
- expect(await screen.findByRole('link',{name:'Check wallet access'})).toHaveAttribute('href','/rewards/wallet-handover?setup=setup&slot=0&approval=approval');
+ expect(await screen.findByRole('link',{name:'Check wallet access'})).toHaveAttribute('href','/rewards/review');
  expect(screen.queryByRole('button',{name:'Publish awards and open claims'})).not.toBeInTheDocument();expect(mocks.read).toHaveBeenCalledOnce();
 });
 it('does not create reviewer wallet access for an unsupported handover',async()=>{
  mocks.read.mockResolvedValue({...base,ownership:'connect_required'});render(<HostedReviewPublication {...props}/>);
- await screen.findByRole('link',{name:'Check wallet access'});expect(screen.getByRole('status')).toHaveTextContent('not available yet');expect(mocks.enable).not.toHaveBeenCalled();expect(mocks.read).toHaveBeenCalledOnce();
+ await screen.findByRole('link',{name:'Check wallet access'});expect(screen.getByRole('status')).toHaveTextContent('owns the assigned wallet');expect(mocks.enable).not.toHaveBeenCalled();expect(mocks.read).toHaveBeenCalledOnce();
 });
 it('retires a late response when the account changes, without continuing publication',async()=>{
  let resolve!:(v:unknown)=>void;const {rerender}=render(<HostedReviewPublication {...props}/>);const button=await screen.findByRole('button',{name:'Publish awards and open claims'});

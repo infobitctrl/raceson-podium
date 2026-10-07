@@ -16,12 +16,13 @@ import {readHostedCopyCatalogue} from '../../features/rewards/hosted-copy-catalo
 import {reviewPublication,reviewPublicationCommand} from '../../features/rewards/review-publication-service.js';
 import {reviewPublicationAccessFromEnv} from '../../features/rewards/review-publication-privy.js';
 import {reviewWalletHandover,reviewWalletHandoverCommand} from '../../features/rewards/review-wallet-handover.js';
+import type {RewardAccountIdentity} from '@raceson/db/rewards';
 import type {SponsorCreationDeps} from '../../features/rewards/sponsor-creation-service.js';
 const uuid=z.string().uuid().refine(v=>!!setupId(v)),hash=z.string().regex(/^[0-9a-f]{64}$/);
 const decision=z.object({requestId:uuid,expectedApprovalId:uuid.nullable(),contextHash:hash,documentHash:hash,decision:z.enum(['approved','held'])}).strict();
 const upload=z.object({requestId:uuid,contextHash:hash,documentHash:hash}).strict();
 const publication=z.object({action:z.literal('publication'),requestId:uuid,documentHash:hash}).strict();
-export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerResponse,url:URL,deps:OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;publicationReader?:SponsorCreationDeps['reader']}){
+export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerResponse,url:URL,deps:OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;publicationReader?:SponsorCreationDeps['reader'];resolveReviewerWallet?:(identity:RewardAccountIdentity)=>Promise<{address:string;owned:true;balanceWei:string}|null>}){
  const match=/^\/api\/v1\/rewards\/demo-copy\/reviews(?:\/([^/]+)(?:\/allocations\/([0-5])(?:\/([^/]+)\/(upload|handoff|publish|wallet-ownership))?)?)?$/.exec(url.pathname);
  if(!match)return false;deps.applyPrivateSessionHeaders(res);
  try{
@@ -47,7 +48,7 @@ export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerRe
   const {catalogue}=await readHostedCopyCatalogue(env);
   for(const record of records)for(const pool of record.summary.pools)pool.name=pool.slot===0?catalogue.name:catalogue.rounds.find(round=>round.slot===pool.slot)!.name;
   const branding=await hostedCopyReviewBranding(actor,id,records.map(r=>r.summary.id),rpc);
-  if(id===null){deps.sendSuccess(res,{version:'podium-copy-review-queue-v1',items:records.map(r=>({...r.summary,branding:branding.find(b=>b.id===r.summary.id)!}))});return true;}
+  if(id===null){const wallet=deps.resolveReviewerWallet?await deps.resolveReviewerWallet(actor).catch(()=>null):undefined;deps.sendSuccess(res,{version:'podium-copy-review-queue-v1',...(wallet!==undefined?{wallet}:{}),items:records.map(r=>({...r.summary,branding:branding.find(b=>b.id===r.summary.id)!}))});return true;}
   const record=records[0]!;
   const result=composeHostedCopyAllocation(record.launch.setup,record.source!,hostedCopyPin,hostedCopySelections(hostedCopyPin),hostedCopyUnaffiliatedReview(hostedCopyPin));
   const groups=result.allocation.groups.filter(g=>g.budgetWei>0n).map(g=>{
@@ -68,7 +69,7 @@ export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerRe
   else if(['reward_demo_account_required','reward_demo_reviewer_required'].includes(code))deps.sendError(res,403,'reward_demo_reviewer_required','An active results-team or master-administrator account is required.');
   else if(code==='reward_setup_not_found')deps.sendError(res,404,code,'No source-bound campaign is available.');
   else if(code==='reward_setup_conflict')deps.sendError(res,409,code,'Reload the current contract version before reviewing.');
-  else if(['review_wallet_ownership_required','review_wallet_unverified','review_wallet_unavailable','review_wallet_handover_conflict','controller_auth_required'].includes(code))deps.sendError(res,409,code,'Connect the reviewer wallet account and complete the one-time campaign wallet handover.');
+  else if(['review_wallet_ownership_required','review_wallet_unverified','review_wallet_unavailable','review_wallet_handover_conflict','controller_auth_required'].includes(code))deps.sendError(res,409,code,'The assigned reviewer must own this campaign wallet. Check reviewer access before publishing.');
   else if(['controller_source_not_ready','controller_transaction_pending','controller_transaction_reverted','controller_balance_required','controller_scope_required'].includes(code))deps.sendError(res,409,code,'Publication is paused. Reload the current awards or retry the saved transaction.');
   else if(['reward_planning_revision_changed','reward_sponsor_approval_conflict','reward_sponsor_source_not_ready','reward_sponsor_upload_conflict','reward_sponsor_funding_not_ready','reward_sponsor_upload_required','reward_sponsor_lifecycle_not_ready','reward_sponsor_lifecycle_conflict','reward_sponsor_historical_review_unavailable'].includes(code))deps.sendError(res,409,code,'Reload the exact saved awards and confirmed funding before continuing.');
   else if(code==='reward_sponsor_approval_not_found')deps.sendError(res,404,code,'No approved award version is available.');

@@ -1,3 +1,4 @@
+import {reviewerSponsorPolicy,reviewerWalletSummary} from './features/rewards/reviewer-operator.js';
 import {dispatchDemoAccountSignIn} from './routes/rewards/demo-account-sign-in.js';
 import {dispatchHostedCopyClubClaims} from './routes/rewards/hosted-copy-club-claims.js';
 import {dispatchHostedCopyClubCreation} from './routes/rewards/hosted-copy-club-creation.js';
@@ -14,7 +15,7 @@ import {dispatchHostedCopyLaunch} from './routes/rewards/hosted-copy-launch.js';
 import {hostedCopySponsor,hostedCopySponsorExecutionRpc,hostedCopyControllerRpc,hostedCopyPublicRpc,hostedCopyBrandingRpc,type RewardLedgerRpc} from '@raceson/db/rewards';
 import {dispatchCampaignBranding} from './routes/rewards/campaign-branding.js';
 import {dispatchWalletAdministration} from './routes/rewards/wallet-administration.js';
-import {walletRuntime,resolveControllerPolicy} from './features/rewards/wallet-administration.js';
+import {resolveControllerPolicy} from './features/rewards/wallet-administration.js';
 import {resolveDeploymentSigner} from './features/rewards/wallet-runtime.js';
 import {dispatchPublicDirectory} from "./routes/rewards/public-directory.js";
 import {dispatchPublicCampaign} from "./routes/rewards/public-campaign.js";
@@ -86,7 +87,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
     resolveRpc:identity=>hostedCopyBeneficiaryWalletRpc(identity,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchClubRewardRoutes(req,res,url,{...deps,
     resolveRpc:identity=>hostedCopyClubWalletRpc(identity,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}))return true;
-  if (await dispatchHostedCopyReviews(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined,publicationReader:config?.chainId===10143?controllerPublicClient:undefined}))return true;
+  if (await dispatchHostedCopyReviews(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined,publicationReader:config?.chainId===10143?controllerPublicClient:undefined,resolveReviewerWallet:identity=>reviewerWalletSummary(identity,process.env,address=>controllerPublicClient.getBalance({address:address as `0x${string}`,blockTag:'latest'}))}))return true;
   if (await dispatchHostedCopyCatalogue(req, res, url, deps)) return true;
   if (await dispatchHostedCopyAllocation(req, res, url, deps)) return true;
   if (await dispatchHostedCopySponsor(req, res, url, deps)) return true;
@@ -109,9 +110,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   if (await dispatchSponsorAllocationV4(req, res, url, {...deps, sponsorReader: config?.chainId === 10143 ? canaryPublicClient : config?.chainId === 31337 ? programmeLocalReader : undefined})) return true;
   if (await dispatchSponsorLaunch(req, res, url, deps)) return true;
   if (await dispatchSponsorExecution(req, res, url, {...deps, sponsorPolicy: () => sponsorExecutionPolicyFromEnv(process.env),
-    resolveSponsorPolicy:async()=>{const base=sponsorExecutionPolicyFromEnv(process.env);if(!base||config?.chainId!==10143)return base;const r=await walletRuntime(process.env);
-      if(hostedCopyOperationsEnabled(process.env,boundary.env)&&(r.revision===0||r.settings?.controller.wallet===base.operator))return null;
-      return r.settings?{...base,operator:r.settings.controller.wallet}:base;},
+    resolveSponsorPolicy:async()=>config?.chainId===10143?reviewerSponsorPolicy(sponsorExecutionPolicyFromEnv(process.env),process.env):sponsorExecutionPolicyFromEnv(process.env),
     sponsorReader: config?.chainId === 10143 ? canaryPublicClient : config?.chainId === 31337 ? programmeLocalReader : undefined,
     ...(hostedCopyOperationsEnabled(process.env,boundary.env)?{resolveRpc:async(identity,id)=>{
       const rpc:RewardLedgerRpc=(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args);

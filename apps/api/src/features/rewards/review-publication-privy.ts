@@ -13,7 +13,8 @@ export function reviewerPrivyClient(env:Record<string,string|undefined>){
  return new PrivyClient({appId:env.RACESON_REWARD_PRIVY_APP_ID,appSecret:env.RACESON_SPONSOR_DEPLOYMENT_APP_SECRET,maxRetries:0,timeout:15000});
 }
 /** Read actual provider ownership. Platform permission alone cannot sign for a wallet. */
-export async function inspectReviewWallet(client:PrivyClient,identity:RewardAccountIdentity,operator:string,registered:Registration,appId:string):Promise<ReviewWalletAccess>{
+export async function inspectReviewWallet(client:PrivyClient,identity:Pick<RewardAccountIdentity,'userId'>,operator:string,registered:Registration,appId:string):Promise<ReviewWalletAccess>{
+ if(registered.reviewerUserId&&registered.reviewerUserId!==identity.userId)throw Error('review_wallet_unverified');
  if(registered.wallet!==operator||!registered.walletId||!registered.ownerId)throw Error('review_wallet_unavailable');
  const wallet=await client.wallets().get(registered.walletId);
  if(wallet.id!==registered.walletId||wallet.address.toLowerCase()!==operator||wallet.chain_type!=='ethereum'||!wallet.owner_id

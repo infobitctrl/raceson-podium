@@ -12,7 +12,7 @@ import {createHash} from 'node:crypto';
 import {canonicalRewardJson as canonical} from '@raceson/rewards-chain';
 const address=z.string().regex(/^0x[0-9a-f]{40}$/).refine(v=>BigInt(v)!==0n);
 const id=z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/);
-export const controllerWalletSchema=z.object({subject:z.string().regex(/^did:privy:[a-zA-Z0-9_-]{1,100}$/),wallet:address,walletId:id.optional(),ownerId:id.optional()}).strict();
+export const controllerWalletSchema=z.object({subject:z.string().regex(/^did:privy:[a-zA-Z0-9_-]{1,100}$/),wallet:address,walletId:id.optional(),ownerId:id.optional(),reviewerUserId:z.string().uuid().optional()}).strict();
 export const walletSettingsSchema=z.object({deployment:controllerDeploymentConfig,controller:controllerWalletSchema}).strict();
 export type WalletSettings=z.infer<typeof walletSettingsSchema>;
 const stored=z.object({revision:z.number().int().min(0),settings:walletSettingsSchema.nullable(),history:z.array(z.object({revision:z.number().int(),settings:walletSettingsSchema,changed_by:z.string().uuid(),reason:z.string(),changed_at:z.string()}))});

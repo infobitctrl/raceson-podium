@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {verifyReviewerOperator,reviewerSponsorPolicy} from '../dist/features/rewards/reviewer-operator.js';
+const id='74960000-0000-4000-8000-000000000001',wallet='0x'+'11'.repeat(20),gas='0x'+'22'.repeat(20);
+const registration={subject:'did:privy:reviewer',wallet,walletId:'review-wallet',ownerId:'review-owner',reviewerUserId:id};
+const env={RACESON_REWARD_PORTAL_MODE:'testnet',RACESON_REWARD_PRIVY_APP_ID:'app',SUPABASE_URL:'https://niklhlmljiikwbkrmapw.supabase.co',RACESON_REWARD_HOSTED_COPY_MODE:'sponsor-drafts-v1',RACESON_REWARD_HOSTED_OPERATIONS:'testnet-v1'};
+const deployment={version:1,appId:'app',walletId:'gas',address:gas,ownerId:'gas-owner',signerId:'signer',policyId:'policy',factory:'0x'+'44'.repeat(20)};
+function fixture(){let allowed=true,read=0,revision=3;const w={id:registration.walletId,address:wallet,chain_type:'ethereum',owner_id:registration.ownerId,additional_signers:[],policy_ids:[]};
+ const user={id:registration.subject,linked_accounts:[{type:'custom_auth',custom_user_id:id}]};const owner={authorization_threshold:1,authorization_keys:[],user_ids:[registration.subject],key_quorum_ids:[]};
+ const client={wallets:()=>({get:async()=>w}),users:()=>({getByCustomAuthID:async()=>user}),keyQuorums:()=>({get:async()=>owner})};
+ const rpc=async(name)=>name==='service_reward_demo_copy_reviewer_operator'?{data:allowed,error:null}:{data:{revision:revision+(read++>0&&revision===9?1:0),settings:{controller:registration,deployment},controllers:[],deployments:[]},error:null};
+ return{client,rpc,w,user,owner,revoke:()=>allowed=false,rotate:()=>revision=9};}
+test('new campaign operator is the sole custom-auth reviewer, distinct from creation gas',async()=>{const f=fixture(),base={operator:'0x'+'33'.repeat(20),other:'retained'};assert.equal((await verifyReviewerOperator(f.client,registration,'app',f.rpc)).status,'owned');assert.deepEqual(await reviewerSponsorPolicy(base,env,f.rpc,f.client),{...base,operator:wallet});});
+test('native ownership, different reviewer, additional signers and altered owner quorum fail closed',async()=>{for(const change of [f=>f.owner.user_ids=['did:privy:old'],f=>f.user.linked_accounts[0].custom_user_id='other',f=>f.w.additional_signers=[{signer_id:'service'}],f=>f.owner.authorization_keys=[{}],f=>f.w.owner_id='unexpected',f=>f.w.exported_at=1]){const f=fixture();change(f);await assert.rejects(verifyReviewerOperator(f.client,registration,'app',f.rpc));assert.equal(await reviewerSponsorPolicy({operator:'0x'+'33'.repeat(20)},env,f.rpc,f.client),null);}});
+test('missing assignment, revoked results permission and concurrent rotation prevent new creation',async()=>{const f=fixture();await assert.rejects(verifyReviewerOperator(f.client,{...registration,reviewerUserId:undefined},'app',f.rpc));f.revoke();await assert.rejects(verifyReviewerOperator(f.client,registration,'app',f.rpc));const g=fixture();g.rotate();assert.equal(await reviewerSponsorPolicy({operator:'0x'+'33'.repeat(20)},env,g.rpc,g.client),null);});

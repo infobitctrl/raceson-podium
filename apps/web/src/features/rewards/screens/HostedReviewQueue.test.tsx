@@ -42,3 +42,10 @@ it('shows authorized sponsor details, event artwork and source links without off
  expect(screen.getByRole('link',{name:'League on RacesOn'})).toHaveAttribute('href','https://www.raceson.com/leagues/sibenska-trail-liga');
  expect(screen.queryByRole('button',{name:/Edit sponsor/})).not.toBeInTheDocument();
 });
+it('shows the owned reviewer wallet and gas readiness even with no campaigns',async()=>{
+ const wallet={address:'0x'+'11'.repeat(20),owned:true,balanceWei:'0'};mocks.read.mockResolvedValue({items:[],wallet});render(<HostedReviewQueue hr={false}/>);
+ expect(await screen.findByRole('heading',{name:'Your rewards wallet'})).toBeVisible();expect(screen.getByRole('status')).toHaveTextContent('Add test MON');
+ expect(screen.queryByRole('button',{name:/controller|hand over/i})).not.toBeInTheDocument();
+ mocks.read.mockResolvedValue({items:[],wallet:{...wallet,balanceWei:'5000000000000000000'}});fireEvent.click(screen.getByRole('button',{name:'Refresh wallet balance'}));
+ await waitFor(()=>expect(screen.queryByText('Add test MON before publishing awards.')).not.toBeInTheDocument());expect(await screen.findByText(/5 test MON/)).toBeVisible();
+});
