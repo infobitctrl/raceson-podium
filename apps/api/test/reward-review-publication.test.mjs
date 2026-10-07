@@ -11,7 +11,7 @@ import {composeSponsorUploadV4} from '../dist/features/rewards/sponsor-upload-v4
 import {reviewPublication} from '../dist/features/rewards/review-publication-service.js';
 import {sponsorLifecycleAbi,sponsorLifecycleCommitmentV4} from '@raceson/rewards-chain/sponsor-lifecycle-v4';
 import {rewardUploadDigest} from '@raceson/rewards-chain';
-import {inspectReviewWallet} from '../dist/features/rewards/review-publication-privy.js';
+import {inspectReviewWallet,publicationSigningRequest,signAuthorizedPublication} from '../dist/features/rewards/review-publication-privy.js';
 const json=v=>JSON.parse(JSON.stringify(v,(_,v)=>typeof v==='bigint'?v.toString():v));
 function fixture(){
  const account=privateKeyToAccount(toHex(908n,{size:32})),f=sponsorAllocationFixture();
@@ -57,9 +57,10 @@ function fixture(){
    if(decoded.functionName==='stageAllocation')state.stage=2;if(decoded.functionName==='activate')state.stage=3;state.nonce++;
    const block=await base.getBlock({blockNumber:30n});transactions.set(hash,{tx:{...tx,value:tx.value??0n,hash,input:tx.data,from:f.plan.operator,blockHash:block.hash,blockNumber:block.number,transactionIndex:0},receipt:{transactionHash:hash,from:f.plan.operator,to:pkg.campaignAddress,status:'success',blockHash:block.hash,blockNumber:block.number,transactionIndex:0}});return hash;
   }};
- const signer={address:f.plan.operator,verifyReady:async()=>{},sign:async t=>{signCount++;return account.signTransaction({type:'legacy',chainId:10143,to:t.to,data:t.data,value:0n,nonce:Number(t.nonce),gas:BigInt(t.gas),gasPrice:BigInt(t.gasPrice)});}};
- const deps={rpc,reader,resolveAccess:async()=>({status:'owned',signer})},run=command=>reviewPublication(identity,scope,command,deps);
- return {run,facts,deps,scope,identity,calls,jobs,state,command:{expectedDocumentHash:upload.documentHash},signCount:()=>signCount,uncertain:()=>{failBroadcast=true;},revoke:()=>{revoked=true;}};
+ const signer={address:f.plan.operator,verifyReady:async()=>{},request:(t,expiry)=>publicationSigningRequest('c'.repeat(25),'wallet',t,expiry),sign:async(t,signature,expiry)=>{assert.equal(signature,'S'.repeat(88));assert(expiry>Date.now());signCount++;return account.signTransaction({type:'legacy',chainId:10143,to:t.to,data:t.data,value:0n,nonce:Number(t.nonce),gas:BigInt(t.gas),gasPrice:BigInt(t.gasPrice)});}};
+ const deps={rpc,reader,resolveAccess:async()=>({status:'owned',signer})},prepare=command=>reviewPublication(identity,scope,command,deps);
+ const run=async command=>{const v=await prepare(command);return v.authorization?prepare({...command,transactionId:v.authorization.transactionId,authorizationSignature:'S'.repeat(88),requestExpiry:Number(v.authorization.request.headers['privy-request-expiry'])}):v;};
+ return {run,prepare,facts,deps,scope,identity,calls,jobs,state,command:{expectedDocumentHash:upload.documentHash},signCount:()=>signCount,uncertain:()=>{failBroadcast=true;},revoke:()=>{revoked=true;}};
 }
 test('reviewer drives verified upload, staging and activation without native user impersonation; GET never signs',async()=>{
  const f=fixture();assert.equal((await f.run()).claimsOpen,false);assert.equal(f.signCount(),0);assert.equal(f.jobs.length,0);
@@ -114,4 +115,30 @@ test('handover verifies the original owner, fixes the reviewer recipient and rec
  await assert.rejects(run({...command,requestExpiry:Date.now()-1}),/review_wallet_handover_conflict/);assert.equal(updates,0);
  await assert.rejects(run(command),/uncertain provider/);assert.equal(updates,1);assert.equal(journal.length,1);
  const recovering=await run();assert.equal(recovering.acknowledgementRequired,true);const recovered=await run({action:'acknowledge',requestId:id(999),expectedFingerprint:recovering.fingerprint});assert.equal(recovered.status,'owned');assert.equal(recovered.ownerSubject,target);assert.equal(updates,1);assert.equal(journal.at(-1).p_action,'confirm');assert.equal(journal.at(-1).p_owner_id,'newowner');
+});
+
+test('prepare and refresh never sign; unsigned retry reuses the exact saved reservation',async()=>{
+ const f=fixture(),first=await f.prepare(f.command);assert(first.authorization);assert.equal(f.signCount(),0);assert.equal(f.jobs.length,1);
+ const read=await f.prepare();assert.equal(read.authorization,null);assert.equal(f.signCount(),0);
+ const second=await f.prepare(f.command);assert.equal(second.authorization.transactionId,first.authorization.transactionId);assert.equal(f.jobs.length,1);
+ assert.deepEqual(second.authorization.request.body,first.authorization.request.body);
+ for(const command of [
+  {...f.command,transactionId:id(999),authorizationSignature:'S'.repeat(88),requestExpiry:Date.now()+90000},
+  {...f.command,transactionId:first.authorization.transactionId,authorizationSignature:'S'.repeat(88),requestExpiry:Date.now()-1},
+ ])await assert.rejects(f.prepare(command),/review_publication_authorization_required/);
+ assert.equal(f.signCount(),0);f.revoke();await assert.rejects(f.run(f.command));assert.equal(f.signCount(),0);
+});
+test('real Privy SDK submits the exact browser-authorized RPC without exchanging a JWT or logging provider details',async()=>{
+ const {PrivyClient}=await import('@privy-io/node');const requests=[];
+ const client=new PrivyClient({appId:'c'.repeat(25),appSecret:'fictional-test-secret',maxRetries:0,fetch:async(url,init)=>{
+  requests.push({url:String(url),body:JSON.parse(init.body),headers:new Headers(init.headers)});
+  return new Response(JSON.stringify({method:'eth_signTransaction',data:{signed_transaction:'0xab',encoding:'hex'}}),{status:200,headers:{'content-type':'application/json'}});
+ }});
+ const tx={chainId:10143,to:'0x'+'11'.repeat(20),data:'0xab',value:'0',nonce:'0',gas:'120000',gasPrice:'1'},expiry=Date.now()+90000;
+ const expected=publicationSigningRequest('c'.repeat(25),'wallet',tx,expiry);
+ assert.equal(await signAuthorizedPublication(client,'wallet','c'.repeat(25),tx,'S'.repeat(88),expiry),'0xab');
+ assert.equal(requests.length,1);assert.equal(requests[0].url,expected.url);assert.deepEqual(requests[0].body,expected.body);
+ assert.equal(requests[0].headers.get('privy-authorization-signature'),'S'.repeat(88));assert.equal(requests[0].headers.get('privy-request-expiry'),String(expiry));
+ const failed=new PrivyClient({appId:'c'.repeat(25),appSecret:'fictional-test-secret',maxRetries:0,fetch:async()=>new Response(JSON.stringify({error:'secret provider detail'}),{status:403,headers:{'content-type':'application/json'}})});
+ await assert.rejects(signAuthorizedPublication(failed,'wallet','c'.repeat(25),tx,'S'.repeat(88),expiry),/^Error: review_publication_authorization_failed$/);
 });

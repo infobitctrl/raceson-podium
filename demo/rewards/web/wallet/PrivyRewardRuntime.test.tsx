@@ -6,7 +6,7 @@ import RewardEmbeddedWalletControls from "@/features/rewards/components/RewardEm
 import { I18nProvider } from "@/shared/i18n/I18nProvider";
 import { RewardEmbeddedWalletContext, type RewardEmbeddedState } from "@/features/rewards/components/RewardEmbeddedWalletContext";
 
-const mocks = vi.hoisted(() => ({ sendProgramme: vi.fn(), auth: { user: { id: "demo-user" }, account: { userId: "demo-user", hasAthleteAccess: true },
+const mocks = vi.hoisted(() => ({ authorize: vi.fn(), sendProgramme: vi.fn(), auth: { user: { id: "demo-user" }, account: { userId: "demo-user", hasAthleteAccess: true },
   session: { access_token: "synthetic" }, isLoading: false }, walletList: [] as unknown[], walletsReady: true, authenticated: true,
   customUserId: "demo-user", privyUserId: "privy-demo-user", privyReady: true, linkedWallet: false, jwtStatus: "done", unstableCreate: false, provider: vi.fn(), sync: vi.fn(), create: vi.fn(), token: vi.fn(), logout: vi.fn() }));
 vi.mock("@/features/rewards/data/sponsorProgrammeWallet", () => ({sendProgrammeTransaction: mocks.sendProgramme}));
@@ -20,6 +20,7 @@ vi.mock("@privy-io/react-auth", () => ({
     return props.children;
   },
   usePrivy: () => ({ ready: mocks.privyReady, authenticated: mocks.authenticated, logout: mocks.logout, user: { id: mocks.privyUserId, linkedAccounts: [{ type: "custom_auth", customUserId: mocks.customUserId }, ...(mocks.linkedWallet ? [{ type:"wallet",chainType:"ethereum",walletClientType:"privy" }] : [])] } }),
+  useAuthorizationSignature: () => ({generateAuthorizationSignature:mocks.authorize}),
   useWallets: () => ({ ready: mocks.walletsReady, wallets: mocks.walletList }),
   useCreateWallet: () => {
     const create = mocks.create;
@@ -242,4 +243,16 @@ it("routes operator transactions through the validated Privy capability and reje
  mocks.auth.session={access_token:"next-session"};sessionKey="next-session";page.rerender(runtime());await act(async()=>{});
  await expect(binding.sendProgrammeTransaction(view,()=>true)).rejects.toThrow("wallet_changed");
  expect(mocks.sendProgramme).not.toHaveBeenCalled();
+});
+
+it('authorizes the exact publication request for the verified reviewer without creating or requiring a linked personal wallet',async()=>{
+ const {encodeFunctionData}=await import('viem');const {sponsorLifecycleAbi}=await import('@raceson/rewards-chain/sponsor-lifecycle-v4');
+ const onState=vi.fn(),id='00000000-0000-4000-a000-000000000001',address='0x'+'11'.repeat(20),digest='0x'+'22'.repeat(32);
+ render(<PrivyRewardRuntime configuration={configuration} sessionKey="reviewer" walletUserId="demo-user" onState={onState}/>);await act(async()=>{});
+ const state=onState.mock.lastCall![1];expect(state.reviewerConnected).toBe(true);expect(state.wallet).toBeNull();
+ const view={schema:'podium-review-publication-v1' as const,approvalId:id,slot:0,documentHash:'d'.repeat(64),operator:address,campaignAddress:address,state:2,claimsOpen:false,next:'activate' as const,ownership:'owned' as const,pending:{hash:null,confirmed:false,action:'activate' as const},authorization:{transactionId:id,request:{version:1 as const,method:'POST' as const,url:'https://api.privy.io/v1/wallets/wallet/rpc',headers:{'privy-app-id':configuration.appId,'privy-request-expiry':String(Date.now()+90000)},body:{method:'eth_signTransaction' as const,chain_type:'ethereum' as const,params:{transaction:{type:0 as const,chain_id:10143 as const,to:address,data:encodeFunctionData({abi:sponsorLifecycleAbi,functionName:'activate',args:[digest as `0x${string}`,digest as `0x${string}`]}),value:'0x0' as const,nonce:0,gas_limit:'0x1d4c0',gas_price:'0x1'}}}}}};
+ mocks.authorize.mockResolvedValue({signature:'S'.repeat(88)});
+ const signed=await state.authorizePublication(view,()=>true);expect(signed.transactionId).toBe(id);expect(mocks.authorize).toHaveBeenCalledWith(view.authorization.request);expect(mocks.create).not.toHaveBeenCalled();
+ let active=true;mocks.authorize.mockImplementation(async()=>{active=false;return {signature:'S'.repeat(88)};});
+ await expect(state.authorizePublication(view,()=>active)).rejects.toThrow('review_publication_session_changed');
 });

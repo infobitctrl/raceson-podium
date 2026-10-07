@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ComponentType } from "react";
 import type { RewardPrivyConfiguration } from "../model/privyConfiguration";
 import { discoverRewardWallets, type DetectedRewardWallet } from "../data/browserWallet";
+import type {ReviewPublication,ReviewPublicationAuthorization} from '../data/reviewPublication';
 
 export type RewardEmbeddedState = {
   status: "unconfigured" | "off" | "loading" | "ready" | "error";
   reviewerConnected?: boolean;
+  authorizePublication?: (view:ReviewPublication,isCurrent:()=>boolean)=>Promise<ReviewPublicationAuthorization>;
   errorReason?: "initialization_timeout";
   wallet: DetectedRewardWallet | null;
   address?: string;

@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useCreateWallet, usePrivy, useSubscribeToJwtAuthWithFlag, useWallets, type PrivyClientConfig } from "@privy-io/react-auth";
+import { useAuthorizationSignature, useCreateWallet, usePrivy, useSubscribeToJwtAuthWithFlag, useWallets, type PrivyClientConfig } from "@privy-io/react-auth";
 import PrivyUiProvider from "./PrivyUiProvider";
 import { useAuth } from "@/lib/auth";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
@@ -10,6 +10,7 @@ import { useRewardSessionEpoch } from "@/features/rewards/model/useRewardSession
 import {sendProgrammeTransaction} from "@/features/rewards/data/sponsorProgrammeWallet";
 import {sendClubSafeCreation} from "@/features/rewards/data/clubSafeCreation";
 import {checkSponsorTransaction, sendSponsorTransaction, sponsorTransactionSender} from "@/features/rewards/data/sponsorTransaction";
+import {checkedPublicationAuthorization,type ReviewPublication,type ReviewPublicationAuthorization} from '@/features/rewards/data/reviewPublication';
 
 const monadTestnet = {
   id: 10143, name: "Monad Testnet", testnet: true,
@@ -32,6 +33,9 @@ function AuthenticatedWallet({ configuration, sessionKey, walletUserId, onState 
   const privy = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
   const { createWallet } = useCreateWallet();
+  const {generateAuthorizationSignature}=useAuthorizationSignature();
+  const authorizeRef=useRef(generateAuthorizationSignature);
+  useEffect(()=>{authorizeRef.current=generateAuthorizationSignature;},[generateAuthorizationSignature]);
   // SDK callbacks may change identity each render. Keep the published create
   // action stable so reporting state to the parent cannot trigger a render loop.
   // Use the latest committed SDK callback only after the existing session guards.
@@ -99,6 +103,7 @@ function AuthenticatedWallet({ configuration, sessionKey, walletUserId, onState 
   const wallet = embedded.length === 1 ? embedded[0] : null;
   const scope = useRef({ identityMatches, wallet, session: authSession, privyUserId: privy.user?.id });
   scope.current = { identityMatches, wallet, session: authSession, privyUserId: privy.user?.id };
+  useEffect(()=>()=>{scope.current.identityMatches=false;},[]);
   useEffect(() => {
     setConnected(null); setFailure(false);
     if (!identityMatches || !walletsReady || !wallet) return;
@@ -157,7 +162,16 @@ function AuthenticatedWallet({ configuration, sessionKey, walletUserId, onState 
         : wallet ? connected?.session === authSession && connected.address === wallet.address ? connected.value : { status: "loading", wallet: null }
           : hasLinkedEmbedded ? { status: "error", wallet: null } : { status: "ready", wallet: null, create },
   [authenticated, failure, providerMismatch, privy.ready, state.status, embedded.length, identityMatches, walletsReady, creating, wallet, connected, authSession, create, hasLinkedEmbedded, initializing, initializationTimedOut]);
-  const reported = useMemo(() => ({...value, reviewerConnected:identityMatches}), [value,identityMatches]);
+  const authorizePublication=useCallback(async(view:ReviewPublication,isCurrent:()=>boolean):Promise<ReviewPublicationAuthorization>=>{
+    const snapshot=scope.current;
+    const active=()=>isCurrent()&&scope.current.identityMatches&&scope.current.session===snapshot.session&&scope.current.privyUserId===snapshot.privyUserId;
+    if(!active())throw Error('review_publication_session_changed');
+    const request=checkedPublicationAuthorization(view,configuration.appId);
+    const {signature}=await authorizeRef.current(request);
+    if(!active())throw Error('review_publication_session_changed');
+    return {transactionId:view.authorization!.transactionId,authorizationSignature:signature,requestExpiry:Number(request.headers['privy-request-expiry'])};
+  },[configuration.appId]);
+  const reported = useMemo(() => ({...value, reviewerConnected:identityMatches,...(identityMatches?{authorizePublication}:{})}), [value,identityMatches,authorizePublication]);
   useEffect(() => onState(sessionKey, reported), [sessionKey, reported, onState]);
   return null;
 }
