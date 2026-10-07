@@ -1,3 +1,4 @@
+vi.mock('../data/publicDirectory',()=>({usePublicDirectory:()=>({data:{items:[]}})}));
 vi.mock('@/lib/auth',()=>({useAuth:()=>({account:{hasOrganizerAccess:access.organizer},user:access.user?{id:access.user}:null})}));
 const access=vi.hoisted(()=>({organizer:false,user:''}));
 vi.mock('../components/PublicRewardTable',()=>({default:({title,subtitle}:{title:string;subtitle:string})=> <div><h3>{title}</h3><p>{subtitle}</p>Individual rewards table</div>}));

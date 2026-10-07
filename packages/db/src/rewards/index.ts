@@ -112,6 +112,7 @@ export { hostedCopySponsor, type HostedSponsorAction, type HostedSponsorChange }
 export { hostedCopySponsorExecutionRpc,hostedCopyWalletRpc,hostedCopySupportRpc } from './hosted-copy-execution.js';
 export { composeHostedCopyAllocation,readHostedCopyAllocation, readHostedCopyAllocationHandoff,hostedCopySetupNodeId } from './hosted-copy-allocation.js';
 
+export {hostedCopyReviewBranding} from './hosted-copy-review-branding.js';
 export {hostedCopyReviewSources} from "./hosted-copy-review-sources.js";
 export {hostedCopyApprovalRpc} from "./hosted-copy-approval.js";
 export {hostedCopySourcePin,hostedCopyCombinedReview,hostedCopySelections,hostedCopyUnaffiliatedReview,hostedCopyReviewNote} from './hosted-copy-policy.js';

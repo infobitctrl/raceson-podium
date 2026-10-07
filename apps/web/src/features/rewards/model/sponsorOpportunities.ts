@@ -35,5 +35,6 @@ export function sponsorLink(target="league",setupId?:string|null,raceId?:string|
 export function sponsorSelectedEventName(selection:(RewardSponsorSelection&{raceId?:string})|undefined) {
  if(!selection||selection.sourceLeagueId!==sponsorDemoSource.sourceLeagueId||selection.sourceSeasonId!==sponsorDemoSource.sourceSeasonId)return undefined;
  if(selection.raceId){const round=sponsorPreparedSource.rounds.find(r=>r.eventEditionId===selection.eventEditionId);return round?.tracks.find(track=>track.raceId===selection.raceId)?.name;}
+ if(selection.eventEditionId===null)return "Šibenik Trail League";
  return demoSponsorRounds[sponsorDemoEditions.findIndex(id=>id===selection.eventEditionId)];
 }

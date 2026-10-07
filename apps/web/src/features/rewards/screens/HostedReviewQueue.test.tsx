@@ -8,10 +8,10 @@ const item={id:'copied',launchId:'retained',revision:2,name:'Copied campaign',bu
 beforeEach(()=>{mocks.read.mockReset();});
 it('opens retained contract rules through reviewer authority and preserves every wei',async()=>{
  mocks.read.mockResolvedValue({items:[item]});render(<HostedReviewQueue hr={false}/>);
- await screen.findByRole('button',{name:'Copied campaign'});
+ await screen.findByRole('button',{name:'Review awards: Copied campaign'});
  expect(screen.getByText('Awaiting contract')).toBeInTheDocument();expect(screen.getByTitle('1.000000000000000001 test MON')).toBeInTheDocument();
- fireEvent.click(screen.getByRole('button',{name:'Copied campaign'}));expect(screen.getByText('Preview copied r2 reviewer')).toBeInTheDocument();
- fireEvent.click(screen.getByRole('button',{name:'Review queue'}));expect(screen.getByRole('button',{name:'Copied campaign'})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Review awards: Copied campaign'}));expect(screen.getByText('Preview copied r2 reviewer')).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Review queue'}));expect(screen.getByRole('button',{name:'Review awards: Copied campaign'})).toBeInTheDocument();
 });
 it('opens only an authorized requested campaign and retains the selected contract pot',async()=>{
  mocks.read.mockResolvedValue({items:[item]});render(<HostedReviewQueue hr={false} requestedCampaign={item.id} requestedSlot={4}/>);
@@ -20,7 +20,7 @@ it('opens only an authorized requested campaign and retains the selected contrac
 it('a foreign navigation hint cannot select an absent campaign or borrow another campaign',async()=>{
  mocks.read.mockResolvedValue({items:[item]});render(<HostedReviewQueue hr={false} requestedCampaign="foreign" requestedSlot={4}/>);
  await screen.findByText('The requested campaign is not available for review.');expect(screen.queryByText(/Preview copied/)).not.toBeInTheDocument();
- fireEvent.click(screen.getByRole('button',{name:'Copied campaign'}));expect(screen.getByText('Awards copied pot default')).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Review awards: Copied campaign'}));expect(screen.getByText('Awards copied pot default')).toBeInTheDocument();
 });
 it('clears selected private rows during a failed refresh and offers a fresh read',async()=>{
  mocks.read.mockRejectedValue(Error('revoked'));render(<HostedReviewQueue hr={false}/>);
@@ -32,4 +32,13 @@ it('retires a late response after an account-driven unmount',async()=>{
  let resolve!:(value:unknown)=>void;mocks.read.mockReturnValue(new Promise(r=>resolve=r));
  const old=render(<HostedReviewQueue hr={false}/>);old.unmount();resolve({items:[item]});
  await waitFor(()=>expect(screen.queryByText('Copied campaign')).not.toBeInTheDocument());
+});
+
+it('shows authorized sponsor details, event artwork and source links without offering owner edits',async()=>{
+ const selection={sourceLeagueId:'ba81ced7-b2c5-4d51-95b6-d95d8c04fa36',sourceSeasonId:'323d55fc-a396-4ff4-a17e-eb7152c8f8f1',eventEditionId:null};
+ mocks.read.mockResolvedValue({items:[{...item,selection,branding:{id:item.id,name:'Fictional Trail Sponsor',logo:null,website:'https://example.com',promotion:'A finish-line promotion',revision:1}}]});
+ render(<HostedReviewQueue hr={false}/>);await screen.findByText('Fictional Trail Sponsor');
+ expect(screen.getByRole('link',{name:'Visit sponsor website'})).toHaveAttribute('href','https://example.com');expect(screen.getByText('A finish-line promotion')).toBeVisible();
+ expect(screen.getByRole('link',{name:'League on RacesOn'})).toHaveAttribute('href','https://www.raceson.com/leagues/sibenska-trail-liga');
+ expect(screen.queryByRole('button',{name:/Edit sponsor/})).not.toBeInTheDocument();
 });

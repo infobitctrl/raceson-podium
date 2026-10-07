@@ -1,3 +1,5 @@
+vi.mock('@/lib/auth',()=>({useAuth:()=>({user:{id:'fixture-sponsor'},session:{access_token:'fixture',refresh_token:'fixture',user:{id:'fixture-sponsor'},expires_at:1900000000,token_type:'bearer'}})}));
+vi.mock('../data/campaignBranding',()=>({readCampaignBranding:async()=>[],saveCampaignBranding:vi.fn()}));
 import {act,render,screen,waitFor,fireEvent} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {beforeEach,expect,it,vi} from 'vitest';

@@ -12,3 +12,5 @@
 .card .content>.next{margin:6px 0 0;color:#bc3b08;font-weight:600;font-size:13px}
 .footer{color:#5e6870;font-size:12px;line-height:1.6}.delete{font-size:12px}
 .card{align-self:start}.card .content{flex:none}.budget{margin-top:0}
+
+.photo{display:block;height:150px;margin:-24px -24px 20px;overflow:hidden;border-radius:10px 10px 0 0}.photo img{width:100%;height:100%;object-fit:cover}.identity{margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid #e1e2db}.identity:empty{display:none}

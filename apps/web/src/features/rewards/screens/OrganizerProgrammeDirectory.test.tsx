@@ -1,3 +1,4 @@
+vi.mock('../data/campaignBranding',()=>({readCampaignBranding:async()=>[],saveCampaignBranding:vi.fn()}));
 vi.mock('../data/publicDirectory',()=>({usePublicDirectory:()=>({data:{items:[]},isError:false})}));
 import {act,render,screen,fireEvent} from "@testing-library/react";
 import {MemoryRouter,useLocation} from "react-router-dom";
@@ -7,7 +8,7 @@ import {I18nProvider} from "@/shared/i18n/I18nProvider";
 import OrganizerProgrammeDirectory from "./OrganizerProgrammeDirectory";
 const mocks=vi.hoisted(()=>({organizer:true,token:"session-a",list:vi.fn(),setups:vi.fn(),remove:vi.fn(),archive:vi.fn()}));
 vi.mock("../components/TestProgrammeLibrary",()=>({default:()=> <p>Own saved test programmes</p>}));
-vi.mock("@/lib/auth",()=>({useAuth:()=>({user:{id:"owner"},session:{access_token:mocks.token},isLoading:false,account:{userId:"owner",hasOrganizerAccess:mocks.organizer}})}));
+vi.mock("@/lib/auth",()=>({useAuth:()=>({user:{id:"owner"},session:{access_token:mocks.token,refresh_token:'fixture-refresh',user:{id:'owner'},expires_at:1900000000,token_type:'bearer'},isLoading:false,account:{userId:"owner",hasOrganizerAccess:mocks.organizer}})}));
 vi.mock("../data/distributionSetups",()=>({listRewardSetups:mocks.setups,deleteRewardDraft:mocks.remove,archiveRewardSetup:mocks.archive}));
 vi.mock("../data/planningDrafts",()=>({listPlanningDrafts:mocks.list}));
 vi.mock("./SavedRewardProgramme",()=>({default:()=> <p>Access required</p>}));

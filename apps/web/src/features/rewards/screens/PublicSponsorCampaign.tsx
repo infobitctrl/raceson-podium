@@ -1,4 +1,7 @@
 import {CampaignSponsor, CampaignSponsorProvider} from '../components/CampaignSponsor';
+import {usePublicDirectory} from '../data/publicDirectory';
+import OfficialSourceLinks from '../components/OfficialSourceLinks';
+import {officialSource} from '../model/officialSource';
 import {useEffect, useState} from 'react';
 import {Link, useParams, useSearchParams} from 'react-router-dom';
 import {ArrowLeft, Copy, ArrowUpDown, ArrowRight, RefreshCw, ShieldCheck} from 'lucide-react';
@@ -10,7 +13,6 @@ import {ApiError} from '@/lib/api';
 import {readPublicCampaign} from '../data/publicCampaign';
 import {sponsorColors} from '../model/sponsorCatalogue';
 import {setupAmount} from '../model/setupAmount';
-import {prizePercent} from '../model/prizeDisplay';
 import {statusLabel} from '../model/podiumDirectory';
 import {resultsHandoffLink, rewardsControlLink} from '../model/controllerLinks';
 import PublicRewardTable from '../components/PublicRewardTable';
@@ -19,24 +21,11 @@ import s from '../components/Podium.module.css';
 import detail from './PublicSponsorCampaign.module.css';
 
 const categoryColors = [...sponsorColors, '#6f8d9b'];
-type ChartRow = {label: string; value: string; color: string};
-function CampaignChart({title, description, rows, total, hr}: {title: string; description: string; rows: ChartRow[]; total: string; hr: boolean}) {
-  return <section className={detail.chart}>
-    <h2>{title}</h2>
-    <div className={detail.bar} role="img" aria-label={`${description}. ${rows.map(row => `${row.label}: ${setupAmount(BigInt(row.value), hr)} test MON`).join('; ')}`}>
-      {rows.map(row => <span key={row.label} style={{width: `${prizePercent(BigInt(row.value), BigInt(total))}%`, background: row.color}}/>)}
-    </div>
-    <table className={detail.legend}><caption className="sr-only">{description}</caption><tbody>{rows.map(row => <tr key={row.label}>
-      <th scope="row"><i aria-hidden="true" style={{background: row.color}}/>{row.label}</th>
-      <td>{setupAmount(BigInt(row.value), hr)} <small>test MON</small></td>
-      <td>{prizePercent(BigInt(row.value), BigInt(total))}%</td>
-    </tr>)}</tbody></table>
-  </section>;
-}
-
+import CampaignChart from '../components/CampaignChart';
 export default function PublicSponsorCampaign() {
   const {id = ''} = useParams(), {locale} = useI18n(), auth = useAuth(), hr = locale === 'hr';
   const t = (en: string, local: string) => hr ? local : en;
+  const directory=usePublicDirectory(),selection=directory.data?.items.find(item=>item.campaign.id===id)?.selection;
   const [campaign, setCampaign] = useState<Campaign | null>(null), [failure, setFailure] = useState<'missing' | 'unavailable' | null>(null);
   const [attempt, setAttempt] = useState(0), [busy, setBusy] = useState(true), [copied, setCopied] = useState(false), [copyFailed, setCopyFailed] = useState(false);
   const [params, setParams] = useSearchParams(), selected = params.get('pot');
@@ -76,7 +65,8 @@ export default function PublicSponsorCampaign() {
       <span className={s.badge} data-state={campaignStatus(item)}>{statusLabel(item, hr)}</span>
     </header>
     <section className={detail.sponsor} aria-label={t('Sponsor', 'Sponzor')}>
-      <CampaignSponsor id={id} hr={hr} backing={campaign.name}/>
+      <CampaignSponsor id={id} hr={hr} backing={officialSource(selection)?.name??campaign.name}/>
+      <OfficialSourceLinks selection={selection} hr={hr}/>
       <dl className={detail.sponsorMetrics}>{[
         [t('Campaign budget', 'Proračun kampanje'), campaign.budgetWei],
         [t('Prize pool', 'Fond nagrada'), pot?.amountWei],
@@ -93,6 +83,7 @@ export default function PublicSponsorCampaign() {
         <div className={detail.potButtons} role="group" aria-label={t('Prize pots', 'Fondovi nagrada')}>{campaign.pots.map(p => <button key={p.slot} aria-pressed={p.slot === pot?.slot} onClick={() => select(String(p.slot))} title={p.name} aria-label={`${potLabel(p.slot)} · ${amount(p.amountWei)}`}>{potLabel(p.slot)} <small>{setupAmount(BigInt(p.amountWei), hr)}</small></button>)}</div>
       </div> : null}
       {!pot ? <div className={s.notice} role="alert"><h3>{t('Prize pot not found', 'Fond nagrada nije pronađen')}</h3><p>{t('This link does not identify an available prize pot. Choose one above to view its allocation and payments.', 'Ova poveznica ne upućuje na dostupan fond nagrada. Odaberite fond iznad za pregled raspodjele i isplata.')}</p></div> : null}
+      {pot?<OfficialSourceLinks selection={selection} slot={pot.slot} hr={hr}/>:null}
       <dl className={detail.metrics}>{metrics.map(metric => <div key={metric.label}><dt>{metric.label}</dt><dd>{metric.value === undefined ? '—' : <>{setupAmount(BigInt(metric.value), hr)} <small>test MON</small></>}</dd><p>{metric.note}</p></div>)}</dl>
       <div className={detail.verification}><ShieldCheck size={16}/><span>{t('Last verified', 'Posljednja provjera')}: {new Date(Number(campaign.blockTimestamp) * 1000).toLocaleString(hr ? 'hr-HR' : 'en-GB')}</span><button className={detail.smallButton} disabled={busy} aria-label={t('Refresh status', 'Osvježi stanje')} onClick={() => setAttempt(n => n + 1)}><RefreshCw size={14}/>{busy ? t('Refreshing…', 'Osvježavanje…') : t('Refresh', 'Osvježi')}</button></div>
       {failure ? <p role="alert">{t('Refresh failed. Showing the last verified status below.', 'Osvježavanje nije uspjelo. Prikazano je posljednje provjereno stanje.')}</p> : null}

@@ -1,3 +1,4 @@
+import CampaignOverview from '../components/CampaignOverview';
 import {useEffect,useState} from 'react';
 import {Link,useParams} from 'react-router-dom';
 import {Check,RefreshCw} from 'lucide-react';
@@ -55,6 +56,7 @@ function Workspace({id,hr}:{id:string;hr:boolean}){
  const edit=`/rewards/create?setup=${id}`,budget=setupAmount(preview.budgetWei,hr);
  return <article className={d.page}>
   <header className={d.header}><div><span className={d.eyebrow}>{t('My campaigns','Moje kampanje')}</span><h1>{c.name}</h1><p className={d.intro}>{t(`Saved · revision ${record.revision}`,`Spremljeno · revizija ${record.revision}`)}</p></div><div className={d.headerActions}><span className={d.badge}>{t('Awaiting funding','Čeka uplatu')}</span><Link className={d.publicLink} to={edit}>{t('Edit rules','Uredi pravila')}</Link><button className={d.publicLink} disabled title={t('Available after the campaign is published','Dostupno nakon objave kampanje')}>{t('Public page','Javna stranica')}</button></div></header>
+  <CampaignOverview id={id} selection={c.sponsorSelection} hr={hr}/>
   <div className={d.layout}><div className={d.main}>
    <section className={`${d.card} ${d.current}`} aria-label={t('Current task','Trenutačni zadatak')}>
     <span className={d.eyebrow}>{t('Current task','Trenutačni zadatak')}</span>

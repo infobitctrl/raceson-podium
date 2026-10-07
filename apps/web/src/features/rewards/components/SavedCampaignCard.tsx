@@ -8,6 +8,10 @@ import {savedCampaignHref,savedCampaignStatus,savedCampaignNext,savedCampaignAct
 import {sponsorSelectedEventName} from "../model/sponsorOpportunities";
 import {ApiError} from "@/lib/api";
 import {archiveRewardSetup,deleteRewardDraft} from "../data/distributionSetups";
+import SavedBudgetGraphic from './SavedBudgetGraphic';
+import {CampaignSponsor} from './CampaignSponsor';
+import OfficialSourceLinks from './OfficialSourceLinks';
+import {officialSource} from '../model/officialSource';
 import s from "./SavedCampaignCard.module.css";
 
 export default function SavedCampaignCard({record,hr,finished=false,live,onDeleted,onArchived}:{record:SavedRewardSetup;hr:boolean;finished?:boolean;live?:DirectoryCampaign;onDeleted:(id:string)=>void;onArchived?:(record:SavedRewardSetup)=>void}){
@@ -22,7 +26,7 @@ export default function SavedCampaignCard({record,hr,finished=false,live,onDelet
  const status=savedCampaignStatus(record,hr,finished,live);
  const next=`${savedCampaignAction(record,hr,live)} →`;
  const event=c.event?.name??sponsorSelectedEventName(c.sponsorSelection)??c.context?.eventName??(c.sponsorSelection?(hr?"Odabrani događaj · izvor još nije povezan":"Selected event · source not linked yet"):null)??(c.programmeKind==="league"?(hr?"Program lige · izvor rezultata nije povezan":"League programme · results source not linked"):(hr?"Događaj još nije odabran":"Event not selected yet"));
- const href=savedCampaignHref(record);
+ const href=savedCampaignHref(record),source=officialSource(c.sponsorSelection);
  async function remove(){
   if(pending.current)return;pending.current=true;setBusy(true);setError("");
   try{await deleteRewardDraft(record.id,record.revision);if(active.current)onDeleted(record.id);}
@@ -44,7 +48,10 @@ export default function SavedCampaignCard({record,hr,finished=false,live,onDelet
   finally{pending.current=false;if(active.current)setBusy(false);}
  }
  return <article className={s.card} aria-label={c.name}>
-  <Link className={s.content} to={href}><span className={s.badge} data-funded={state==="funded"||finished}>{status}</span><h2>{c.name}</h2><p>{event}</p><small>{c.event?.date}</small><div className={s.budget}><small>{hr?"Planirani fond":"Planned budget"}</small><strong>{c.budgetMon} <span>test MON</span></strong></div><p>{savedCampaignNext(record,hr,live)}</p>{live?<small>{hr?"Zadnja provjera":"Last checked"} {new Date(Number(live.campaign.blockTimestamp)*1000).toLocaleString(hr?"hr-HR":"en-GB")}</small>:null}<p className={s.next}>{next}</p></Link>
+  {source?<Link className={s.photo} to={href} tabIndex={-1} aria-hidden="true"><img src={source.image} alt="" loading="lazy"/></Link>:null}
+  <div className={s.identity}><CampaignSponsor id={record.id} hr={hr}/><OfficialSourceLinks selection={c.sponsorSelection} hr={hr}/></div>
+  <Link className={s.content} to={href}><span className={s.badge} data-funded={state==="funded"||finished}>{status}</span><h2>{c.name}</h2><p>{source?.name??event}</p><small>{c.event?.date}</small><div className={s.budget}><small>{hr?"Planirani fond":"Planned budget"}</small><strong>{c.budgetMon} <span>test MON</span></strong></div><p>{savedCampaignNext(record,hr,live)}</p>{live?<small>{hr?"Zadnja provjera":"Last checked"} {new Date(Number(live.campaign.blockTimestamp)*1000).toLocaleString(hr?"hr-HR":"en-GB")}</small>:null}<p className={s.next}>{next}</p></Link>
+  <SavedBudgetGraphic configuration={c} hr={hr}/>
   {state==="saved"&&draft?<p className={s.footer}>{hr?"Pravila su spremljena. Otvorite kampanju za stanje pokretanja i novčanik za uplatu.":"Rules saved. Open the campaign for launch status and your funding wallet."}</p>:null}
   {!publicEnv.hostedCopy&&draft&&!archived?<div className={s.footer}>{confirm?<div role="group" aria-label={hr?"Potvrda brisanja":"Confirm deletion"}>
    <p className={s.question}>{`${deleteLabel} “${c.name}”?`}</p>

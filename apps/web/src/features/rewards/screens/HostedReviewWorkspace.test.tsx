@@ -14,7 +14,7 @@ it('shows only the sponsored race and its categories, without league/other-round
  expect(screen.getByText('Review slot 4')).toBeInTheDocument();expect(screen.getByRole('table',{name:'Mala · Overall men'})).toBeInTheDocument();expect(screen.getByRole('table',{name:'Velika · Overall men'})).toBeInTheDocument();
  expect(screen.queryByText(/League|Round [1-5]/)).not.toBeInTheDocument();
  fireEvent.mouseDown(screen.getByRole('tab',{name:'Recipient totals'}),{button:0,ctrlKey:false});
- const table=screen.getByRole('table');expect(within(table).getAllByText('Races Mon1')).toHaveLength(1);expect(within(table).getByText('2')).toBeInTheDocument();expect(within(table).getByTitle('1 test MON')).toBeInTheDocument();
+ const table=within(screen.getByRole('tabpanel')).getByRole('table');expect(within(table).getAllByText('Races Mon1')).toHaveLength(1);expect(within(table).getByText('2')).toBeInTheDocument();expect(within(table).getByTitle('1 test MON')).toBeInTheDocument();
  fireEvent.mouseDown(screen.getByRole('tab',{name:'Funding'}),{button:0,ctrlKey:false});expect(screen.getByRole('heading',{name:'Prize funding'})).toBeInTheDocument();expect(screen.getByText('Paid to recipients')).toBeInTheDocument();
 });
 it('rejects an unfunded URL slot and opens the actual sponsored scope',async()=>{
@@ -47,8 +47,15 @@ it('shows full category evidence beside awards, preserving tied official ranks a
  expect(within(table).getAllByTitle('0 test MON')).toHaveLength(2);
 });
 it('uses league points rather than a fabricated finish time',async()=>{
- mocks.read.mockResolvedValue({...data,pools:[{slot:0,name:'League',budgetWei:'1'}],groups:[{...data.groups[0],slot:0,results:[{key:'standing1',beneficiaryId:'runner',name:'Races Mon1',club:null,rankOverall:null,rankCategory:2,finishTimeMs:null,status:'standing',points:417}]}]});
+ mocks.read.mockResolvedValue({...data,pools:[{slot:0,name:'League',budgetWei:'400000000000000000'}],groups:[{...data.groups[0],slot:0,results:[{key:'standing1',beneficiaryId:'runner',name:'Races Mon1',club:null,rankOverall:null,rankCategory:2,finishTimeMs:null,status:'standing',points:417}]}]});
  render(<HostedReviewWorkspace {...props}/>);const table=await screen.findByRole('table',{name:'Mala · Overall men'});
  expect(within(table).getByText('417')).toBeInTheDocument();expect(within(table).getByRole('columnheader',{name:'Points'})).toBeInTheDocument();
  expect(within(table).queryByRole('columnheader',{name:'Exact finish time'})).not.toBeInTheDocument();
+});
+
+it('pairs sponsor identity with the selected official event and proposed award graphic',async()=>{
+ mocks.read.mockResolvedValue({...data,selection:{sourceLeagueId:'ba81ced7-b2c5-4d51-95b6-d95d8c04fa36',sourceSeasonId:'323d55fc-a396-4ff4-a17e-eb7152c8f8f1',eventEditionId:null},branding:{id:props.campaign.id,name:'Fictional Review Sponsor',logo:null,website:'https://example.com',promotion:'Trail promotion',revision:1}});
+ render(<HostedReviewWorkspace {...props}/>);await screen.findByText('Fictional Review Sponsor');
+ expect(screen.getByText('Trail promotion')).toBeVisible();expect(screen.getByRole('link',{name:'Event on RacesOn'})).toHaveAttribute('href','https://www.raceson.com/leagues/sibenska-trail-liga/events/raslina-trail-2026?tab=results');
+ expect(screen.getByRole('img',{name:/Proposed awards.*Reserved/})).toBeVisible();expect(screen.queryByRole('button',{name:/Edit sponsor/})).not.toBeInTheDocument();
 });

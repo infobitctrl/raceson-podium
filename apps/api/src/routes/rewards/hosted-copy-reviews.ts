@@ -1,6 +1,6 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {createAdminSupabaseClient,loadServerEnv} from '@raceson/db';
-import {hostedCopyReviewSources,composeHostedCopyAllocation,hostedCopyLifecycleRpc,hostedCopySetupNodeId} from '@raceson/db/rewards';
+import {hostedCopyReviewBranding,hostedCopyReviewSources,composeHostedCopyAllocation,hostedCopyLifecycleRpc,hostedCopySetupNodeId} from '@raceson/db/rewards';
 import {setupId} from '@raceson/domain/rewards/distribution-setup';
 import {hostedCopyOperationsEnabled,hostedCopyPin} from '../../features/rewards/hosted-copy-preview.js';
 import {hostedCopySelections,hostedCopyUnaffiliatedReview,hostedCopyReviewNote} from '../../features/rewards/hosted-copy-review.js';
@@ -46,7 +46,8 @@ export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerRe
   const records=await hostedCopyReviewSources(actor,id,hostedCopyPin,rpc);
   const {catalogue}=await readHostedCopyCatalogue(env);
   for(const record of records)for(const pool of record.summary.pools)pool.name=pool.slot===0?catalogue.name:catalogue.rounds.find(round=>round.slot===pool.slot)!.name;
-  if(id===null){deps.sendSuccess(res,{version:'podium-copy-review-queue-v1',items:records.map(r=>r.summary)});return true;}
+  const branding=await hostedCopyReviewBranding(actor,id,records.map(r=>r.summary.id),rpc);
+  if(id===null){deps.sendSuccess(res,{version:'podium-copy-review-queue-v1',items:records.map(r=>({...r.summary,branding:branding.find(b=>b.id===r.summary.id)!}))});return true;}
   const record=records[0]!;
   const result=composeHostedCopyAllocation(record.launch.setup,record.source!,hostedCopyPin,hostedCopySelections(hostedCopyPin),hostedCopyUnaffiliatedReview(hostedCopyPin));
   const groups=result.allocation.groups.filter(g=>g.budgetWei>0n).map(g=>{
@@ -59,7 +60,7 @@ export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerRe
   // Recheck live source authority after calculation before returning private rows.
   const fresh=await hostedCopyReviewSources(actor,id,hostedCopyPin,rpc);
   if(fresh[0]!.launch.id!==record.launch.id||JSON.stringify(fresh[0]!.execution)!==JSON.stringify(record.execution))throw Error('reward_setup_conflict');
-  deps.sendSuccess(res,JSON.parse(JSON.stringify({...result.allocation,groups,pools:record.summary.pools,funding,reviewNote:hostedCopyReviewNote(hostedCopyPin)},(_key,v)=>typeof v==='bigint'?v.toString():v)));
+  deps.sendSuccess(res,JSON.parse(JSON.stringify({...result.allocation,groups,pools:record.summary.pools,funding,selection:record.summary.selection,branding:branding[0],reviewNote:hostedCopyReviewNote(hostedCopyPin)},(_key,v)=>typeof v==='bigint'?v.toString():v)));
  }catch(error){
   const code=error&&typeof error==='object'&&'code' in error?String(error.code):error instanceof Error?error.message:'';
   if(['Unauthorized','Missing bearer token','reward_account_session_required'].includes(code))deps.sendError(res,401,'reward_auth_required','Sign in to the isolated demo.');

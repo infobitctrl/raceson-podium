@@ -1,3 +1,4 @@
+vi.mock('./CampaignSponsor',()=>({CampaignSponsor:()=> <span>Campaign sponsor</span>}));
 import {act,fireEvent,render,screen,waitFor} from "@testing-library/react";
 import {MemoryRouter} from "react-router-dom";
 import {beforeEach,expect,it,vi} from "vitest";
@@ -77,7 +78,7 @@ it("shows deposit readiness for a campaign with its required source links",()=>{
 it("shows the selected event for an unbound saved draft and reopens its editor",()=>{
  const r=record();r.configuration.sponsorSelection={sourceLeagueId:'ba81ced7-b2c5-4d51-95b6-d95d8c04fa36',sourceSeasonId:'323d55fc-a396-4ff4-a17e-eb7152c8f8f1',eventEditionId:'f26fe1b0-ea95-b5c6-772d-739d54377d9d'};
  render(<MemoryRouter><SavedCampaignCard record={r} hr={false} onDeleted={vi.fn()}/></MemoryRouter>);
- expect(screen.getByText('Raslina Trail')).toBeVisible();expect(screen.getByRole('link')).toHaveAttribute('href',`/rewards/create?setup=${r.id}`);
+ expect(screen.getByText('Raslina Trail 2026')).toBeVisible();expect(screen.getByRole('link',{name:/My test draft/})).toHaveAttribute('href',`/rewards/create?setup=${r.id}`);
  expect(screen.queryByText('Ready for deposit')).not.toBeInTheDocument();
 });
 

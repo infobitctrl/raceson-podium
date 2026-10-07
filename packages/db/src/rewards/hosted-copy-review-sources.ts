@@ -29,7 +29,7 @@ export async function hostedCopyReviewSources(identity:RewardAccountIdentity,id:
    return [{slot:p.slot,name,budgetWei:amount.toString()}];
   });
   return {launch,source,execution,summary:{id:r.id,name:configuration.name,revision:launch.setup.revision,launchId:launch.id,pools,
-   budgetWei:budget.budgetWei.toString(),executionState:!execution?.deploymentHash?'awaiting_contract' as const:!execution.fundingHash?'awaiting_funding' as const:'needs_chain_check' as const}};
+   selection:configuration.sponsorSelection??null,budgetWei:budget.budgetWei.toString(),executionState:!execution?.deploymentHash?'awaiting_contract' as const:!execution.fundingHash?'awaiting_funding' as const:'needs_chain_check' as const}};
  }));
  if(new Set(items.map(i=>i.summary.id)).size!==items.length)throw Error('hosted_copy_unavailable');
  if(id!==null&&items.length!==1)throw Error('reward_setup_not_found');

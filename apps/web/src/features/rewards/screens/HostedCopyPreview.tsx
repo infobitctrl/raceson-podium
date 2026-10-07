@@ -1,3 +1,5 @@
+import OfficialSourceLinks from '../components/OfficialSourceLinks';
+import {sponsorDemoSource} from '../model/sponsorOpportunities';
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
@@ -37,7 +39,7 @@ export default function HostedCopyPreview() {
  const held = category === "participation" ? participation?.heldReason : table?.heldReason;
  const resultRows = data?.results.filter(r => (slot === null || r.slot === slot) && (["participation", "clubs"].includes(category) || r.classificationIds.includes(category))) ?? [];
  return <article className={s.page}>
-  <header className={s.heading}><div><span className={s.eyebrow}>Podium · testnet demo</span><h1>Five-round results preview</h1><p>Šibenik Trail League · demo closed after Round 5</p></div></header>
+  <header className={s.heading}><div><span className={s.eyebrow}>Podium · testnet demo</span><h1>Five-round results preview</h1><OfficialSourceLinks selection={{...sponsorDemoSource,eventEditionId:null}} hr={false}/><OfficialSourceLinks selection={{...sponsorDemoSource,eventEditionId:null}} slot={slot??0} hr={false}/><p>Šibenik Trail League · demo closed after Round 5</p></div></header>
   <p className={s.muted}>Exact public sporting results with fictional athlete and club names. These previews await review; no rewards are approved or payable.</p>
   {auth.isLoading ? <p role="status">Loading your account…</p> : !userId ? <p><Link className={s.primary} to="/auth?next=%2Frewards%2Fdemo-copy">Sign in to the demo</Link></p> : error ? <p role="alert">The verified results could not be loaded. Use a provisioned demo account, or try again later.</p> : !data ? <p role="status">Loading verified results…</p> : <>
    <p><strong>{data.counts.rounds} completed rounds</strong> · {data.counts.results} results · {data.counts.finishes} finishes</p>

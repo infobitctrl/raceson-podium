@@ -1,18 +1,19 @@
 import {z} from 'zod';
+import {reviewBranding,reviewSelection} from './hostedReviewSources';
 import {apiRequest} from '@/lib/api';
 const wei=z.string().regex(/^(0|[1-9][0-9]{0,24})$/),slot=z.number().int().min(0).max(5);
 const pool=z.object({slot,name:z.string().min(1),budgetWei:wei});
 const group=z.object({nodeId:z.string(),name:z.string(),slot,type:z.string(),beneficiaryKind:z.enum(['athlete','club']),budgetWei:wei,proposedWei:wei,heldWei:wei,unusedWei:wei,unallocatedWei:wei,hold:z.string().nullable(),
  results:z.array(z.object({key:z.string(),beneficiaryId:z.string(),name:z.string(),club:z.string().nullable(),rankOverall:z.number().int().positive().nullable(),rankCategory:z.number().int().positive().nullable(),finishTimeMs:z.string().regex(/^(0|[1-9][0-9]*)$/).nullable(),status:z.enum(['finished','dns','dnf','dsq','standing']),points:z.number().int().nonnegative().nullable()})).max(10000).optional(),
  classification:z.object({trackId:z.string(),trackName:z.string(),categoryName:z.string()}).nullable().optional(),awards:z.array(z.object({beneficiaryId:z.string(),name:z.string(),place:z.number().int().positive().nullable(),value:z.string(),amountWei:wei}))});
-const schema=z.object({version:z.literal('podium-copy-allocation-v1'),setupId:z.string().uuid(),revision:z.number().int().positive(),budgetWei:wei,proposedWei:wei,heldWei:wei,unusedWei:wei,unallocatedWei:wei,
+const schema=z.object({branding:reviewBranding.optional(),selection:reviewSelection.optional(),version:z.literal('podium-copy-allocation-v1'),setupId:z.string().uuid(),revision:z.number().int().positive(),budgetWei:wei,proposedWei:wei,heldWei:wei,unusedWei:wei,unallocatedWei:wei,
  pools:z.array(pool).min(1).max(6),groups:z.array(group),funding:z.object({state:z.enum(['awaiting_contract','awaiting_funding','funded','cancelled','unverified']),fundedWei:wei.nullable(),remainingWei:wei.nullable(),paidWei:wei.nullable(),returnedWei:wei.nullable(),blockNumber:wei.nullable(),programmeAddress:z.string().regex(/^0x[0-9a-f]{40}$/).nullable(),
  pools:z.array(z.object({slot,budgetWei:wei,remainingWei:wei,paidWei:wei,returnedWei:wei}))})});
 export type HostedReviewWorkspaceData=z.infer<typeof schema>;
 export type HostedReviewGroup=z.infer<typeof group>;
 export async function readHostedReviewWorkspace(id:string,revision:number){
  const data=schema.parse(await apiRequest({path:`/v1/rewards/demo-copy/reviews/${id}`,cache:'no-store'}));
- if(data.setupId!==id||data.revision!==revision||new Set(data.pools.map(p=>p.slot)).size!==data.pools.length
+ if(data.branding&&data.branding.id!==id||data.setupId!==id||data.revision!==revision||new Set(data.pools.map(p=>p.slot)).size!==data.pools.length
   ||data.pools.some(p=>BigInt(p.budgetWei)<=0n)||data.pools.reduce((sum,p)=>sum+BigInt(p.budgetWei),0n)!==BigInt(data.budgetWei)
   ||new Set(data.groups.map(g=>g.nodeId)).size!==data.groups.length||data.groups.reduce((sum,g)=>sum+BigInt(g.proposedWei),0n)!==BigInt(data.proposedWei)
   ||BigInt(data.budgetWei)!==BigInt(data.proposedWei)+BigInt(data.heldWei)+BigInt(data.unusedWei)+BigInt(data.unallocatedWei))throw Error('invalid_review');

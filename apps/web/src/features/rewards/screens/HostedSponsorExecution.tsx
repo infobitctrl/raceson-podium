@@ -1,3 +1,4 @@
+import CampaignOverview from '../components/CampaignOverview';
 import {useEffect,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
 import {ApiError} from '@/lib/api';
@@ -31,6 +32,7 @@ export default function HostedSponsorExecution({id,hr}:{id:string;hr:boolean}){
  const deposited=observation?.funded===true&&plan?BigInt(plan.budgetWei):0n;
  return <article className={d.page}>
   <header className={d.header}><div><span className={d.eyebrow}>{t('My campaigns','Moje kampanje')}</span><h1>{c.name}</h1><p className={d.intro}>{t(`Saved · revision ${launch.setup.revision}`,`Spremljeno · revizija ${launch.setup.revision}`)}</p></div><div className={d.headerActions}><span className={d.badge}>{observation?.funded?t('Funded','Financirano'):t('Awaiting funding','Čeka uplatu')}</span><Link className={d.publicLink} to={`/rewards/create?setup=${id}`}>{t('View rules','Pogledaj pravila')}</Link><button className={d.publicLink} disabled title={t('Available after the campaign is published','Dostupno nakon objave kampanje')}>{t('Public page','Javna stranica')}</button></div></header>
+  <CampaignOverview id={id} selection={c.sponsorSelection} hr={hr}/>
   {data.view.setup.revision!==launch.setup.revision?<p role="status">{t(`Funding retains the frozen rules at revision ${launch.setup.revision}. Later edits cannot change this contract.`,`Financiranje zadržava zaključana pravila revizije ${launch.setup.revision}. Kasnije izmjene ne mijenjaju ovaj ugovor.`)}</p>:null}
   <div className={d.layout}><div className={d.main}><SponsorFunding launch={launch} copyBinding={data.binding} hr={hr} onSummary={setSummary}
    allocation={<><section className={d.card}><h2>{t('Where the prize pool goes','Raspodjela nagradnog fonda')}</h2><dl className={d.legend}>{c.root.children.filter(n=>n.shareBps>0).map(n=><div key={n.id}><dt>{n.name}</dt><dd>{setupAmount(preview.rows.find(r=>r.id===n.id)?.amountWei??null,hr)} <small className={d.unit}>test MON</small></dd><dd className={d.percent}>{n.shareBps/100}%</dd></div>)}</dl></section><details className={`${d.card} ${d.preview}`}><summary>{t('Allocation preview','Pregled raspodjele')}</summary><HostedAllocationPreview id={id} revision={launch.setup.revision}/></details></>}/></div>

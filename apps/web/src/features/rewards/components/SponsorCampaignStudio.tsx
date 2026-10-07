@@ -1,3 +1,4 @@
+import OfficialSourceLinks from './OfficialSourceLinks';
 import {lazy,Suspense,useEffect,useId,useState} from "react";
 import {useAuth} from "@/lib/auth";
 import {sponsorConfigurationSourcesReady} from "@raceson/domain/rewards/sponsor-launch";
@@ -129,7 +130,7 @@ export default function SponsorCampaignStudio(props:GuidedRewardSetupProps){
  const otherOptions=activeTrack?unused.filter(option=>!option.category||!trackCategoryIds.has(option.category.id)):[];
  return <article className={exact.studio}>
   <header className={exact.header}><p>{t('Sponsor setup','Postavljanje sponzorstva')}</p><h1>{t('Set up your rewards','Postavite svoje nagrade')}</h1></header>
-  <div className={exact.event}><div><h2>{sourceName}</h2><p>{organization?`${organization} · `:''}{raceSlot?t('Race sponsorship','Sponzorstvo utrke'):`${meta.pots.filter(p=>p.slot>0).length} ${t('rounds','kola')}`}</p></div><Link to={detailHref}>{t('Event details','Detalji događaja')}</Link></div>
+  <div className={exact.event}><div><h2>{sourceName}</h2><OfficialSourceLinks selection={c.sponsorSelection} slot={step===3?raceSlot||activeRound:undefined} hr={hr}/><p>{organization?`${organization} · `:''}{raceSlot?t('Race sponsorship','Sponzorstvo utrke'):`${meta.pots.filter(p=>p.slot>0).length} ${t('rounds','kola')}`}</p></div><Link to={detailHref}>{t('Event details','Detalji događaja')}</Link></div>
   <nav className={exact.steps} aria-label={t('Campaign sections','Odjeljci kampanje')}>{[t('Budget & terms','Fond i uvjeti'),t('Reward rules','Pravila nagrada'),t('Review','Pregled')].map((label,i)=><button key={label} aria-current={index===i?'step':undefined} data-complete={index>i} disabled={reviewUnsaved} onClick={()=>i===1?navigatePot(raceSlot||0):go(i===0?1:5)}><span>{index>i?'✓':i+1}</span>{label}</button>)}</nav>
   {props.sourceLocked?<section className={s.savedRules}><LockKeyhole size={19}/><div><strong>{t('Viewing saved rules','Pregled spremljenih pravila')} · {t('Revision','Verzija')} {props.revision}</strong><p>{t('Saved terms stay fixed. Continue to your campaign for creation and funding.','Spremljeni uvjeti ostaju fiksni. Nastavite na kampanju za izradu i uplatu.')}</p></div></section>:null}
   {!props.copySource&&sourceState.status!=='ready'?<SponsorSourceStatus state={sourceState} hr={hr} readOnly={Boolean(props.sourceLocked)}/>:null}
