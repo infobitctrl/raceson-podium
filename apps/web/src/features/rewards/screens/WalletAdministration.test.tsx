@@ -5,9 +5,9 @@ import {MemoryRouter} from 'react-router-dom';
 import {beforeEach,expect,it,vi} from 'vitest';
 import WalletAdministration from './WalletAdministration';
 import {OperationalWalletRuntimeContext} from '../components/OperationalWalletRuntime';
-const mock=vi.hoisted(()=>({auth:{user:{id:'master'},isLoading:false,account:{platformRole:'super_admin'}} as {user:{id:string}|null;isLoading:boolean;account:{platformRole:string}},read:vi.fn(),review:vi.fn(),activate:vi.fn(),prepare:vi.fn()}));
+const mock=vi.hoisted(()=>({auth:{user:{id:'master'},isLoading:false,account:{platformRole:'super_admin'}} as {user:{id:string}|null;isLoading:boolean;account:{platformRole:string}},read:vi.fn(),review:vi.fn(),activate:vi.fn(),prepare:vi.fn(),upgrade:vi.fn()}));
 vi.mock('@/lib/auth',()=>({useAuth:()=>mock.auth}));
-vi.mock('../data/walletAdministration',()=>({readWalletAdministration:mock.read,reviewWalletReplacement:mock.review,activateWalletReplacement:mock.activate,prepareWalletCreation:mock.prepare}));
+vi.mock('../data/walletAdministration',()=>({readWalletAdministration:mock.read,reviewWalletReplacement:mock.review,activateWalletReplacement:mock.activate,prepareWalletCreation:mock.prepare,prepareDeploymentUpgrade:mock.upgrade}));
 const address=(n:string)=>'0x'+n.repeat(40);
 const settings={deployment:{version:1,appId:'app',walletId:'old',address:address('1'),ownerId:'owner',signerId:'signer',policyId:'policy',factory:address('4')},controller:{subject:'did:privy:owner',wallet:address('1')}};
 const snapshot={revision:0,settings,fingerprint:'a'.repeat(64),history:[]};
@@ -77,4 +77,15 @@ it('Croatian review retains explicit authority and activation gates',async()=>{
  expect(mock.review).toHaveBeenCalledWith(snapshot,'deployment','new');
  expect(mock.activate).not.toHaveBeenCalled();
  expect(screen.getByText(/postojeće kampanje i transakcije na čekanju zadržavaju izvornu ovlast/)).toBeVisible();
+});
+
+it('prepares existing-wallet V5 permission only on explicit action, without activation',async()=>{
+ mock.upgrade.mockResolvedValue({ownerSubject:'did:privy:owner',role:'deployment',mode:'upgrade',deployment:{...settings.deployment,protocolVersion:5},revision:0,fingerprint:snapshot.fingerprint});
+ const loader=vi.fn().mockResolvedValue({default:({preparation,onSelected})=><button onClick={()=>onSelected(preparation.deployment.walletId)}>Use existing wallet fixture</button>});
+ render(<MemoryRouter><OperationalWalletRuntimeContext.Provider value={loader}><WalletAdministration/></OperationalWalletRuntimeContext.Provider></MemoryRouter>);
+ expect(mock.upgrade).not.toHaveBeenCalled();
+ fireEvent.click(await screen.findByRole('button',{name:'Review new creation permission'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Use existing wallet fixture'}));
+ expect(mock.upgrade).toHaveBeenCalledWith(snapshot);expect(mock.prepare).not.toHaveBeenCalled();
+ expect(screen.getByLabelText('New Privy wallet ID')).toHaveValue('old');expect(mock.activate).not.toHaveBeenCalled();
 });

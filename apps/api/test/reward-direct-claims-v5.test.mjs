@@ -42,3 +42,18 @@ test('platform binding issuer is absent unless separately and exactly configured
  assert.equal(directIdentityIssuerFromEnv({...e,RACESON_REWARD_PRIVY_APP_ID:'other'}),null);
  assert.equal(directIdentityIssuerFromEnv({...e,RACESON_REWARD_IDENTITY_ISSUER_V1:JSON.stringify({...c,extra:true})}),null);
 });
+
+test('club direct route is bounded to an owned creation and cannot accept signatures or authority fields',async()=>{
+ const p=`/api/v1/club/rewards/direct-claims/${id}/${hash}/${id}`;
+ for(const method of ['GET','POST'])assert(hostedCopyRequestAllowed(method,new URL(p,origin),'sponsor-drafts-v1',true));
+ for(const path of [p+'?user=other',p+'/extra',p.replace(hash,'bad')])assert(!hostedCopyRequestAllowed('GET',new URL(path,origin),'sponsor-drafts-v1',true));
+ const old=Object.fromEntries(Object.keys(env).map(k=>[k,process.env[k]]));Object.assign(process.env,env);
+ try{
+  let response,calls=0;const deps={config:()=>({chainId:10143,origin}),sponsorReader:{getStorageAt:async()=>{}},identityIssuer:null,applyPrivateSessionHeaders(){},
+   requireIdentity:async()=>({userId:id,sessionId:id}),readJsonBody:async()=>({action:'prepare',proofId:id,owners:['forged']}),
+   rpc:async(name,args)=>{calls++;assert.equal(name,'service_reward_demo_copy_club_direct_claim_v5');assert.equal(args.p_creation_id,id);return{data:null,error:{message:'reward_club_owner_required'}};},
+   sendSuccess(){assert.fail('foreign club claim');},sendError(_r,status,code){response={status,code};}};
+  await dispatchDirectClaimsV5({method:'POST'},{},new URL(p,origin),deps);assert.equal(response.status,400);assert.equal(calls,0);
+  await dispatchDirectClaimsV5({method:'GET'},{},new URL(p,origin),deps);assert.equal(response.status,404);assert.equal(calls,1);
+ }finally{for(const[k,v]of Object.entries(old)){if(v===undefined)delete process.env[k];else process.env[k]=v;}}
+});

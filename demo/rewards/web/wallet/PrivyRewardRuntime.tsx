@@ -1,3 +1,4 @@
+import {sendDirectClubClaimV5} from "@/features/rewards/data/clubDirectClaimsV5";
 import {sendDirectClaimV5} from "@/features/rewards/data/directClaimsV5";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuthorizationSignature, useCreateWallet, usePrivy, useSubscribeToJwtAuthWithFlag, useWallets, type PrivyClientConfig } from "@privy-io/react-auth";
@@ -122,6 +123,7 @@ function AuthenticatedWallet({ configuration, sessionKey, walletUserId, onState 
             if (sponsorTransactionSender(input) !== wallet.address.toLowerCase() || input.plan.chainId !== 10143 || !isCurrent()) return Promise.reject(new Error("sponsor_wallet_changed"));
             return checkSponsorTransaction(provider, input, () => isCurrent() && sponsorCurrent());
           },
+          sendDirectClubClaim: (view, signatures, address, clubCurrent) => sendDirectClubClaimV5(provider, view, signatures, address, () => isCurrent() && clubCurrent()),
           sendDirectClaim: (view, athleteCurrent) => {
             if (view.transaction?.from !== wallet.address.toLowerCase() || view.transaction.chainId !== 10143 || !isCurrent()) return Promise.reject(new Error("wallet_changed"));
             return sendDirectClaimV5(provider, view, () => isCurrent() && athleteCurrent());

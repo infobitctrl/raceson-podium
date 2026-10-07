@@ -55,7 +55,7 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
     </section>
     {!unavailable&&!clubs.loading&&!history.loading?<RewardReadiness label={locale==='hr'?'Spremnost kluba':'Club readiness'} steps={[
       {id:'owner',title:locale==='hr'?'Pristup vlasnika kluba':'Club owner access',detail:locale==='hr'?'Pristup potvrđen za gore navedene klubove.':'Access checked for the clubs listed above.',state:clubs.items.length?'complete':'waiting'},
-      {id:'treasury',title:locale==='hr'?'Zahtjev za riznicu':'Treasury nomination',detail:history.items.some(item=>item.status==='pending_review')?(locale==='hr'?'Zahtjev je zabilježen. Provjera Safea i potpisi vlasnika slijede za svaku nagradu.':'Nomination recorded. Safe verification and owner signatures follow for each reward.'):(locale==='hr'?'Predložite klupski Safe s pravilom dva od tri potpisa.':'Nominate the club’s 2-of-3 Safe.'),state:history.items.some(item=>item.status==='pending_review')?'complete':'current'},
+      {id:'treasury',title:locale==='hr'?'Starije kampanje: zahtjev za riznicu':'Older campaigns: treasury nomination',detail:history.items.some(item=>item.status==='pending_review')?(locale==='hr'?'Zahtjev je zabilježen. Provjera Safea i potpisi vlasnika slijede za svaku nagradu.':'Nomination recorded. Safe verification and owner signatures follow for each reward.'):(locale==='hr'?'Predložite klupski Safe s pravilom dva od tri potpisa.':'Nominate the club’s 2-of-3 Safe.'),state:history.items.some(item=>item.status==='pending_review')?'complete':'current'},
     ]}/>:null}
     <section aria-labelledby="club-history-title" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="club-history-title" className="text-xl font-semibold">{t("rewards.club.history")}</h2>
@@ -88,7 +88,7 @@ export default function ClubRewards() {
   const signedIn = !isLoading && user && session && account?.userId === user.id;
   return <div className={`${p.page} ${p.workspace} space-y-6`}>
     <header className={p.heading}><div><span className={p.eyebrow} translate="no">RacesOn Podium</span>
-      <h1>{t("rewards.club.title")}</h1><p>{locale==="hr"?"Klupske nagrade idu u pregledanu riznicu. Dva vlasnika Safea daju pristanak za točnu nagradu.":"Club awards go to the reviewed treasury. Two Safe owners consent to the exact reward."}</p></div><Link className={p.secondary} to="/rewards/campaigns">{locale === "hr" ? "Istraži kampanje" : "Explore campaigns"}</Link></header>
+      <h1>{t("rewards.club.title")}</h1><p>{locale==="hr"?"Klupske nagrade idu u riznicu s dva od tri potpisa. Nakon objave raspodjele dva vlasnika potpisuju i šalju preuzimanje nagrade nove kampanje.":"Club awards go to your 2-of-3 treasury. Once distribution is published, two owners sign and submit each new campaign’s claim."}</p></div><Link className={p.secondary} to="/rewards/campaigns">{locale === "hr" ? "Istraži kampanje" : "Explore campaigns"}</Link></header>
     {!publicEnv.rewardPortalEnabled || !publicEnv.rewardDemo ? <p role="status">{t("rewards.unavailable")}</p>
       : isLoading ? <p role="status">{t("rewards.loading")}</p> : signedIn ? <PrivateWorkspace key={`${user.id}:${viewKey}`} />
         : <div className="space-y-3"><p role="alert">{t("rewards.error.signIn")}</p><Link className="text-primary underline" to="/auth?next=%2Fclub%2Frewards">{t("common.signIn")}</Link></div>}

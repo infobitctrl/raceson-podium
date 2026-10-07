@@ -50,3 +50,14 @@ it('controller creation remains native-owner controlled and grants no service si
  expect(mocks.grant).not.toHaveBeenCalled();expect(mocks.select).not.toHaveBeenCalledWith('wallet-2');
  fireEvent.click(screen.getByRole('button',{name:'Use this wallet for verification'}));expect(mocks.select).toHaveBeenLastCalledWith('wallet-2');
 });
+
+it('upgrades the current gas wallet only after explicit grant, without creating another wallet',async()=>{
+ render(<Entry preparation={{...preparation,mode:'upgrade',currentWalletAddress:address('1'),deployment:{...preparation.deployment,protocolVersion:5,signerId:'v5-signer',policyId:'v5-policy'}}} onSelected={mocks.select} onBusy={mocks.busy}/>);
+ expect(screen.getByText('Existing creation-gas wallet')).toBeVisible();
+ expect(screen.queryByRole('button',{name:'Create deployment wallet · Privy'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('combobox')).not.toBeInTheDocument();expect(mocks.create).not.toHaveBeenCalled();expect(mocks.grant).not.toHaveBeenCalled();
+ const grant=screen.getByRole('button',{name:'Approve restricted access in Privy'});expect(grant).toBeDisabled();
+ fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(grant);await screen.findByRole('button',{name:'Permission submitted'});
+ expect(mocks.grant).toHaveBeenCalledWith({address:address('1'),signers:[{signerId:'v5-signer',policyIds:['v5-policy']}]});
+ fireEvent.click(screen.getByRole('button',{name:'Use this wallet for verification'}));expect(mocks.select).toHaveBeenLastCalledWith('wallet-1');expect(mocks.create).not.toHaveBeenCalled();
+});

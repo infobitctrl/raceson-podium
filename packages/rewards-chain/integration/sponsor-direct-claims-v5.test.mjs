@@ -1,3 +1,7 @@
+import {clubDirectClaimV5} from '../../../apps/api/dist/features/rewards/club-direct-claims-v5-service.js';
+import {rewardClubSafeTestnetDependencies} from '../dist/club-safe-creation.js';
+import {deployOriginalClubSafeFixture} from './safe-deployment-fixture.mjs';
+import {directSafeMessageV5,verifyDirectSafeSignaturesV5,encodeDirectSafeCallV5,observeDirectClubTreasuryV5} from '../dist/sponsor-club-direct-v5.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -7,7 +11,7 @@ import {directClaimV5} from '../../../apps/api/dist/features/rewards/direct-clai
 import {startOwnedRewardChain,fixtureSigner} from './owned-chain.mjs';
 import {sponsorFactoryData,sponsorFundingData,sponsorFactoryProgrammeAddress,observeSponsorProgramme} from '../dist/sponsor-v4.js';
 import {sponsorLifecycleDataV4,observeSponsorLifecycleV4} from '../dist/sponsor-lifecycle-v4.js';
-import {walletBindingMessageV1,verifyWalletBindingProofV1,encodeWalletRegistrationV1,encodeSponsorDirectClaimV5,observeSponsorDirectClaimV5,verifySponsorDirectReceiptV5} from '../dist/sponsor-direct-claims-v5.js';
+import {walletBindingMessageV1,verifyWalletBindingProofV1,encodeWalletRegistrationV1,encodeRegisterAndClaimV5,encodeSponsorDirectClaimV5,observeSponsorDirectClaimV5,verifySponsorDirectReceiptV5} from '../dist/sponsor-direct-claims-v5.js';
 import {sponsorProgrammeBuildV5,sponsorCampaignBuildV5,sponsorFactoryBuildV5,walletRegistryBuildV1} from '../dist/sponsor-v5-build.js';
 const artifact=name=>JSON.parse(readFileSync(new URL(`../../../contracts/out/${name}.sol/${name}.json`,import.meta.url)));
 const h=n=>'0x'+String(n).padStart(64,'0');
@@ -36,9 +40,10 @@ for(const chainId of [31337,10143])test(`V5 publication → explicit wallet regi
   await assert.rejects(observeSponsorProgramme(chain.publicClient,{...plan,identityIssuer:wrong.address.toLowerCase()},deployed.transactionHash,funding.transactionHash));
   await assert.rejects(observeSponsorProgramme(chain.publicClient,{...plan,version:4},deployed.transactionHash,funding.transactionHash));
   const award={entitlementId:h(1),beneficiaryId:h(101),pot:1,amount:10n**17n,explanationHash:h(201),beneficiaryKind:0};
+  const clubAward={...award,entitlementId:h(3),beneficiaryId:h(103),beneficiaryKind:1};
   const now=BigInt(initial.blockTimestamp);
   const publication={reviewPeriod:'0',reviewStartedAt:now.toString(),officialPublishedAt:now.toString(),publicationEvidenceHash:h(301)};
-  const input={plan,slot:0,deploymentHash:deployed.transactionHash,fundingHash:funding.transactionHash,campaignAddress:initial.pots[0].address,snapshotDigest:h(401),awards:[award],publication};
+  const input={plan,slot:0,deploymentHash:deployed.transactionHash,fundingHash:funding.transactionHash,campaignAddress:initial.pots[0].address,snapshotDigest:h(401),awards:[award,clubAward],publication};
   for(const action of ['upload','stage','activate']){
    assert.equal((await observeSponsorLifecycleV4(chain.publicClient,input)).next,action);
    await send({account:reviewer,to:input.campaignAddress,data:sponsorLifecycleDataV4(input,action)});await finalized();
@@ -70,14 +75,35 @@ for(const chainId of [31337,10143])test(`V5 publication → explicit wallet regi
   await send({account:athlete,to:input.campaignAddress,data:encodeSponsorDirectClaimV5(award.entitlementId)},false);
   assert.equal(await chain.publicClient.getTransactionCount({address:reviewer.address}),reviewerNonce);
   assert.equal(await chain.publicClient.getBalance({address:input.campaignAddress}),BigInt(plan.budgetWei)-award.amount);
+  await t.test('original Safe claims with two owners and no further reviewer transaction',async()=>{
+   const fixture=await deployOriginalClubSafeFixture(chain);
+   fixture.provenance.safe.context={...fixture.provenance.safe.context,chainId,environment:chainId===10143?'monad-testnet':'local-simulation'};
+   await finalized();const treasury=fixture.provenance,observed=await observeDirectClubTreasuryV5(chain.publicClient,treasury);
+   const cscope={...scope,entitlementId:clubAward.entitlementId,beneficiaryId:clubAward.beneficiaryId,beneficiaryKind:1};
+   const at=(await chain.publicClient.getBlock()).timestamp;
+   const b={beneficiaryId:clubAward.beneficiaryId,recipient:treasury.safe.context.verifyingContract,beneficiaryKind:1,nonce:0n,issuedAt:at,expiresAt:at+3600n};
+   const proof=await issuer.signTypedData(walletBindingMessageV1(context,b));
+   const call={chainId,safe:b.recipient,to:registry,data:encodeRegisterAndClaimV5(context,b,proof,input.campaignAddress,clubAward.entitlementId),nonce:observed.nonce};
+   const signatures=await Promise.all(chain.clubOwners.slice(0,2).map(owner=>owner.signTypedData(directSafeMessageV5(call))));
+   await assert.rejects(verifyDirectSafeSignaturesV5(call,treasury.safe.owners,[signatures[0],signatures[0]]));
+   await assert.rejects(verifyDirectSafeSignaturesV5({...call,nonce:1n},treasury.safe.owners,signatures));
+   const consent=await verifyDirectSafeSignaturesV5(call,treasury.safe.owners,signatures);
+   const receipt=await send({to:call.safe,data:encodeDirectSafeCallV5(call,consent.signature)});await finalized();
+   const checked=await verifySponsorDirectReceiptV5(chain.publicClient,cscope,receipt.transactionHash,treasury);
+   assert.equal(checked.recipient,call.safe.toLowerCase());assert.equal(await chain.publicClient.getBalance({address:call.safe}),clubAward.amount);
+   await assert.rejects(verifySponsorDirectReceiptV5(chain.publicClient,scope,receipt.transactionHash,treasury));
+   await assert.rejects(verifySponsorDirectReceiptV5(chain.publicClient,cscope,receipt.transactionHash));
+   await send({to:call.safe,data:encodeDirectSafeCallV5(call,consent.signature)},false);
+   assert.equal(await chain.publicClient.getTransactionCount({address:reviewer.address}),reviewerNonce);
+  });
   if(chainId===10143){
    await t.test('ordinary athlete service binds fresh wallet proof and returns only athlete calldata; no reviewer event',async()=>{
     const p={...plan,launchId:'73000000-0000-4000-8000-000000000004'};
     const deployment=await send({to:factory,data:sponsorFactoryData(p),gas:12_000_000n});
     const parent2=sponsorFactoryProgrammeAddress(p,factory),fund=await send({to:parent2,data:sponsorFundingData(),value:BigInt(p.budgetWei)});await finalized();
     const o=await observeSponsorProgramme(chain.publicClient,p,deployment.transactionHash,fund.transactionHash);
-    const row={...award,entitlementId:h(2),beneficiaryId:h(102)};
-    const i={...input,plan:p,deploymentHash:deployment.transactionHash,fundingHash:fund.transactionHash,campaignAddress:o.pots[0].address,awards:[row]};
+    const row={...award,entitlementId:h(2),beneficiaryId:h(102)},clubrow={...clubAward,entitlementId:h(4),beneficiaryId:h(104)};
+    const i={...input,plan:p,deploymentHash:deployment.transactionHash,fundingHash:fund.transactionHash,campaignAddress:o.pots[0].address,awards:[row,clubrow]};
     for(const action of ['upload','stage','activate']){await send({account:reviewer,to:i.campaignAddress,data:sponsorLifecycleDataV4(i,action)});await finalized();}
     const current=(await chain.publicClient.getBlock()).timestamp,realNow=Date.now;
     Date.now=()=>Number(current)*1000;
@@ -108,6 +134,25 @@ for(const chainId of [31337,10143])test(`V5 publication → explicit wallet regi
      const verified=await get({action:'receipt',hash:receipt.transactionHash});assert.equal(verified.status,'paid');assert.equal(writes.length,1);
      assert.equal((await get()).status,'paid');assert.equal(signatures,1);
      assert.equal(await chain.publicClient.getTransactionCount({address:reviewer.address}),beforeReviewer);
+     const fixture=await deployOriginalClubSafeFixture(chain,{},rewardClubSafeTestnetDependencies);await finalized();
+     const creationId=id(6),clubActor=chain.clubOwners[0],safeAddress=fixture.expected.context.verifyingContract.toLowerCase();
+     const clubChallenge={...challenge,address:clubActor.address.toLowerCase()},clubMessage=rewardWalletControlMessage(clubChallenge);
+     clubChallenge.proof={...challenge.proof,messageHash:hashMessage(clubMessage),signature:await clubActor.signMessage({message:clubMessage})};
+     let clubReceipt=null;
+     const clubRpc=async(name,args)=>{assert.equal(name,'service_reward_demo_copy_club_direct_claim_v5');assert.equal(args.p_creation_id,creationId);
+      if(args.p_receipt)clubReceipt=args.p_receipt;
+      return {error:null,data:{approvalId,slot:0,plan:p,deploymentHash:i.deploymentHash,fundingHash:i.fundingHash,award:{...clubrow,amount:clubrow.amount.toString()},
+       challenge:args.p_proof_id?clubChallenge:null,receipt:clubReceipt,rehearsalPolicy:'podium-demo-alias-rehearsal-v1',
+       treasury:{creationId,clubId:id(7),owners:chain.clubOwners.map(o=>o.address.toLowerCase()),safeAddress,deploymentTransactionHash:fixture.deployment.transactionHash}}};
+     };
+     const clubDeps={...deps,rpc:clubRpc},clubGet=command=>clubDirectClaimV5(actor,approvalId,clubrow.entitlementId,creationId,command,clubDeps);
+     const cp=await clubGet({action:'prepare',proofId});assert.equal(cp.transaction.from,safeAddress);assert.equal(cp.transaction.binding.beneficiaryKind,1);
+     const call={chainId,safe:safeAddress,to:cp.transaction.to,data:cp.transaction.data,nonce:BigInt(cp.safeNonce)};
+     const clubSignatures=await Promise.all(chain.clubOwners.slice(0,2).map(o=>o.signTypedData(directSafeMessageV5(call))));
+     const consent=await verifyDirectSafeSignaturesV5(call,chain.clubOwners.map(o=>o.address),clubSignatures);
+     const paidClub=await send({to:safeAddress,data:encodeDirectSafeCallV5(call,consent.signature)});await finalized();
+     assert.equal((await clubGet({action:'receipt',hash:paidClub.transactionHash})).status,'paid');assert.equal(clubReceipt.recipient,safeAddress);
+     assert.equal((await clubGet()).status,'paid');assert.equal(await chain.publicClient.getTransactionCount({address:reviewer.address}),beforeReviewer);
      revoked=true;await assert.rejects(get(),{code:'reward_account_session_required'});
     }finally{Date.now=realNow;}
    });

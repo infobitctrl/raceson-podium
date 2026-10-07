@@ -27,10 +27,11 @@ try {
   ? `await import(${moduleUrl('packages/db/scripts/reward-db-integration.mjs')});\n`
   : `import {openRewardTestDatabase} from ${moduleUrl('packages/db/scripts/reward-test-database.mjs')};
 import {${operations?'sponsorAllocationV4Scenarios':'sponsorSourceV4Scenarios'} as selectedScenarios} from ${moduleUrl(operations?'packages/db/scripts/reward-sponsor-allocation-v4-scenarios.mjs':'packages/db/scripts/reward-sponsor-source-v4-scenarios.mjs')};
+import {clubDirectClaimsV5Scenarios} from ${moduleUrl('packages/db/scripts/reward-club-direct-claims-v5-scenarios.mjs')};
 import {directClaimsV5Scenarios} from ${moduleUrl('packages/db/scripts/reward-direct-claims-v5-scenarios.mjs')};
 const harness=openRewardTestDatabase(process.argv.slice(2));let passed=0;
 const context={harness,scenario:async(name,run)=>{await run();passed++;console.log('PASS '+name);}};
-try {await selectedScenarios(context);${operations?'await directClaimsV5Scenarios(context);':''}console.log('Sponsor source SQL acceptance: '+passed+' passed');} finally {await harness.close();}
+try {await selectedScenarios(context);${operations?'await directClaimsV5Scenarios(context);await clubDirectClaimsV5Scenarios(context);':''}console.log('Sponsor source SQL acceptance: '+passed+' passed');} finally {await harness.close();}
 `);
  const quote=value=>`'${value.replaceAll("'","'\\''")}'`;
  const script=original.slice(0,boundary).replace(rootLine,`ROOT_DIR=${quote(root)}`)+`

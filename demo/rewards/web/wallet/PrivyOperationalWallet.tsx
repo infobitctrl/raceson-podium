@@ -16,16 +16,17 @@ type Candidate={id?:string|null;address:string};
 function Owner(props:OperationalWalletProps){
  const {locale}=useI18n(),tr=(text:string)=>walletAdminText(locale,text);
  const {preparation,onSelected,onBusy}=props;
+ const upgrade=preparation.mode==='upgrade';
  const controller=preparation.role==='controller',currentAddress=preparation.currentWalletAddress??preparation.deployment.address;
  const privy=usePrivy(),{createWallet}=useCreateWallet(),{addSigners}=useSigners();
- const [busy,setBusy]=useState(false),[error,setError]=useState(''),[candidate,setCandidate]=useState<Candidate|null>(null),[granted,setGranted]=useState(false),[accepted,setAccepted]=useState(false),[uncertain,setUncertain]=useState(false);
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[candidate,setCandidate]=useState<Candidate|null>(upgrade?{id:preparation.deployment.walletId,address:preparation.deployment.address}:null),[granted,setGranted]=useState(false),[accepted,setAccepted]=useState(false),[uncertain,setUncertain]=useState(false);
  const custom=privy.user?.linkedAccounts.some(account=>account.type==='custom_auth')===true;
  const allowed=privy.ready&&privy.authenticated&&!custom&&privy.user?.id===preparation.ownerSubject;
  const current=useRef({allowed,subject:privy.user?.id,mounted:true});current.current.allowed=allowed;current.current.subject=privy.user?.id;
  const locked=useRef(false);
  useEffect(()=>{const state=current.current;state.mounted=true;onSelected('');onBusy(false);return()=>{state.mounted=false;};},[onSelected,onBusy]);
  const wallets=privy.user?.linkedAccounts.filter(account=>account.type==='wallet'&&account.chainType==='ethereum'&&account.walletClientType==='privy'&&account.connectorType==='embedded'&&!account.imported)??[];
- const alternatives=wallets.filter(wallet=>wallet.type==='wallet'&&wallet.address.toLowerCase()!==currentAddress&&(!controller||wallet.address.toLowerCase()!==preparation.deployment.address));
+ const alternatives=wallets.filter(wallet=>wallet.type==='wallet'&&(upgrade?wallet.address.toLowerCase()===currentAddress:wallet.address.toLowerCase()!==currentAddress)&&(!controller||wallet.address.toLowerCase()!==preparation.deployment.address));
  const selected=candidate?alternatives.find(wallet=>wallet.type==='wallet'&&wallet.address.toLowerCase()===candidate.address.toLowerCase()):undefined;
  const selectedId=selected?.type==='wallet'?selected.id??candidate?.id:candidate?.id;
  function choose(next:Candidate|null){setCandidate(next);setGranted(false);setAccepted(false);onSelected('');setError('');}
@@ -42,7 +43,7 @@ function Owner(props:OperationalWalletProps){
  if(!allowed)return <><p role="status">{custom?tr("This is a sponsor or athlete wallet session. Switch to the native deployment-owner account."):controller?(locale==='hr'?'Ovaj račun nije vlasnik trenutačnog kontrolora. Prebacite se na njegov račun.':'This Privy account does not own the current controller. Switch to its owner to create a replacement.'):tr("This Privy account does not own the current deployment policy. Switch to its owner to create a replacement.")}</p><button className={s.secondary} disabled={busy} onClick={()=>void run(async()=>{await privy.logout();},false)}>{tr("Switch Privy account")}</button>{error?<p role="alert">{tr(error)}</p>:null}</>;
  return <>
   <p className={s.verified}>{controller?(locale==='hr'?'Povezani ste s vlasnikom trenutačnog kontrolora.':'Connected to the current controller’s owner.'):tr("Connected to the deployment policy’s owner.")}</p>
-  <button className={s.primary} disabled={busy||Boolean(candidate)||uncertain} onClick={()=>void run(async active=>{
+  {!upgrade?<><button className={s.primary} disabled={busy||Boolean(candidate)||uncertain} onClick={()=>void run(async active=>{
    // No automatic retry: a timeout may still have created a wallet at Privy.
    setUncertain(true);
    const created=await createWallet(wallets.length?{createAdditional:true}:undefined);
@@ -55,7 +56,8 @@ function Owner(props:OperationalWalletProps){
    const wallet=alternatives.find(item=>item.type==='wallet'&&item.address.toLowerCase()===event.target.value);
    if(wallet?.type==='wallet')choose({id:wallet.id,address:wallet.address.toLowerCase()});else choose(null);
   }}><option value="">{tr("Choose a wallet")}</option>{alternatives.map(wallet=>wallet.type==='wallet'?<option key={wallet.address} value={wallet.address.toLowerCase()}>{wallet.address}</option>:null)}</select></label>:null}
-  {candidate?<div><p>{tr("Replacement wallet")}</p><p className={a.address}>{candidate.address}</p>
+  </>:null}
+  {candidate?<div><p>{upgrade?(locale==='hr'?'Postojeći novčanik za plin':'Existing creation-gas wallet'):tr("Replacement wallet")}</p><p className={a.address}>{candidate.address}</p>
    {!controller?<><p>{tr("Allow Podium’s deployment service to call the approved factory on Monad testnet (10143), with zero MON transferred by the call. Gas is paid from this wallet.")}</p>
    <details><summary>{tr("View restricted permission")}</summary><p>{locale==='hr'?'Tvornica':'Factory'}: <code>{preparation.deployment.factory}</code></p><p>{locale==='hr'?'Potpisnik':'Signer'}: <code>{preparation.deployment.signerId}</code></p><p>{locale==='hr'?'Pravila':'Policy'}: <code>{preparation.deployment.policyId}</code></p></details>
    <label className={a.confirm}><input type="checkbox" checked={accepted} disabled={busy||granted} onChange={event=>setAccepted(event.target.checked)}/>{tr("I approve this restricted campaign-creation permission for the displayed wallet.")}</label>

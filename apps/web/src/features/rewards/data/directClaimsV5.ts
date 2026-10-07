@@ -4,11 +4,11 @@ import {encodeRegisterAndClaimV5,encodeSponsorDirectClaimV5,verifyWalletBindingP
 import type {RewardWalletProvider} from './browserWallet';
 import type {Address,Hex} from 'viem';
 const hash=z.string().regex(/^0x[0-9a-f]{64}$/),address=z.string().regex(/^0x[0-9a-f]{40}$/),uint=z.string().regex(/^(0|[1-9][0-9]*)$/),uuid=z.string().uuid();
-const binding=z.object({beneficiaryId:hash,recipient:address,beneficiaryKind:z.literal(0),nonce:uint,issuedAt:uint,expiresAt:uint}).strict();
+export const directBindingSchemaV1=z.object({beneficiaryId:hash,recipient:address,beneficiaryKind:z.literal(0),nonce:uint,issuedAt:uint,expiresAt:uint}).strict();
 const receipt=z.object({transactionHash:hash,amountWei:uint,recipient:address,blockNumber:uint,blockHash:hash}).strict();
 export const directClaimSchemaV5=z.object({schema:z.literal('podium-direct-claim-v5'),approvalId:uuid,entitlementId:hash,chainId:z.literal(10143),amountWei:uint,
  campaignAddress:address,registryAddress:address,identityIssuer:address,beneficiaryId:hash,status:z.enum(['paid','not_open','paused','expired','claimable']),recipient:address.nullable(),deadline:uint,
- transaction:z.object({chainId:z.literal(10143),from:address,to:address,data:z.string().regex(/^0x[0-9a-f]+$/),value:z.literal('0'),binding:binding.nullable(),identityProof:z.string().regex(/^0x[0-9a-f]{130}$/).nullable()}).strict().nullable(),receipt:receipt.nullable(),rehearsalPolicy:z.literal('podium-demo-alias-rehearsal-v1')}).strict();
+ transaction:z.object({chainId:z.literal(10143),from:address,to:address,data:z.string().regex(/^0x[0-9a-f]+$/),value:z.literal('0'),binding:directBindingSchemaV1.nullable(),identityProof:z.string().regex(/^0x[0-9a-f]{130}$/).nullable()}).strict().nullable(),receipt:receipt.nullable(),rehearsalPolicy:z.literal('podium-demo-alias-rehearsal-v1')}).strict();
 export type DirectClaimV5=z.infer<typeof directClaimSchemaV5>;
 export async function readDirectClaimV5(award:{approvalId:string;entitlementId:string},command?:{action:'prepare';proofId:string}|{action:'receipt';hash:string}){
  const path=`/v1/athlete/rewards/direct-claims/${uuid.parse(award.approvalId)}/${hash.parse(award.entitlementId)}`;

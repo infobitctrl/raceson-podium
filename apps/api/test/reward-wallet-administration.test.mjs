@@ -115,3 +115,27 @@ test('hosted creation cannot borrow the retained local gas wallet or change an e
  const pending=async(name)=>{assert.equal(name,'service_reward_sponsor_auto_deployment');return {error:null,data:{sender:deployment.address}};};
  assert.equal(await resolveDeploymentSigner(hosted,identity,uuid(3),pending,runtime),null);
 });
+
+test('V5 upgrade retains the active gas wallet and owner, requiring a new exact grant',async()=>{
+ const {configuredDeploymentUpgrade,prepareWalletCreation,readWalletAdministration}=await import('../dist/features/rewards/wallet-administration.js');
+ const f=fixture();f.seed();const current=await readWalletAdministration(identity,env,f.rpc);
+ const next={...replacement,protocolVersion:5,factory:a(5),signerId:'v5-signer',policyId:'v5-policy'};
+ const configured={...env,RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V5:JSON.stringify(next)};
+ assert.deepEqual(configuredDeploymentUpgrade(configured,current.settings),next);
+ const prepared=await prepareWalletCreation(identity,{upgrade:true,expectedRevision:current.revision,expectedFingerprint:current.fingerprint},configured,async()=>controller.subject,f.rpc);
+ assert.equal(prepared.mode,'upgrade');assert.equal(prepared.currentWalletAddress,replacement.address);assert.deepEqual(prepared.deployment,next);assert.equal(f.writes,0);
+ for(const bad of [{...next,address:a(7)},{...next,ownerId:'other'},{...next,walletId:'other'},{...next,appId:'other'},{...next,signerId:replacement.signerId},{...next,factory:replacement.factory}]){
+  assert.throws(()=>configuredDeploymentUpgrade({...configured,RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V5:JSON.stringify(bad)},current.settings),/upgrade_unavailable/);
+ }
+ await assert.rejects(()=>prepareWalletCreation(identity,{upgrade:true,role:'controller',expectedRevision:current.revision,expectedFingerprint:current.fingerprint},configured,async()=>controller.subject,f.rpc),/upgrade_unavailable/);
+});
+
+test('the same creation wallet retains the original factory grant for pending jobs',async()=>{
+ const v5={...replacement,factory:a(8),signerId:'v5-signer',policyId:'v5-policy',protocolVersion:5};
+ const runtime=async()=>({error:null,data:{revision:2,settings:{deployment:v5,controller},controllers:[],deployments:[replacement]}});
+ const pending=async()=>({error:null,data:{sender:replacement.address,transaction:{to:replacement.factory}}});
+ assert.equal((await resolveDeploymentSigner(env,identity,uuid(3),pending,runtime)).factoryAddress,replacement.factory);
+ assert.equal((await resolveDeploymentSigner(env,undefined,undefined,undefined,runtime)).factoryAddress,v5.factory);
+ const bad=async()=>({error:null,data:{sender:replacement.address,transaction:{to:a(9)}}});
+ assert.equal(await resolveDeploymentSigner(env,identity,uuid(3),bad,runtime),null);
+});

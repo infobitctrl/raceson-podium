@@ -133,3 +133,5 @@ export * from "./hosted-copy-club-creation.js";
 export {hostedCopySettlementFacts,type HostedSettlementReceipt} from './hosted-copy-settlement.js';
 
 export * from "./direct-claims-v5.js";
+
+export * from "./club-direct-claims-v5.js";

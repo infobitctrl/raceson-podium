@@ -5,7 +5,7 @@ import {sponsorClaimSchema} from "./sponsorProgramme";
 const uuid=z.string().uuid(),address=z.string().regex(/^0x[0-9a-f]{40}$/),hex=z.string().regex(/^0x[0-9a-f]{64}$/),wei=z.string().regex(/^(0|[1-9][0-9]*)$/);
 const candidate=z.object({safeAddress:address,singletonAddress:address,fallbackHandlerAddress:address,owners:z.array(address).length(3)});
 export const sponsorClubClaimSchema=sponsorClaimSchema.extend({schema:z.literal("raceson-sponsor-club-claim-view-v4"),owners:z.array(address).length(3),candidate});
-export const sponsorClubAwardSchema=z.object({approvalId:uuid,slot:z.number().int().min(0).max(5),entitlementId:hex,amountWei:wei,clubId:uuid.nullable(),claims:z.array(z.object({id:uuid,prepared:z.boolean(),consented:z.boolean(),approved:z.boolean(),paid:z.boolean()}))});
+export const sponsorClubAwardSchema=z.object({approvalId:uuid,slot:z.number().int().min(0).max(5),entitlementId:hex,amountWei:wei,clubId:uuid.nullable(),protocolVersion:z.literal(5).optional(),directClaim:z.object({paid:z.boolean()}).strict().optional(),claims:z.array(z.object({id:uuid,prepared:z.boolean(),consented:z.boolean(),approved:z.boolean(),paid:z.boolean()}))});
 const awards=z.array(sponsorClubAwardSchema);
 export type SponsorClubClaim=z.infer<typeof sponsorClubClaimSchema>;
 export type SponsorClubAward=z.infer<typeof awards>[number];

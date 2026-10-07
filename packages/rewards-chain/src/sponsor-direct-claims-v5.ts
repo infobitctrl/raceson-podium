@@ -1,3 +1,5 @@
+import {directSafeReceiptCallV5,type DirectClubTreasuryV5} from './sponsor-club-direct-v5.js';
+import type {RewardClubSafeDeploymentReader} from './club-safe-deployment.js';
 import {decodeSponsorExecutionPlan,type SponsorExecutionPlan} from '@raceson/domain/rewards/sponsor-execution';
 import {decodeEventLog,decodeFunctionData,encodeFunctionData,hashTypedData,parseAbi,recoverTypedDataAddress,type Address,type Hex} from 'viem';
 import {observeSponsorProgrammePot,type SponsorChainReader} from './sponsor-v4.js';
@@ -74,18 +76,24 @@ export async function observeSponsorDirectClaimV5(reader:SponsorChainReader,inpu
   deadline:pot.claimDeadline,paused:pot.paused,state:pot.state};
 }
 
-export async function verifySponsorDirectReceiptV5(reader:SponsorChainReader,scope:DirectClaimScopeV5,hash:Hex){
+function safeReader(reader:SponsorChainReader):reader is SponsorChainReader&RewardClubSafeDeploymentReader{return 'getStorageAt' in reader&&typeof reader.getStorageAt==='function';}
+export async function verifySponsorDirectReceiptV5(reader:SponsorChainReader,scope:DirectClaimScopeV5,hash:Hex,treasury?:DirectClubTreasuryV5){
  const view=await observeSponsorDirectClaimV5(reader,scope);
  const [tx,receipt]=await Promise.all([reader.getTransaction({hash}),reader.getTransactionReceipt({hash})]);
  demand(view.paid&&view.recipient&&tx.hash===hash&&receipt.transactionHash===hash&&tx.chainId===scope.plan.chainId
-  &&tx.from.toLowerCase()===view.recipient&&receipt.from.toLowerCase()===view.recipient&&tx.value===0n
+  &&tx.from.toLowerCase()===receipt.from.toLowerCase()&&tx.value===0n
   &&tx.to?.toLowerCase()===receipt.to?.toLowerCase()&&receipt.status==='success'&&receipt.blockNumber<=BigInt(view.observation.blockNumber)
   &&tx.blockNumber===receipt.blockNumber&&tx.blockHash===receipt.blockHash&&tx.transactionIndex===receipt.transactionIndex,'direct_claim_receipt_mismatch');
- if(tx.to?.toLowerCase()===view.campaignAddress){
-  demand(tx.input===encodeSponsorDirectClaimV5(scope.entitlementId),'direct_claim_receipt_mismatch');
+ let callTo=tx.to?.toLowerCase(),callData=tx.input;
+ if(scope.beneficiaryKind===1){
+  demand(safeReader(reader)&&treasury&&treasury.safe.context.verifyingContract.toLowerCase()===view.recipient&&callTo===view.recipient,'direct_claim_receipt_mismatch');
+  const inner=await directSafeReceiptCallV5(reader,treasury,tx.input,receipt.logs);callTo=inner.to;callData=inner.data;
+ }else demand(!treasury&&tx.from.toLowerCase()===view.recipient,'direct_claim_receipt_mismatch');
+ if(callTo===view.campaignAddress){
+  demand(callData===encodeSponsorDirectClaimV5(scope.entitlementId),'direct_claim_receipt_mismatch');
  }else{
-  demand(tx.to?.toLowerCase()===view.registryAddress,'direct_claim_receipt_mismatch');
-  const call=decodeFunctionData({abi:walletRegistryAbiV1,data:tx.input});
+  demand(callTo===view.registryAddress,'direct_claim_receipt_mismatch');
+  const call=decodeFunctionData({abi:walletRegistryAbiV1,data:callData});
   demand(call.functionName==='registerAndClaim'&&call.args[0].beneficiaryId===scope.beneficiaryId
    &&call.args[0].recipient.toLowerCase()===view.recipient&&call.args[0].beneficiaryKind===scope.beneficiaryKind
    &&call.args[2].toLowerCase()===view.campaignAddress&&call.args[3]===scope.entitlementId,'direct_claim_receipt_mismatch');

@@ -1,28 +1,38 @@
-# Direct athlete claims — 8 October 2026
+# Direct claims — 8 October 2026
 
-V5 app/contract support is opt-in and **not activated on testnet**. Athlete wallet
-creation remains explicit; signing in, viewing an award or publishing awards does
-not create a wallet. V5 publication preserves walletless shares. An authenticated
-athlete chooses a wallet and claims; an automatic, separately scoped platform
-identity credential binds the wallet without another reviewer/payment approval.
-The first claim registers and pays atomically. Existing V4 contracts retain their
-original claim requirements.
+V5 support is opt-in and **not activated on testnet**. Athletes explicitly create
+or connect their own wallets. Login and award publication never create wallets;
+walletless beneficiaries retain their shares. After reviewer publication, the
+recipient claims with automatic account/wallet verification and no further human
+reviewer, sponsor or controller approval. Existing V4 campaigns retain their
+immutable requirements.
 
-Scoped evidence: 22 V5 contract tests (including original Safe quorum and 512-case
-conservation fuzzing), 178 chain tests, 3 owned local-chain/API integration checks,
-33 API checks, 36 disposable SQL scenarios, 37 UI tests and 18 Privy adapter tests.
-API/web types and the production build pass. Desktop/mobile browser validation
-used real components with labelled synthetic wallet/API fixtures; it did not
-create a provider wallet or make a testnet payment. New frontend files pass lint;
-two retained SponsorClaims hook warnings and existing dependency build warnings
-remain. These checks are not a security audit.
+Hosted V5 club claims now use the club's recorded original Safe, current owners
+and two separate owner signatures. The claim pays the Safe, and only a finalized,
+matching receipt marks the award paid. Club ownership consent remains separate
+from award approval. No private signatures are persisted in browser storage.
+The creation-gas upgrade preserves the old grant for retained V4 transactions and
+requires the actual gas-wallet owner's approval before V5 activation.
 
-The isolated migration adds a private receipt journal and account-bound service
-function; it does not change campaign funds, wallets or runtime activation.
-Remaining activation work: independently verify provider identity signing,
-provision the separate identity issuer, deploy the pinned V5 registry/factory and
-approve its narrowly scoped creation-gas policy. Hosted V5 club binding, claim and
-Safe receipt integration remain unfinished; do not enable mixed V5 campaigns.
+This release passed 18 scoped API tests, 38 disposable SQL scenarios, five owned
+local-chain integration tests, 37 scoped UI tests, 27 Privy adapter tests, API/web
+types, scoped frontend lint and a full production build. Local-chain tests include
+actual original-Safe execution, wrong/duplicate owner and nonce rejection,
+duplicate claim rejection and an unchanged reviewer nonce after recipient claims.
+The deployed issuer provider produced a synthetic identity signature that was
+independently verified. No real beneficiary consent was fabricated.
+
+Chrome desktop/mobile checks exercised the real claim component with clearly
+labelled synthetic wallet/API responses, including reload recovery and two-owner
+submission gates. This is interface evidence, not a testnet payment. Existing
+provider dependency build warnings remain. These checks are not a security audit.
+
+The isolated demo database migration and non-secret setup configuration are
+applied. Activation still needs gas funding for the two pinned contract
+deployments, explicit approval to store the server-only identity-signing
+credential, the gas-wallet owner's restricted V5 grant and runtime activation.
+A fresh hosted campaign, reviewer publication and recipient payment remain
+unverified on testnet. Retained Subi001 and its funds have not been reset.
 
 ---
 

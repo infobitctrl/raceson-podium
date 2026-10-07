@@ -15,7 +15,7 @@ export function directIdentityIssuerFromEnv(env:Record<string,string|undefined>)
  try{c=config.parse(JSON.parse(env.RACESON_REWARD_IDENTITY_ISSUER_V1));}catch{return null;}
  if(c.appId!==env.RACESON_REWARD_PRIVY_APP_ID||BigInt(c.address)===0n||BigInt(c.registry)===0n)return null;
  return {address:c.address as Address,async sign(context,binding){
-  if(context.chainId!==10143||context.registry.toLowerCase()!==c.registry||binding.beneficiaryKind!==0)throw Error('identity_binding_unavailable');
+  if(context.chainId!==10143||context.registry.toLowerCase()!==c.registry||![0,1].includes(binding.beneficiaryKind))throw Error('identity_binding_unavailable');
   const now=BigInt(Math.floor(Date.now()/1000));
   if(binding.issuedAt>now||binding.expiresAt<=now||binding.expiresAt-binding.issuedAt>600n)throw Error('identity_binding_unavailable');
   const client=new PrivyClient({appId:c.appId,appSecret:env.RACESON_REWARD_IDENTITY_APP_SECRET!,maxRetries:0,timeout:15000});
