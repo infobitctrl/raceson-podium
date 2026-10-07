@@ -1,0 +1,49 @@
+.workspace{min-width:0;display:grid;gap:14px;color:#231f1b}
+.workspace h2{margin:0;font-size:20px;font-weight:700}
+.card{display:grid;gap:16px;padding:22px;border:1px solid #e5dfd6;border-radius:16px;background:#fff}
+.intro{display:flex;align-items:flex-start;gap:12px}
+.intro h3,.stepIntro h3{margin:0;font-size:17px;font-weight:700;line-height:1.35}
+.intro p,.stepIntro p{margin:5px 0 0;font-size:13px;line-height:1.5;color:#70685f}
+.walletIcon,.savedIcon{width:42px;height:42px;display:grid;place-items:center;flex-shrink:0;border-radius:12px;background:#fff0e2;color:#f16d16}
+.savedIcon{background:#e8f5ed;color:#117555}
+.walletIcon svg,.savedIcon svg{width:21px;height:21px}
+.preview,.steps{list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:0;margin:0;gap:10px}
+.preview li,.steps li{display:flex;align-items:center;gap:6px;font-size:12px;color:#8a8075}
+.preview li span,.steps li span{display:grid;place-items:center;flex-shrink:0;width:24px;height:24px;border-radius:50%;background:#f2eee7;font-size:11px;font-weight:600}
+.steps .current{color:#231f1b;font-weight:700}
+.steps .current span{background:#ff6b16;color:#fff}
+.steps .done{color:#117555}
+.steps .done span{background:#e8f5ed;color:#117555}
+.start{width:100%;justify-content:space-between!important;background:#ff6b16!important;color:#fff!important;border-radius:9px!important}
+.start:hover{background:#ef5f0d!important}
+.start:disabled{opacity:.45}
+.flow{display:grid;gap:18px;min-width:0;border-top:1px solid #eee8df;padding-top:18px}
+.flow h3{font-size:17px}
+.flow p{font-size:13px;line-height:1.5}
+.provider,.destination{display:grid;gap:12px;border:0;border-radius:10px;padding:14px;background:#f8f5f0}
+.provider>p:first-child{font-size:14px;font-weight:600}
+.phase{display:grid;gap:14px}
+.address{font-family:monospace;font-size:14px;color:#231f1b;margin:0}
+.proof{display:flex;align-items:center;gap:6px;color:#117555;font-size:12px;margin:0}
+.proof svg{width:15px;height:15px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.actions button{font-size:13px}
+.replace{display:grid;gap:12px}
+.replace p{font-size:13px;line-height:1.5}
+.history{font-size:13px;color:#70685f}
+.history summary{cursor:pointer}
+.history>section{padding-top:16px}
+.profile{font-size:13px}
+.profile select{display:block;width:100%;margin-top:6px;padding:8px;border:1px solid #e5dfd6;border-radius:8px;background:#fff}
+@media(max-width:480px){.card{padding:18px}
+.preview,.steps{gap:6px}
+.steps li,.preview li{gap:5px}
+}
+
+.primary{width:100%;background:#ff6b16!important;color:#fff!important;border-radius:9px!important}
+.primary:hover{background:#ef5f0d!important}
+.spinner{animation:wallet-spin 1s linear infinite}
+@keyframes wallet-spin{to{transform:rotate(360deg)}
+}
+@media(prefers-reduced-motion:reduce){.spinner{animation:none}
+}

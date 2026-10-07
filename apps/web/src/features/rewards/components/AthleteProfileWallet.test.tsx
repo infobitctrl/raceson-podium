@@ -72,3 +72,54 @@ it("requires an explicit selection when several profiles are available",async()=
   await waitFor(()=>expect(mocks.withdraw).not.toHaveBeenCalled());
   expect(within(screen.getByRole("region",{name:"Your wallet"})).queryByText(`Connecting ${profile}`)).not.toBeInTheDocument();
 });
+
+it("offers compact setup without opening a provider or granting wallet consent",async()=>{
+  render(tree({presentation:"athlete",destinations:[]}));
+  expect(screen.getByRole("region",{name:"Readiness"})).toBeVisible();
+  expect(screen.getByRole("list",{name:"Setup steps"})).toHaveTextContent("1Wallet2Verify3Save");
+  expect(screen.queryByText(`Connecting ${profile}`)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button",{name:"Set up wallet"}));
+  expect(await screen.findByText(`Connecting ${profile}`)).toBeVisible();
+  expect(mocks.withdraw).not.toHaveBeenCalled();expect(base.onRefresh).not.toHaveBeenCalled();
+});
+it("shows saved wallet actions and keeps changes explicit in compact readiness",()=>{
+  render(tree({presentation:"athlete"}));
+  expect(screen.getAllByRole("heading",{name:"Wallet saved"})[0]).toBeVisible();
+  expect(screen.getByText("Wallet-control proof saved")).toBeVisible();
+  expect(screen.getByText("Reward readiness is reviewed separately.")).toBeVisible();
+  expect(screen.getByRole("button",{name:"Access wallet"})).toHaveAttribute("aria-expanded","false");
+  fireEvent.click(screen.getByRole("button",{name:"Change wallet"}));
+  fireEvent.click(screen.getByRole("button",{name:"Cancel"}));
+  expect(mocks.withdraw).not.toHaveBeenCalled();
+});
+it("gates compact setup on profile, network, complete data and access",()=>{
+  const view=render(tree({presentation:"athlete",destinations:[],profileId:null}));
+  expect(screen.getByRole("button",{name:"Set up wallet"})).toBeDisabled();
+  view.rerender(tree({presentation:"athlete",destinations:[],complete:false}));
+  expect(screen.getByRole("button",{name:"Set up wallet"})).toBeDisabled();
+  fireEvent.click(screen.getByRole("button",{name:"Load remaining wallets"}));expect(base.onMore).toHaveBeenCalled();
+  view.rerender(tree({presentation:"athlete"}));expect(screen.getByRole("button",{name:"Access wallet"})).toBeEnabled();
+  view.rerender(tree({presentation:"athlete",ready:false,failed:true}));
+  expect(screen.queryByRole("link",{name:/0xaaaa/})).not.toBeInTheDocument();
+  expect(screen.getByRole("button",{name:"Set up wallet"})).toBeDisabled();
+});
+it("does not treat an identity hold as a saved wallet-control proof",()=>{
+  render(tree({presentation:"athlete",destinations:[{...destination,status:"identity_hold"}]}));
+  expect(screen.getAllByRole("heading",{name:"Wallet needs review"})[0]).toBeVisible();
+  expect(screen.queryByText("Wallet-control proof saved")).not.toBeInTheDocument();
+});
+
+it("offers an explicit read-only retry when compact readiness cannot be loaded",()=>{
+  render(tree({presentation:"athlete",ready:false,failed:true}));
+  fireEvent.click(screen.getByRole("button",{name:"Refresh wallet"}));
+  expect(base.onRefresh).toHaveBeenCalledOnce();expect(mocks.withdraw).not.toHaveBeenCalled();
+  expect(screen.getByRole("button",{name:"Set up wallet"})).toBeDisabled();
+});
+
+it("retires compact wallet actions on failure even if stale ready data remains",()=>{
+  const view=render(tree({presentation:"athlete"}));fireEvent.click(screen.getByRole("button",{name:"Change wallet"}));
+  view.rerender(tree({presentation:"athlete",ready:true,failed:true}));
+  expect(screen.queryByRole("button",{name:"Remove current wallet"})).not.toBeInTheDocument();
+  expect(screen.queryByRole("link",{name:/0xaaaa/})).not.toBeInTheDocument();
+  expect(screen.getByRole("button",{name:"Set up wallet"})).toBeDisabled();expect(mocks.withdraw).not.toHaveBeenCalled();
+});

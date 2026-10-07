@@ -2,7 +2,8 @@ import RewardReadiness from "./RewardReadiness";
 import roleStyle from "./RewardRoleWorkspace.module.css";
 import RewardEmbeddedWalletControls from "./RewardEmbeddedWalletControls";
 import {lazy,Suspense,useEffect,useRef,useState} from "react";
-import {Wallet} from "lucide-react";
+import {ArrowRight,Check,LoaderCircle,ShieldCheck,Wallet} from "lucide-react";
+import setup from "./RewardWalletSetup.module.css";
 import {Button} from "@/components/ui/button";
 import {useI18n} from "@/shared/i18n/I18nContext";
 import {athleteUxCopy} from "../model/athleteUxCopy";
@@ -26,19 +27,61 @@ function WalletWorkspace({presentation,idPrefix="reward-wallet",ready,failed,pro
 }) {
   const {locale}=useI18n();
   const [open,setOpen]=useState(false),[replace,setReplace]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(false);
+  const [access,setAccess]=useState(false);
   const flight=useRef(false),alive=useRef(false);
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
   const chainId=publicEnv.rewardDemo?.mode==="local"?31337:10143;
   const networkDestinations=destinations.filter(d=>d.chainId===chainId);
-  const active=ready?networkDestinations.filter(d=>d.athleteProfileId===profileId&&d.status!=="withdrawn"):[];
+  const active=ready&&!failed?networkDestinations.filter(d=>d.athleteProfileId===profileId&&d.status!=="withdrawn"):[];
   const current=active.length===1?active[0]:null;
   async function remove(){
-    if(!current||!ready||!complete||flight.current||error||refreshing)return;
+    if(!current||!ready||failed||!complete||flight.current||error||refreshing)return;
     flight.current=true;setBusy(true);setError(false);
     try{await withdrawRewardDestination(current.requestId);await onRefresh();if(alive.current){setReplace(false);setOpen(true);}}
     catch{if(alive.current)setError(true);}
     finally{if(alive.current){flight.current=false;setBusy(false);}}
   }
+  if(presentation) return <section id={idPrefix} tabIndex={-1} className={setup.workspace} aria-labelledby={`${idPrefix}-title`}>
+    <h2 id={`${idPrefix}-title`}>{locale === "hr" ? "Spremnost" : "Readiness"}</h2>
+    {ready&&profiles.length>1?<label className={setup.profile}>{copy.profile}<select disabled={busy} value={profileId??""} onChange={e=>onProfile(e.target.value)}>
+      <option value="">{copy.choose}</option>{profiles.map(id=><option key={id} value={id}>{id}</option>)}</select></label>:null}
+    <div className={setup.card}>
+      <div className={setup.intro}><span className={current?.status==="pending_review"?setup.savedIcon:setup.walletIcon}>{current?.status==="pending_review"?<ShieldCheck aria-hidden="true"/>:<Wallet aria-hidden="true"/>}</span>
+        <div><h3>{current?(current.status==="identity_hold"?copy.held:copy.saved):(locale==="hr"?"Postavi novčanik":"Set up your wallet")}</h3>
+          <p>{current?(locale==="hr"?"Spremnost nagrada provjerava se zasebno.":"Reward readiness is reviewed separately."):(locale==="hr"?"Tri kratka koraka. Nagrade ostaju rezervirane.":"Three quick steps. Your rewards stay reserved.")}</p></div>
+      </div>
+      {failed?<><p role="status">{copy.unavailable}</p><Button variant="outline" disabled={refreshing} onClick={()=>void onRefresh()}>{copy.refreshWallet}</Button></>:!ready?<p role="status">{copy.loading}</p>:current?<>
+        <p className={setup.address}><RewardExplorerLink chainId={current.chainId} kind="address" value={current.address}>{current.address.slice(0,8)}…{current.address.slice(-6)}</RewardExplorerLink></p>
+        {current.status==="pending_review"?<p className={setup.proof}><Check aria-hidden="true"/>{locale==="hr"?"Potpis kontrole spremljen":"Wallet-control proof saved"}</p>:null}
+        {!replace?<div className={setup.actions}>
+          <Button variant="outline" aria-expanded={access} onClick={()=>setAccess(value=>!value)}>{locale==="hr"?"Pristup novčaniku":"Access wallet"}</Button>
+          <Button variant="ghost" disabled={!complete||refreshing} onClick={()=>{setAccess(false);setReplace(true);}}>{copy.change}</Button>
+        </div>:null}
+        {access&&!replace?<RewardEmbeddedWalletControls compact existingAddress={current.address}/>:null}
+      </>:null}
+      {!current&&!open?<>
+        <ol className={setup.preview} aria-label={locale==="hr"?"Koraci postavljanja":"Setup steps"}>
+          {[(locale==="hr"?"Novčanik":"Wallet"),(locale==="hr"?"Potvrdi":"Verify"),(locale==="hr"?"Spremi":"Save")].map((label,index)=><li key={label}><span>{index+1}</span>{label}</li>)}
+        </ol>
+        <Button className={setup.start} disabled={!ready||failed||!profileId||!complete||active.length>0} onClick={()=>setOpen(true)}>{locale==="hr"?"Postavi novčanik":"Set up wallet"}<ArrowRight aria-hidden="true" size={16}/></Button>
+        {ready&&!profileId?<p>{copy.choose}</p>:ready&&active.length>1?<p role="status">{locale==="hr"?"Provjeri spremljene novčanike u povijesti.":"Review your saved wallets in history."}</p>:null}
+      </>:null}
+      {replace&&current?<div className={setup.replace}>
+        <p>{copy.replaceHelp}</p>{error?<p role="alert">{copy.failed}</p>:null}
+        <div className={setup.actions}><Button aria-busy={busy} disabled={busy||refreshing||error} variant="outline" onClick={()=>void remove()}>{busy?<LoaderCircle aria-hidden="true" className={setup.spinner} size={16}/>:null}{busy?copy.replacing:copy.remove}</Button>
+          {error?<Button disabled={refreshing} variant="outline" onClick={()=>void onRefresh().then(()=>{if(alive.current){setError(false);setReplace(false);}})}>{copy.refreshWallet}</Button>:null}
+          <Button disabled={busy} variant="ghost" onClick={()=>{setReplace(false);setError(false);}}>{copy.cancel}</Button></div>
+      </div>:null}
+      {open&&ready&&!failed&&profileId&&active.length===0&&complete?<Suspense fallback={<p role="status">{t("rewards.loading")}</p>}>
+        <WalletPanel compact athleteProfileId={profileId} destinations={networkDestinations} destinationsComplete={complete} onDestinationSaved={()=>{setOpen(false);void onRefresh();}}/>
+        <Button variant="ghost" onClick={()=>setOpen(false)}>{copy.close}</Button>
+      </Suspense>:null}
+      {ready&&!complete?<Button variant="outline" disabled={refreshing} onClick={onMore}>{copy.more}</Button>:null}
+    </div>
+    <details className={setup.history}><summary>{copy.history}</summary>
+      {ready&&!failed?<RewardDestinationHistory readOnly items={networkDestinations.filter(d=>!profileId||d.athleteProfileId===profileId)} pending={false} error={null} refreshing={refreshing} hasMore={!complete} onRefresh={()=>void onRefresh()} onMore={onMore}/>:null}
+    </details>
+  </section>;
   return <section id={idPrefix} tabIndex={-1} className={styles.walletCompact} aria-labelledby={`${idPrefix}-title`}>
     <h2 id={`${idPrefix}-title`} className="flex items-center gap-2 text-lg font-semibold">{!presentation?<Wallet aria-hidden="true" className="h-5 w-5 text-primary"/>:null}{presentation ? (locale === "hr" ? "Spremnost" : "Readiness") : copy.wallet}</h2>
     {ready&&profiles.length>1?<label className="block text-sm">{copy.profile}<select disabled={busy} className="mt-1 w-full rounded border bg-background p-2" value={profileId??""} onChange={e=>onProfile(e.target.value)}>

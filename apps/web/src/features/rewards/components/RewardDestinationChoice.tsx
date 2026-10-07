@@ -1,3 +1,4 @@
+import setup from "./RewardWalletSetup.module.css";
 import RewardActionProgress from "./RewardActionProgress";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -10,8 +11,8 @@ import { rewardErrorKey } from "../model/athleteRewards";
 import type { RewardDestination } from "../model/athleteDestinations";
 import { athleteUxCopy } from "../model/athleteUxCopy";
 
-export default function RewardDestinationChoice({ prepared, athleteProfileId, onSaved }: {
-  prepared: PreparedWalletProof; athleteProfileId: string | null; onSaved: () => void;
+export default function RewardDestinationChoice({ prepared, athleteProfileId, onSaved, compact = false }: {
+  compact?: boolean; prepared: PreparedWalletProof; athleteProfileId: string | null; onSaved: () => void;
 }) {
   const { t, locale } = useI18n(), copy = productCopy(locale), ux = athleteUxCopy(locale);
   const [accepted, setAccepted] = useState(false);
@@ -34,10 +35,10 @@ export default function RewardDestinationChoice({ prepared, athleteProfileId, on
     } catch (failure) { if (active.current) setError(failure); }
     finally { if (active.current) { inFlight.current = false; setBusy(false); } }
   }
-  return <div className="space-y-3 rounded-lg border border-border p-4">
+  return <div className={compact?setup.destination:"space-y-3 rounded-lg border border-border p-4"}>
     <h3 className="font-semibold">{ux.saveWallet}</h3>
-    <p className="text-sm text-muted-foreground">{ux.saveWalletHelp}</p>
-    <details className="text-sm"><summary className="cursor-pointer">{ux.walletDetails}</summary><p className="break-all font-mono text-xs">{athleteProfileId ?? copy.selectProfile}</p></details>
+    <p className="text-sm text-muted-foreground">{compact?(locale==="hr"?"Za buduće nagrade. Svako preuzimanje potvrđuješ zasebno.":"For future rewards. Each claim needs separate consent."):ux.saveWalletHelp}</p>
+    {!compact?<details className="text-sm"><summary className="cursor-pointer">{ux.walletDetails}</summary><p className="break-all font-mono text-xs">{athleteProfileId ?? copy.selectProfile}</p></details>:null}
     {!athleteProfileId ? <Link className="text-sm text-primary underline" to="/athlete/account?view=edit#athlete-race-history">{t("rewards.destination.error.profile")}</Link>
       : saved ? <p role="status" className="text-sm font-medium">{t(saved.status === "withdrawn" ? "rewards.destination.withdrawn" : saved.status === "identity_hold" ? "rewards.destination.identityHold" : "rewards.destination.saved")}</p>
         : <>
@@ -48,7 +49,7 @@ export default function RewardDestinationChoice({ prepared, athleteProfileId, on
           </label>
           {error ? <div role="alert" className="space-y-1 text-sm text-destructive"><p>{t(rewardErrorKey(error))}</p><p>{t("rewards.destination.uncertain")}</p></div> : null}
           {busy ? <RewardActionProgress label={locale === "hr" ? "Spremanje odredišta" : "Destination save progress"} labels={[locale === "hr" ? "Provjera dokaza" : "Checking proof", locale === "hr" ? "Odredište spremljeno" : "Destination saved"]} stage={0} message={t("rewards.destination.saving")}/> : null}
-          <Button disabled={!accepted || busy} onClick={() => void submit()}>{busy ? t("rewards.destination.saving") : ux.saveWallet}</Button>
+          <Button className={compact?setup.primary:undefined} disabled={!accepted || busy} onClick={() => void submit()}>{busy ? t("rewards.destination.saving") : ux.saveWallet}</Button>
         </>}
   </div>;
 }
