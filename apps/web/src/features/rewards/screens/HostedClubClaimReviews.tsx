@@ -13,13 +13,13 @@ function ReviewQueue({approvalId,hr,viewKey}:{approvalId:string;hr:boolean;viewK
   queryFn:({pageParam})=>getHostedClubClaimReviews(approvalId,pageParam),getNextPageParam:page=>page.nextCursor??undefined,retry:false,staleTime:0,gcTime:0});
  const failed=q.isError||accessError,items=failed?[]:q.data?.pages.flatMap(page=>page.items)??[];
  const t=(en:string,local:string)=>hr?local:en;
- return <section className={p.panel} aria-label={t('Club treasury readiness requests','Zahtjevi za provjeru klupske riznice')}>
-  <h3>{t('Club treasury readiness requests','Zahtjevi za provjeru klupske riznice')}</h3>
-  <p>{t('Verify the original Safe deployment, current 2-of-3 owners, and club authority evidence. Two owners must consent separately before the native controller authorizes payment.','Provjerite izvorno postavljanje Safea, trenutna tri vlasnika uz pravilo dva potpisa i dokaze klupske ovlasti. Dva vlasnika zasebno daju pristanak prije odobrenja isplate od strane kontrolora.')}</p>
-  <button type="button" className={p.secondary} disabled={q.isFetching} onClick={()=>{setSelected(null);void q.refetch().then(r=>{if(r.isSuccess)setAccessError(false);});}}>{t('Refresh recipient requests','Osvježi zahtjeve primatelja')}</button>
-  {failed?<p role="alert">{t('Private claim requests could not be verified. Refresh before continuing.','Privatne zahtjeve nije moguće provjeriti. Osvježite prije nastavka.')}</p>:q.isPending?<p role="status">{t('Loading requests…','Učitavanje zahtjeva…')}</p>:!items.length?<p>{t('No recipient requests for this award version yet.','Još nema zahtjeva primatelja za ovu verziju nagrada.')}</p>:<ul>{items.map(item=><li key={item.id}>
+ return <section className={p.panel} aria-label={t('Club treasury verification','Provjera klupske riznice')}>
+  <h3>{t('Club treasury verification','Provjera klupske riznice')}</h3>
+  <p>{t('Check the club’s authority, Safe treasury and current 2-of-3 owners. Two owners must consent to each claim.','Provjerite ovlast kluba, Safe riznicu i trenutačna tri vlasnika uz pravilo dva potpisa. Dva vlasnika moraju pristati na svako preuzimanje.')}</p>
+  <button type="button" className={p.secondary} disabled={q.isFetching} onClick={()=>{setSelected(null);void q.refetch().then(r=>{if(r.isSuccess)setAccessError(false);});}}>{t('Refresh club requests','Osvježi zahtjeve klubova')}</button>
+  {failed?<p role="alert">{t('Private claim requests could not be verified. Refresh before continuing.','Privatne zahtjeve nije moguće provjeriti. Osvježite prije nastavka.')}</p>:q.isPending?<p role="status">{t('Loading requests…','Učitavanje zahtjeva…')}</p>:!items.length?<p>{t('No club requests yet. Requests appear when a club representative requests a treasury claim.','Još nema zahtjeva klubova. Zahtjev se pojavljuje kada predstavnik kluba zatraži preuzimanje za riznicu.')}</p>:<ul>{items.map(item=><li key={item.id}>
    <strong>{setupAmount(BigInt(item.amountWei),hr)} test MON</strong> · <span style={{overflowWrap:'anywhere'}}>{item.address}</span>{' '}
-   <button type="button" className={p.secondary} onClick={()=>setSelected(item.id)}>{item.paid?t('View payment','Pregledaj isplatu'):t('Review recipient request','Pregledaj zahtjev primatelja')}</button>
+   <button type="button" className={p.secondary} onClick={()=>setSelected(item.id)}>{item.paid?t('View payment','Pregledaj isplatu'):t('Review club request','Pregledaj zahtjev kluba')}</button>
   </li>)}</ul>}
   {!failed&&q.hasNextPage?<button type="button" className={p.secondary} disabled={q.isFetching} onClick={()=>void q.fetchNextPage()}>{t('Load more requests','Učitaj još zahtjeva')}</button>:null}
   {selected&&!failed?<RewardClaimDialog club hr={hr} onClose={()=>{setSelected(null);void q.refetch();}}>{onBusy=><SponsorClubClaimDetail key={selected} id={selected} role="operator" chainId={10143} hr={hr}

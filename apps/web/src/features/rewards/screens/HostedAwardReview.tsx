@@ -43,7 +43,7 @@ function SlotReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expe
    {view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash?<HostedAwardUpload key={view.approval.id} id={id} slot={slot} approvalId={view.approval.id} contextHash={view.contextHash} documentHash={view.documentHash} hr={hr}/>:null}
    </>}
   </>:null}
-  {!(view&&'contextHash' in view&&view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash)?<div className={s.controllerStep}><h3>{hr?'2 · Kontrolor: otvaranje preuzimanja':'2 · Controller: open claims'}</h3><p>{hr?'Dostupno nakon odobrenja raspodjele i provjere uplate.':'Available after allocation approval and funding verification.'}</p></div>:null}
+  {!(view&&'contextHash' in view&&view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash)?<div className={s.controllerStep}><h3>{hr?'2 · Predaja rezultata':'2 · Results handoff'}</h3><p>{hr?'Dostupno nakon odobrenja raspodjele i provjere uplate.':'Available after allocation approval and funding verification.'}</p></div>:null}
  </section>;
 }
 export default function HostedAwardReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expected?:{budgetWei:string;proposedWei:string}}){

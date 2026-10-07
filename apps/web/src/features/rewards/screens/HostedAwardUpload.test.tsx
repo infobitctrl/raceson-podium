@@ -10,13 +10,16 @@ const base={current:true,prepared:null,contextHash:props.contextHash,documentHas
 const prepared={...base,prepared:{id:'package',packageHash:'e'.repeat(64)}};
 const handoff={current:true,publication:null,publicationHash:'f'.repeat(64)};
 beforeEach(()=>{mocks.upload.mockReset();mocks.handoff.mockReset();});
-it('requires explicit funding preparation and results handoff before linking to the controller',async()=>{
+it('completes results review before offering separate contract tools',async()=>{
  mocks.upload.mockResolvedValueOnce(base).mockResolvedValue(prepared);mocks.handoff.mockResolvedValueOnce(handoff).mockResolvedValueOnce({...handoff,publication:{id:'publication'}});
  render(<HostedAwardUpload {...props}/>);fireEvent.click(await screen.findByRole('button',{name:'Verify funding and prepare package'}));
  await screen.findByText('Package prepared for the controller.');expect(mocks.handoff).toHaveBeenCalledTimes(1);
  expect(mocks.upload.mock.calls[1][1]).toEqual({requestId:expect.any(String),contextHash:props.contextHash,documentHash:props.documentHash});
- expect(screen.queryByRole('link',{name:'Open controller workspace'})).not.toBeInTheDocument();expect(screen.queryByText('Recipient queue approval')).not.toBeInTheDocument();
- fireEvent.click(screen.getByRole('button',{name:'Confirm results handoff'}));expect(await screen.findByRole('link',{name:'Open controller workspace'})).toHaveAttribute('href','/rewards/control?campaign=setup&pot=0');
+ expect(screen.queryByRole('link',{name:'Controller tools'})).not.toBeInTheDocument();expect(screen.queryByText('Recipient queue approval')).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Confirm results handoff'}));expect(await screen.findByRole('link',{name:'Controller tools'})).toHaveAttribute('href','/rewards/control?campaign=setup&pot=0');
+ expect(screen.getByText('Results review complete. Approved awards are ready for contract publication.')).toBeVisible();
+ expect(screen.getByText('Separate contract operations').closest('details')).not.toHaveAttribute('open');
+ expect(screen.queryByText(/Continue in the controller workspace/)).not.toBeInTheDocument();
  expect(screen.getByText('Recipient queue approval')).toBeVisible();expect(screen.getByText('Club queue approval')).toBeVisible();
  expect(mocks.handoff.mock.calls[1][1]).toEqual({action:'publication',requestId:expect.any(String),documentHash:handoff.publicationHash});
  expect(JSON.stringify(mocks.upload.mock.calls[1][1])).not.toMatch(/funding|amount|wallet|source/);
@@ -31,7 +34,7 @@ it('an uncertain publication hides prepared evidence and retries the same public
  mocks.upload.mockResolvedValue(prepared);mocks.handoff.mockResolvedValueOnce(handoff).mockRejectedValueOnce(Error('uncertain')).mockResolvedValueOnce({...handoff,publication:{id:'publication'}});
  render(<HostedAwardUpload {...props}/>);fireEvent.click(await screen.findByRole('button',{name:'Confirm results handoff'}));
  const retry=await screen.findByRole('button',{name:'Retry same preparation'});expect(screen.queryByText('Package prepared for the controller.')).not.toBeInTheDocument();
- fireEvent.click(retry);await screen.findByRole('link',{name:'Open controller workspace'});
+ fireEvent.click(retry);await screen.findByRole('link',{name:'Controller tools'});
  await waitFor(()=>expect(mocks.handoff).toHaveBeenCalledTimes(3));expect(mocks.handoff.mock.calls[2][1]).toEqual(mocks.handoff.mock.calls[1][1]);
 });
 it('reload retires an uncertain command and rechecks current funding without another write',async()=>{
@@ -57,7 +60,7 @@ it('a pending handoff replaces its button and cannot unlock the controller befor
  render(<HostedAwardUpload {...props}/>);fireEvent.click(await screen.findByRole('button',{name:'Confirm results handoff'}));
  expect(screen.getByRole('group',{name:'Preparation progress'})).toHaveAttribute('aria-busy','true');
  expect(screen.queryByRole('button',{name:'Confirm results handoff'})).not.toBeInTheDocument();
- expect(screen.queryByRole('link',{name:'Open controller workspace'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('link',{name:'Controller tools'})).not.toBeInTheDocument();
  await act(async()=>reject(Error('uncertain')));
  expect(screen.getByRole('group',{name:'Preparation progress'})).toHaveAttribute('aria-busy','false');
  expect(screen.getByRole('button',{name:'Retry same preparation'})).toBeEnabled();
@@ -65,6 +68,6 @@ it('a pending handoff replaces its button and cannot unlock the controller befor
 it('a stale publication never unlocks the controller workspace',async()=>{
  mocks.upload.mockResolvedValue(prepared);mocks.handoff.mockResolvedValue({...handoff,current:false,publication:{id:'stale'}});
  render(<HostedAwardUpload {...props}/>);await screen.findByText('Package prepared for the controller.');
- expect(screen.queryByRole('link',{name:'Open controller workspace'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('link',{name:'Controller tools'})).not.toBeInTheDocument();
  expect(screen.queryByText('Recipient queue approval')).not.toBeInTheDocument();
 });
