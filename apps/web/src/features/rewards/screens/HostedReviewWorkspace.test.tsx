@@ -31,3 +31,24 @@ it('retires private rows on refresh failure and ignores responses after unmount'
  await screen.findByText('Review slot 4');fireEvent.click(screen.getByRole('button',{name:'Refresh review'}));await screen.findByRole('alert');expect(screen.queryByText('Review slot 4')).not.toBeInTheDocument();ui.unmount();
  let resolve!:(v:unknown)=>void;mocks.read.mockReturnValue(new Promise(r=>resolve=r));const pending=render(<HostedReviewWorkspace {...props}/>);pending.unmount();resolve(data);await waitFor(()=>expect(screen.queryByText('Races Mon1')).not.toBeInTheDocument());
 });
+
+it('shows full category evidence beside awards, preserving tied official ranks and exact times',async()=>{
+ const first={...data.groups[0],classification:{trackId:'mala',trackName:'Mala',categoryName:'Overall men'},results:[
+  {key:'result1',beneficiaryId:'runner',name:'Races Mon1',club:'Races Club1',rankOverall:7,rankCategory:1,finishTimeMs:'3723123',status:'finished',points:null},
+  {key:'result2',beneficiaryId:'runner2',name:'Races Mon2',club:null,rankOverall:7,rankCategory:1,finishTimeMs:'3723123',status:'finished',points:null},
+  {key:'result3',beneficiaryId:'runner3',name:'Races Mon3',club:null,rankOverall:null,rankCategory:null,finishTimeMs:null,status:'dnf',points:null}]};
+ mocks.read.mockResolvedValue({...data,groups:[first]});render(<HostedReviewWorkspace {...props}/>);
+ const table=await screen.findByRole('table',{name:'Mala · Overall men'});
+ expect(within(table).getByRole('columnheader',{name:'Overall rank'})).toBeInTheDocument();
+ expect(within(table).getByRole('columnheader',{name:'Category rank'})).toBeInTheDocument();
+ expect(within(table).getByRole('columnheader',{name:'Category'})).toBeInTheDocument();
+ expect(within(table).getAllByText('01:02:03.123')).toHaveLength(2);expect(within(table).getAllByText('7')).toHaveLength(2);
+ expect(within(table).getByText('Races Club1')).toBeInTheDocument();expect(within(table).getByText('DNF')).toBeInTheDocument();
+ expect(within(table).getAllByTitle('0 test MON')).toHaveLength(2);
+});
+it('uses league points rather than a fabricated finish time',async()=>{
+ mocks.read.mockResolvedValue({...data,pools:[{slot:0,name:'League',budgetWei:'1'}],groups:[{...data.groups[0],slot:0,results:[{key:'standing1',beneficiaryId:'runner',name:'Races Mon1',club:null,rankOverall:null,rankCategory:2,finishTimeMs:null,status:'standing',points:417}]}]});
+ render(<HostedReviewWorkspace {...props}/>);const table=await screen.findByRole('table',{name:'Mala · Overall men'});
+ expect(within(table).getByText('417')).toBeInTheDocument();expect(within(table).getByRole('columnheader',{name:'Points'})).toBeInTheDocument();
+ expect(within(table).queryByRole('columnheader',{name:'Exact finish time'})).not.toBeInTheDocument();
+});

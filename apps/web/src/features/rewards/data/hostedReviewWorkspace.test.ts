@@ -15,3 +15,11 @@ it('combines exact category awards by identity without merging aliases or clubs'
  const totals=hostedRecipientTotals([group,{...group,nodeId:'g2',awards:[{...group.awards[0],amountWei:'7'},{...group.awards[0],beneficiaryId:'b',amountWei:'2'}]},{...group,nodeId:'club',beneficiaryKind:'club'}]);
  expect(totals.find(r=>r.id==='athlete:a')).toMatchObject({amountWei:107n,categories:2});expect(totals.find(r=>r.id==='athlete:b')?.amountWei).toBe(2n);expect(totals.find(r=>r.id==='club:a')?.amountWei).toBe(100n);
 });
+
+it('retains exact source evidence and rejects duplicate result identifiers or rounded numeric time',async()=>{
+ const row={key:'result1',beneficiaryId:'a',name:'Same alias',club:null,rankOverall:7,rankCategory:1,finishTimeMs:'9007199254740993',status:'finished',points:null};
+ const evidence={...data,groups:[{...group,results:[row]}]};request.mockResolvedValue(evidence);
+ expect((await readHostedReviewWorkspace(id,3)).groups[0].results[0]).toEqual(row);
+ request.mockResolvedValue({...evidence,groups:[{...group,results:[row,row]}]});await expect(readHostedReviewWorkspace(id,3)).rejects.toThrow('invalid_review');
+ request.mockResolvedValue({...evidence,groups:[{...group,results:[{...row,finishTimeMs:9007199254740993}]}]});await expect(readHostedReviewWorkspace(id,3)).rejects.toThrow();
+});

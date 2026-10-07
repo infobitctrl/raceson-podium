@@ -6,6 +6,7 @@ import {hostedCopyOperationsEnabled,hostedCopyPin} from '../../features/rewards/
 import {hostedCopySelections,hostedCopyUnaffiliatedReview,hostedCopyReviewNote} from '../../features/rewards/hosted-copy-review.js';
 import type {OrganizerRewardRouteDependencies} from './organizer.js';
 import {z} from 'zod';
+import {hostedCopyCategoryEvidence} from '../../features/rewards/hosted-copy-review-evidence.js';
 import {hostedCopyAwardReview} from '../../features/rewards/hosted-copy-approval-service.js';
 import {sponsorUploadV4} from '../../features/rewards/sponsor-upload-v4-service.js';
 import {sponsorLifecycleV4} from '../../features/rewards/sponsor-lifecycle-v4-service.js';
@@ -42,7 +43,8 @@ export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerRe
   const groups=result.allocation.groups.filter(g=>g.budgetWei>0n).map(g=>{
    const category=catalogue.categories.find(c=>hostedCopySetupNodeId(id,`group:${g.slot}:${c.id}`)===g.nodeId);
    const track=category&&catalogue.rounds.find(r=>r.slot===g.slot)?.tracks.find(t=>t.competitionId===category.competitionId);
-   return {...g,classification:category?{trackId:category.competitionId,trackName:track?.name??category.competitionName,categoryName:category.name}:null};
+   return {...g,classification:category?{trackId:category.competitionId,trackName:track?.name??category.competitionName,categoryName:category.name}:null,
+    results:category?hostedCopyCategoryEvidence(record.source!,g.slot,category.id,hostedCopySelections(hostedCopyPin)):undefined};
   });
   const funding=await hostedReviewFunding(record.execution,deps.sponsorReader);
   // Recheck live source authority after calculation before returning private rows.
