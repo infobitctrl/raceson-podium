@@ -58,7 +58,7 @@ export function privyWalletVerifier(env:Env):WalletCandidateVerifier{return asyn
  }
  const c=controllerDeploymentConfig.parse({...current.deployment,appId:env.RACESON_REWARD_PRIVY_APP_ID,walletId:w.id,address:w.address.toLowerCase(),ownerId:w.owner_id});
  if(!env.RACESON_CONTROLLER_DEPLOYMENT_AUTH_KEY)throw Error('reward_wallet_provider_unavailable');
- await verifyControllerDelegation(client,c,env.RACESON_CONTROLLER_DEPLOYMENT_AUTH_KEY);await verifySponsorFactory(canaryPublicClient,c.factory as Hex);
+ await verifyControllerDelegation(client,c,env.RACESON_CONTROLLER_DEPLOYMENT_AUTH_KEY);await verifySponsorFactory(canaryPublicClient,c.factory as Hex,10143,undefined,c.protocolVersion??4);
  return c;
 };}
 // Read-only preparation. Creation and granting happen in the native owner's SDK;

@@ -28,7 +28,8 @@
     "./sponsor-claims-v4": "./dist/sponsor-claims-v4.js",
     "./sponsor-allocation-v4": "./dist/sponsor-allocation-v4.js",
     "./sponsor-claim-reader-v4": "./dist/sponsor-claim-reader-v4.js",
-    "./sponsor-lifecycle-v4": "./dist/sponsor-lifecycle-v4.js"
+    "./sponsor-lifecycle-v4": "./dist/sponsor-lifecycle-v4.js",
+    "./sponsor-direct-claims-v5": "./dist/sponsor-direct-claims-v5.js"
   },
   "scripts": {
     "build": "tsc -b",

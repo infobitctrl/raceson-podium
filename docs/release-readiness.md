@@ -1,3 +1,31 @@
+# Direct athlete claims — 8 October 2026
+
+V5 app/contract support is opt-in and **not activated on testnet**. Athlete wallet
+creation remains explicit; signing in, viewing an award or publishing awards does
+not create a wallet. V5 publication preserves walletless shares. An authenticated
+athlete chooses a wallet and claims; an automatic, separately scoped platform
+identity credential binds the wallet without another reviewer/payment approval.
+The first claim registers and pays atomically. Existing V4 contracts retain their
+original claim requirements.
+
+Scoped evidence: 22 V5 contract tests (including original Safe quorum and 512-case
+conservation fuzzing), 178 chain tests, 3 owned local-chain/API integration checks,
+33 API checks, 36 disposable SQL scenarios, 37 UI tests and 18 Privy adapter tests.
+API/web types and the production build pass. Desktop/mobile browser validation
+used real components with labelled synthetic wallet/API fixtures; it did not
+create a provider wallet or make a testnet payment. New frontend files pass lint;
+two retained SponsorClaims hook warnings and existing dependency build warnings
+remain. These checks are not a security audit.
+
+The isolated migration adds a private receipt journal and account-bound service
+function; it does not change campaign funds, wallets or runtime activation.
+Remaining activation work: independently verify provider identity signing,
+provision the separate identity issuer, deploy the pinned V5 registry/factory and
+approve its narrowly scoped creation-gas policy. Hosted V5 club binding, claim and
+Safe receipt integration remain unfinished; do not enable mixed V5 campaigns.
+
+---
+
 # Source release verification — 5 October 2026
 
 The full local Podium application is included in this release. Build dependencies are installed explicitly with `--include=dev` because the production environment sets `NODE_ENV=production`. The configured Vercel output directory `.next-build` matches the app's production `distDir`. The existing Vercel project is connected to this repository's `main` branch and configured to build `demo/rewards/web` with the root lockfile.

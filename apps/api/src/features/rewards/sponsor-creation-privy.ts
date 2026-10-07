@@ -2,7 +2,7 @@ import {z} from "zod";
 import {createPublicKey,createPrivateKey,createHash} from "node:crypto";
 import {PrivyClient} from "@privy-io/node";
 import {createViemAccount} from "@privy-io/node/viem";
-import {sponsorFactoryAbi,verifySponsorFactory} from "@raceson/rewards-chain/sponsor-v4";
+import {sponsorFactoryAbiForVersion,verifySponsorFactory} from "@raceson/rewards-chain/sponsor-v4";
 import {canonicalRewardJson as canonical} from "@raceson/rewards-chain";
 import {canaryPublicClient} from "@raceson/rewards-chain/canary-public-client";
 import {getAddress,type Hex} from "viem";
@@ -11,16 +11,16 @@ import {hostedCopyOperationsEnabled} from './hosted-copy-preview.js';
 
 const address=z.string().regex(/^0x[0-9a-f]{40}$/);
 export const controllerDeploymentConfig=z.object({version:z.literal(1),appId:z.string(),walletId:z.string(),address,
- ownerId:z.string(),signerId:z.string(),policyId:z.string(),factory:address}).strict();
+ ownerId:z.string(),signerId:z.string(),policyId:z.string(),factory:address,protocolVersion:z.literal(5).optional()}).strict();
 export type ControllerDeploymentConfig=z.infer<typeof controllerDeploymentConfig>;
-export function controllerDeploymentRules(factory:string,_controller:string){return [{name:"Deploy RacesOn campaigns only",method:"eth_signTransaction" as const,action:"ALLOW" as const,conditions:[
+export function controllerDeploymentRules(factory:string,_controller:string,protocolVersion:4|5=4){return [{name:"Deploy RacesOn campaigns only",method:"eth_signTransaction" as const,action:"ALLOW" as const,conditions:[
  {field_source:"ethereum_transaction" as const,field:"chain_id" as const,operator:"eq" as const,value:"10143"},
  {field_source:"ethereum_transaction" as const,field:"value" as const,operator:"eq" as const,value:"0"},
  {field_source:"ethereum_transaction" as const,field:"to" as const,operator:"eq" as const,value:getAddress(factory)},
- {field_source:"ethereum_calldata" as const,field:"function_name",operator:"eq" as const,value:"deploy",abi:JSON.parse(JSON.stringify(sponsorFactoryAbi.filter(item=>item.type==="function")))},
+ {field_source:"ethereum_calldata" as const,field:"function_name",operator:"eq" as const,value:"deploy",abi:JSON.parse(JSON.stringify(sponsorFactoryAbiForVersion(protocolVersion).filter(item=>item.type==="function")))},
 
  ]}];}
-export const controllerDeploymentDigest=(c:ControllerDeploymentConfig)=>createHash("sha256").update(canonical({config:c,rules:controllerDeploymentRules(c.factory,c.address)})).digest("hex");
+export const controllerDeploymentDigest=(c:ControllerDeploymentConfig)=>createHash("sha256").update(canonical({config:c,rules:controllerDeploymentRules(c.factory,c.address,c.protocolVersion??4)})).digest("hex");
 export function controllerDeploymentFromEnv(env:Record<string,string|undefined>){
  if(env.RACESON_REWARD_PORTAL_MODE!=="local-testnet"&&!hostedCopyOperationsEnabled(env,{supabaseUrl:env.SUPABASE_URL??''})||!env.RACESON_CONTROLLER_DEPLOYMENT)return null;
  try{const c=controllerDeploymentConfig.parse(JSON.parse(env.RACESON_CONTROLLER_DEPLOYMENT));
@@ -37,7 +37,7 @@ export async function verifyControllerDelegation(client:PrivyClient,c:Controller
  ||wallet.archived_at||wallet.imported_at||wallet.exported_at||wallet.policy_ids.length!==0)throw Error("controller_delegation_unverified");
  const publicKey=createPublicKey(createPrivateKey(authorizationKey.replace(/^wallet-auth:/,"").includes("BEGIN")?authorizationKey: {key:Buffer.from(authorizationKey.replace(/^wallet-auth:/,""),"base64"),format:"der",type:"pkcs8"})).export({format:"der",type:"spki"}).toString("base64");
  if(signer.authorization_threshold!==1||signer.authorization_keys.length!==1||signer.authorization_keys[0]?.public_key!==publicKey||signer.user_ids?.length||signer.key_quorum_ids?.length)throw Error("controller_delegation_unverified");
- if(policy.chain_type!=="ethereum"||policy.version!=="1.0"||canonical(policy.rules.map(({name,method,action,conditions})=>({name,method,action,conditions})))!==canonical(controllerDeploymentRules(c.factory,c.address)))throw Error("controller_delegation_unverified");
+ if(policy.chain_type!=="ethereum"||policy.version!=="1.0"||canonical(policy.rules.map(({name,method,action,conditions})=>({name,method,action,conditions})))!==canonical(controllerDeploymentRules(c.factory,c.address,c.protocolVersion??4)))throw Error("controller_delegation_unverified");
  const grants=wallet.additional_signers.filter(s=>s.signer_id===c.signerId);
  if(grants.length!==1||JSON.stringify(grants[0]!.override_policy_ids)!==JSON.stringify([c.policyId]))throw Error("controller_delegation_required");
 }
@@ -47,7 +47,7 @@ export function sponsorCreationSignerFromEnv(env:Record<string,string|undefined>
  return {address:c.address,factoryAddress:c.factory as Hex,async verifyReady(){
  if(env.RACESON_CONTROLLER_DEPLOYMENT_VERIFIED!==controllerDeploymentDigest(c))throw Error("controller_delegation_unverified");
  const client=new PrivyClient({appId:c.appId,appSecret,maxRetries:0,timeout:15000});
- await verifyControllerDelegation(client,c,authorizationKey);await verifySponsorFactory(canaryPublicClient,c.factory as Hex);
+ await verifyControllerDelegation(client,c,authorizationKey);await verifySponsorFactory(canaryPublicClient,c.factory as Hex,10143,undefined,c.protocolVersion??4);
  },async sign(tx){
   if(env.RACESON_CONTROLLER_DEPLOYMENT_VERIFIED!==controllerDeploymentDigest(c)||tx.to!==c.factory||tx.chainId!==10143||tx.value!=="0")throw Error("controller_delegation_unverified");
   const client=new PrivyClient({appId:c.appId,appSecret,maxRetries:0,timeout:15000});

@@ -29,7 +29,7 @@ export function composeSponsorUploadV4(facts: Facts, programmeAddress: string) {
   }).sort((a, b) => a.entitlementId < b.entitlementId ? -1 : a.entitlementId > b.entitlementId ? 1 : 0);
   const upload = rewardUploadDigest(awards, d.slot === 0 ? 1 : 0, d.calculation.budgetWei);
   check(upload.total === d.calculation.proposedWei && d.calculation.budgetWei - upload.total === d.calculation.retainedWei);
-  return {schema: "raceson-sponsor-upload-v4" as const, protocolVersion: 4, chainId: d.plan.chainId, slot: d.slot,
+  return {schema: "raceson-sponsor-upload-v4" as const, protocolVersion: d.plan.version, chainId: d.plan.chainId, slot: d.slot,
     approvalId: facts.approvalId, documentHash: facts.documentHash, programmeAddress: parent, campaignAddress,
     deploymentHash: e.deploymentHash, fundingHash: e.fundingHash, programmeId: c.programmeId, campaignId: c.campaignIds[d.slot]!, programmeManifestHash: c.manifestHash,
     reviewPeriod: c.reviewPeriods[d.slot]!.toString(), claimLifetime: c.claimLifetime.toString(),
@@ -75,7 +75,7 @@ export async function sponsorUploadV4(identity: RewardAccountIdentity, input: Sp
   // Recheck session/source authority after all IO, even for historical retries.
   const after = await sponsorUploadFactsV4(actor, scope, undefined, rpc);
   check(canonical(after.prepared) === canonical(facts.prepared) && after.current === facts.current, "reward_planning_revision_changed");
-  return {schema: "raceson-sponsor-upload-view-v4", approvalId: scope.approvalId, slot: scope.slot, contextHash: after.contextHash,
+  return {schema: "raceson-sponsor-upload-view-v4", ...(after.execution.plan.version===5?{protocolVersion:5}:{}), approvalId: scope.approvalId, slot: scope.slot, contextHash: after.contextHash,
     documentHash: after.documentHash, current: after.current, sourceKind: after.document.schema==='podium-copy-allocation-document-v1'?'historical_copy':after.document.source.kind,
     budgetWei: after.document.calculation.budgetWei.toString(), allocatedWei: after.document.calculation.proposedWei.toString(),
     unallocatedWei: after.document.calculation.retainedWei.toString(), recipientCount: after.recipients.length,

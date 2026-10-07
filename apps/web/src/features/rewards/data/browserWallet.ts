@@ -6,7 +6,7 @@ export type RewardWalletProvider = {
   on: (event: string, callback: (...args: unknown[]) => void) => void;
   removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
 };
-export type DetectedRewardWallet = { id: string; name: string | null; provider: RewardWalletProvider;
+export type DetectedRewardWallet = { sendDirectClaim?: (view: import("./directClaimsV5").DirectClaimV5, isCurrent: () => boolean) => Promise<string>; id: string; name: string | null; provider: RewardWalletProvider;
   sendClubSafeCreation?: (view: import('./clubSafeCreation').ClubCreationView, isCurrent: () => boolean) => Promise<string>;
   checkSponsorTransaction?: (input: import("./sponsorTransaction").SponsorTransaction, isCurrent: () => boolean) => Promise<import("./sponsorTransaction").SponsorReadiness>;
   sendProgrammeTransaction?: (view: import("./sponsorProgramme").SponsorLifecycle | import("./sponsorProgramme").SponsorClaim | import("./sponsorClubClaims").SponsorClubClaim, isCurrent: () => boolean) => Promise<string>;

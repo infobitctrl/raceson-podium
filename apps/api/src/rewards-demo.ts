@@ -1,3 +1,4 @@
+import {dispatchDirectClaimsV5} from './routes/rewards/direct-claims-v5.js';
 import {reviewerSponsorPolicy,reviewerWalletSummary} from './features/rewards/reviewer-operator.js';
 import {dispatchDemoAccountSignIn} from './routes/rewards/demo-account-sign-in.js';
 import {dispatchHostedCopyClubClaims} from './routes/rewards/hosted-copy-club-claims.js';
@@ -82,6 +83,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   }:{};
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClubCreation(req,res,url,{...deps,creationReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClubClaims(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
+  if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchDirectClaimsV5(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClaims(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchAthleteRewardRoutes(req,res,url,{...deps,
     resolveRpc:identity=>hostedCopyBeneficiaryWalletRpc(identity,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}))return true;

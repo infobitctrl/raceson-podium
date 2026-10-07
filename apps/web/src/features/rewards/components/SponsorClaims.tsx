@@ -1,3 +1,4 @@
+import DirectAthleteClaims from "./DirectAthleteClaims";
 import {LoaderCircle} from "lucide-react";
 import AthleteClaimReview from "./AthleteClaimReview";
 import AthleteAwardCards,{AthleteAwardReview} from "./AthleteAwardCards";
@@ -38,8 +39,9 @@ export default function SponsorClaims({role,approvalId,hr,chainId,shared,onAcces
  });
  const visible=ordered.filter(a=>filter==="all"||(filter==="paid")===a.claims.some(c=>c.paid));
  if(athletePresentation&&role==="recipient"&&shared) return <>
-  <AthleteAwardCards awards={shared.awards} busy={busy} failed={failed} destinations={shared.destinations} chainId={chainId} hr={hr}
-    onReview={setPreview} onClaim={setSelected} onRefresh={()=>{setSelected(null);void load();}}/>
+  {shared.awards.some(a=>a.protocolVersion===5)?<DirectAthleteClaims awards={shared.awards.filter(a=>a.protocolVersion===5)} hr={hr} onRefresh={shared.refresh} onAccessError={onAccessError}/>:null}
+  {!shared.awards.length||shared.awards.some(a=>a.protocolVersion!==5)?<AthleteAwardCards awards={shared.awards.filter(a=>a.protocolVersion!==5)} busy={busy} failed={failed} destinations={shared.destinations} chainId={chainId} hr={hr}
+    onReview={setPreview} onClaim={setSelected} onRefresh={()=>{setSelected(null);void load();}}/>:null}
   {preview?<RewardClaimDialog title={t("Claim your reward","Preuzmite svoju nagradu")} hr={hr} onClose={()=>setPreview(null)}>{onBusy=> <AthleteAwardReview onBusy={onBusy} award={preview} hr={hr} chainId={chainId} destinations={shared.destinations} complete={shared.destinationsComplete===true} busy={busy} failed={failed}
     refresh={shared.refresh} onRecover={()=>void load()} onRequest={destinationId=>void request(preview,destinationId)}/>}</RewardClaimDialog>:null}
   {selected?<RewardClaimDialog athlete description={t("Review your exact reward and saved destination.","Pregledajte točnu nagradu i spremljeno odredište.")} title={t("Claim your reward","Preuzmite svoju nagradu")} hr={hr} onClose={()=>{setSelected(null);void load();}}>{onBusy=><ClaimDetail athletePresentation key={selected} id={selected} role={role} hr={hr} chainId={chainId} recordedAward={shared?.awards.find(a=>a.claims.some(c=>c.id===selected))} onAccessError={onAccessError} onBusy={onBusy} onDone={()=>{setSelected(null);void load();}}/>}</RewardClaimDialog>:null}

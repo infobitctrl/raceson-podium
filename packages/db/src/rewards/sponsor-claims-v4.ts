@@ -21,7 +21,7 @@ export function decodeSponsorClaimFactsV4(value:unknown,s:SponsorClaimScopeV4,re
  const plan=decodeSponsorExecutionPlan(v.plan);
  const d=v.destination as {userId:string},destination=decodeRewardAthleteDestination(v.destination,d.userId);
  const challenge=decodeRewardWalletChallenge(v.challenge,{userId:destination.userId,sessionId:destination.sessionId});
- if(plan.chainId!==s.chainId||!Number.isInteger(v.slot)||Number(v.slot)<0||Number(v.slot)>5||typeof v.entitlementId!=='string'||!/^0x[0-9a-f]{64}$/.test(v.entitlementId)||v.claimId!==s.claimId||typeof v.current!=="boolean"||destination.chainId!==s.chainId||s.role==="recipient"&&destination.userId!==recipientUserId
+ if(plan.version!==4||plan.chainId!==s.chainId||!Number.isInteger(v.slot)||Number(v.slot)<0||Number(v.slot)>5||typeof v.entitlementId!=='string'||!/^0x[0-9a-f]{64}$/.test(v.entitlementId)||v.claimId!==s.claimId||typeof v.current!=="boolean"||destination.chainId!==s.chainId||s.role==="recipient"&&destination.userId!==recipientUserId
   ||v.packageHash!==digest(v.package)||![v.sourceStamp,v.profileFingerprint].every(h=>typeof h==="string"&&/^[0-9a-f]{64}$/.test(h)))throw new RewardLedgerStoreError("invalid_sponsor_claim");
  return{claimId:uuid(v.claimId),entitlementId:v.entitlementId as `0x${string}`,approvalId:uuid(v.approvalId),setupId:uuid(v.setupId),slot:Number(v.slot),current:v.current,sourceStamp:v.sourceStamp as string,profileFingerprint:v.profileFingerprint as string,
  destination,challenge,package:v.package as Record<string,unknown>,packageHash:v.packageHash as string,plan,publication:v.publication as Record<string,unknown>,events:v.events as Record<string,unknown>};

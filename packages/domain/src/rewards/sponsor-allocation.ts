@@ -30,7 +30,8 @@ export function previewSponsorAllocation(launch: SponsorLaunch, planInput: Spons
   check(launch.state === "prepared" && launch.id === plan.launchId && setup.chainId === plan.chainId && setup.revision === plan.setupRevision
     && launch.configurationHash === plan.configurationHash && launchPlan.complete && c.version === 5 && c.guided);
   check(JSON.stringify(plan) === JSON.stringify(createSponsorExecutionPlan(launch, plan.funder,
-    {operator: plan.operator, treasury: plan.unallocatedTreasury, reviewPeriods: plan.reviewPeriods})));
+    {operator: plan.operator, treasury: plan.unallocatedTreasury, reviewPeriods: plan.reviewPeriods,
+      ...(plan.version === 5 ? {walletRegistry:plan.walletRegistry!,identityIssuer:plan.identityIssuer!} : {})})));
   const guided = c.guided!;
   const source = sourceInput === null ? null : decodeRewardAllocationSourceV3(sourceInput);
   if (binding) check(Object.keys(binding).sort().join() === ["catalogueHash", "draftId", "sourceLeagueId", "sourceSeasonId"].join()

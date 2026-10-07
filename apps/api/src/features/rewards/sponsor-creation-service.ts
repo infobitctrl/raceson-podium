@@ -41,7 +41,7 @@ export async function advanceSponsorCreation(identity:RewardAccountIdentity,id:s
   if(job&&job.sender!==sender)return status("unavailable","configuration",job.hash);
   let transaction=job?.transaction;
   if(!transaction){
-   if(signer.factoryAddress)await verifySponsorFactory(reader,signer.factoryAddress);
+   if(signer.factoryAddress)await verifySponsorFactory(reader,signer.factoryAddress,10143,undefined,plan.version);
    const [estimate,price,balance,nonce]=await Promise.all([
     reader.estimateGas({account:sender as Hex,...(signer.factoryAddress?{to:signer.factoryAddress}:{}),data,value:0n}),reader.getGasPrice(),
     reader.getBalance({address:sender as Hex,blockTag:"pending"}),reader.getTransactionCount({address:sender as Hex,blockTag:"pending"}),

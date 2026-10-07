@@ -17,6 +17,15 @@ const award={approvalId:profile,slot:1,entitlementId:'0x'+'a'.repeat(64),amountW
 const destination={requestId:profile,athleteProfileId:profile,address:'0x'+'b'.repeat(40),chainId:10143,status:'pending_review'};
 function mount(){const client=new QueryClient({defaultOptions:{queries:{retry:false}}});const tree=(epoch:string)=><QueryClientProvider client={client}><HostedAthleteRewards key={epoch} userId={user} profileId={profile} viewKey={epoch} hr={false}/></QueryClientProvider>;const view=render(tree('session1'));return{...view,remount:()=>view.rerender(tree('session2'))};}
 beforeEach(()=>{mocks.awards.mockReset().mockResolvedValue({items:[award],nextCursor:null});mocks.destinations.mockReset().mockResolvedValue({items:[destination],nextCursor:null});mocks.wallet=null;mocks.claims=null;mocks.summary=null;});
+it('direct awards have no legacy destination request or readiness dependency, and paid totals include direct receipts',async()=>{
+ mocks.awards.mockResolvedValue({items:[{...award,protocolVersion:5,directClaim:{paid:true}}],nextCursor:null});
+ mocks.destinations.mockRejectedValue(Error('The legacy queue must not be queried'));
+ mount();await screen.findByText('Copied award');
+ expect(mocks.destinations).not.toHaveBeenCalled();expect(mocks.wallet).toBeNull();
+ expect(mocks.summary?.confirmedPaid).toBe(101n);expect(mocks.summary?.claimReadiness).toBeUndefined();
+ fireEvent.click(screen.getByRole('button',{name:'Refresh',exact:true}));
+ await waitFor(()=>expect(mocks.awards).toHaveBeenCalledTimes(2));expect(mocks.destinations).not.toHaveBeenCalled();
+});
 it('uses copied awards only, retains unclaimed amounts and keeps consent separate from wallet choice',async()=>{
  mount();await screen.findByText('Copied award');expect(mocks.awards).toHaveBeenCalledExactlyOnceWith(null);expect(mocks.destinations).toHaveBeenCalledExactlyOnceWith(null);
  expect(mocks.wallet?.profileId).toBe(profile);expect(mocks.wallet?.destinations).toEqual([destination]);expect(mocks.claims?.role).toBe('recipient');expect(mocks.summary?.confirmedPaid).toBe(0n);
