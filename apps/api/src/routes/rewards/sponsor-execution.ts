@@ -14,7 +14,7 @@ const command = z.discriminatedUnion("action", [
   z.object({action: z.literal("prepare"), launchId: uuid, funder: z.string().regex(/^0x[0-9a-fA-F]{40}$/)}).strict(),
   z.object({action: z.literal("deployment"), hash}).strict(), z.object({action: z.literal("funding"), hash}).strict(),
 ]);
-export type SponsorExecutionDependencies = OrganizerRewardRouteDependencies & {sponsorPolicy?: () => SponsorExecutionPolicy | null; sponsorReader?: SponsorChainReader; creation?:SponsorCreationDeps;resolveCreation?: (identity:Parameters<typeof advanceSponsorCreation>[0],id:string,rpc?:RewardLedgerRpc)=>Promise<SponsorCreationDeps>;resolveSponsorPolicy?:()=>Promise<SponsorExecutionPolicy|null>;resolveRpc?:(identity:RewardAccountIdentity,id:string)=>Promise<RewardLedgerRpc>};
+export type SponsorExecutionDependencies = OrganizerRewardRouteDependencies & {sponsorPolicy?: () => SponsorExecutionPolicy | null; sponsorReader?: SponsorChainReader; creation?:SponsorCreationDeps;resolveCreation?: (identity:Parameters<typeof advanceSponsorCreation>[0],id:string,rpc?:RewardLedgerRpc,protocolVersion?:4|5)=>Promise<SponsorCreationDeps>;resolveSponsorPolicy?:()=>Promise<SponsorExecutionPolicy|null>;resolveRpc?:(identity:RewardAccountIdentity,id:string)=>Promise<RewardLedgerRpc>};
 
 /** Explicit server configuration is an execution gate; no wallet addresses or
  * review policy are guessed from historical pilots. No operator key is loaded. */
@@ -50,7 +50,7 @@ export async function dispatchSponsorExecution(req: IncomingMessage, res: Server
     if(action?.action==="launch"&&!record)throw Error("invalid_sponsor_execution");
     // A confirmed account is observed from its immutable plan and chain receipt.
     // Creation-provider outages must not block its status or prize deposit.
-    if(!record?.deploymentHash&&deps.resolveCreation)deps={...deps,creation:await deps.resolveCreation(identity,id,deps.rpc)};
+    if(!record?.deploymentHash&&deps.resolveCreation)deps={...deps,creation:await deps.resolveCreation(identity,id,deps.rpc,record?.plan.version)};
     let creationReady=false;try{if(!record?.deploymentHash&&deps.creation?.signer){await deps.creation.signer.verifyReady?.();creationReady=true;}}catch{/* Fail closed until the actual provider grant and factory are verified. */}
     let creation=(deps.creation||record?.deploymentHash)&&config.chainId===10143?await sponsorCreationStatus(identity,id,record,creationReady,deps.rpc,deps.creation?.signer?.address):undefined;
     if(action?.action==="launch"&&!record?.deploymentHash){

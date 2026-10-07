@@ -12,9 +12,10 @@ and two separate owner signatures. The claim pays the Safe, and only a finalized
 matching receipt marks the award paid. Club ownership consent remains separate
 from award approval. No private signatures are persisted in browser storage.
 The creation-gas upgrade preserves the old grant for retained V4 transactions and
-requires the actual gas-wallet owner's approval before V5 activation.
+requires the actual gas-wallet owner's approval before V5 activation. Saved V4
+plans also retain the V4 factory before a creation transaction is reserved.
 
-This release passed 18 scoped API tests, 38 disposable SQL scenarios, five owned
+This release passed 33 scoped API tests, 38 disposable SQL scenarios, five owned
 local-chain integration tests, 37 scoped UI tests, 27 Privy adapter tests, API/web
 types, scoped frontend lint and a full production build. Local-chain tests include
 actual original-Safe execution, wrong/duplicate owner and nonce rejection,

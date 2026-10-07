@@ -119,7 +119,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
       const preflight=await hostedCopySponsor(identity,'read',id,undefined,hostedCopyPin,rpc);
       return hostedCopySponsorExecutionRpc(identity,id,rpc,preflight.sourceFingerprint);
     }}:{}),
-    ...(config?.chainId===10143?{resolveCreation:async(identity,id,rpc)=>({reader:canaryPublicClient,signer:await resolveDeploymentSigner(process.env,identity,id,rpc,undefined)})}:{})})) return true;
+    ...(config?.chainId===10143?{resolveCreation:async(identity,id,rpc,protocolVersion)=>({reader:canaryPublicClient,signer:await resolveDeploymentSigner(process.env,identity,id,rpc,undefined,protocolVersion)})}:{})})) return true;
   if (await dispatchDistributionSetups(req, res, url, deps)) return true;
   if (await dispatchProgrammeCreation(req, res, url, deps)) return true;
   if (await dispatchTestProgrammes(req, res, url, deps)) return true;

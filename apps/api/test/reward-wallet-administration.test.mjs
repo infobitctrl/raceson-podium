@@ -139,3 +139,16 @@ test('the same creation wallet retains the original factory grant for pending jo
  const bad=async()=>({error:null,data:{sender:replacement.address,transaction:{to:a(9)}}});
  assert.equal(await resolveDeploymentSigner(env,identity,uuid(3),bad,runtime),null);
 });
+
+test('saved V4 plans without a transaction retain their factory after the V5 upgrade',async()=>{
+ const v5={...replacement,factory:a(8),signerId:'v5-signer',policyId:'v5-policy',protocolVersion:5};
+ const hosted={...env,RACESON_REWARD_PORTAL_MODE:'testnet',SUPABASE_URL:'https://niklhlmljiikwbkrmapw.supabase.co',RACESON_REWARD_HOSTED_COPY_MODE:'sponsor-drafts-v1',RACESON_REWARD_HOSTED_OPERATIONS:'testnet-v1'};
+ const state={revision:2,settings:{deployment:v5,controller},controllers:[],deployments:[replacement]};
+ const runtime=async()=>({error:null,data:state}),unreserved=async()=>({error:null,data:null});
+ assert.equal((await resolveDeploymentSigner(hosted,identity,uuid(3),unreserved,runtime,4)).factoryAddress,replacement.factory);
+ assert.equal((await resolveDeploymentSigner(hosted,identity,uuid(3),unreserved,runtime,5)).factoryAddress,v5.factory);
+ const conflicting=async()=>({error:null,data:{sender:replacement.address,transaction:{to:replacement.factory}}});
+ assert.equal(await resolveDeploymentSigner(hosted,identity,uuid(3),conflicting,runtime,5),null);
+ state.deployments=[];
+ assert.equal(await resolveDeploymentSigner(hosted,identity,uuid(3),unreserved,runtime,4),null);
+});
