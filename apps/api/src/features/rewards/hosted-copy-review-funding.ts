@@ -4,7 +4,7 @@ import type {Hex} from 'viem';
 
 /** Read-only, finalized chain evidence. A saved transaction hash is never a receipt. */
 export async function hostedReviewFunding(execution:SponsorExecutionRecord|null,reader?:SponsorChainReader){
- const empty={fundedWei:null,remainingWei:null,paidWei:null,returnedWei:null,blockNumber:null,programmeAddress:null,pools:[]};
+ const empty={fundedWei:null,remainingWei:null,paidWei:null,returnedWei:null,blockNumber:null,programmeAddress:null,pools:[],claimState:'unverified' as const};
  if(!execution?.deploymentHash)return {state:'awaiting_contract' as const,...empty};
  if(!reader)return {state:'unverified' as const,...empty};
  try{
@@ -13,6 +13,16 @@ export async function hostedReviewFunding(execution:SponsorExecutionRecord|null,
   const sum=(field:'remainingWei'|'paidWei'|'returnedWei')=>pools.reduce((total,p)=>total+BigInt(p[field]),0n).toString();
   return {state:observation.cancelled?'cancelled' as const:observation.funded?'funded' as const:'awaiting_funding' as const,
    fundedWei:observation.funded?execution.plan.budgetWei:'0',remainingWei:sum('remainingWei'),paidWei:sum('paidWei'),returnedWei:sum('returnedWei'),
-   blockNumber:observation.blockNumber,programmeAddress:observation.address,pools};
+   blockNumber:observation.blockNumber,programmeAddress:observation.address,pools,claimState:reviewClaimState(observation)};
  }catch{return {state:'unverified' as const,...empty};}
+}
+
+export function reviewClaimState(observation:import('@raceson/rewards-chain/sponsor-v4').SponsorChainObservation){
+ const pots=observation.pots.filter(p=>BigInt(p.amountWei)>0n);
+ if(observation.cancelled)return 'closed' as const;
+ const open=pots.filter(p=>p.state===3&&!p.paused&&BigInt(p.claimDeadline)>BigInt(observation.blockTimestamp));
+ if(open.length)return open.length===pots.length?'open' as const:'partially_open' as const;
+ if(pots.some(p=>p.state===3&&p.paused))return 'paused' as const;
+ if(pots.length&&pots.every(p=>p.state>=4||p.state===3&&BigInt(p.claimDeadline)<=BigInt(observation.blockTimestamp)))return 'closed' as const;
+ return 'not_open' as const;
 }

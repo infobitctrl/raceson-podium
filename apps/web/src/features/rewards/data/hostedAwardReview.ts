@@ -1,3 +1,4 @@
+import {notifyReviewStatus} from './reviewStatus';
 import {z} from 'zod';
 import {apiRequest} from '@/lib/api';
 const uuid=z.string().uuid(),hash=z.string().regex(/^[0-9a-f]{64}$/),wei=z.string().regex(/^(0|[1-9][0-9]{0,24})$/);
@@ -15,5 +16,6 @@ export async function readHostedAwardReview(setupId:string,slot:number,change?:H
  if(result.setupId!==setupId||result.slot!==slot||'contextHash' in result&&BigInt(result.budgetWei)!==BigInt(result.proposedWei)+BigInt(result.retainedWei))throw Error('invalid_award_review');
  if(change&&(result.recorded?.id!==change.requestId||result.recorded.documentHash!==change.documentHash||result.recorded.contextHash!==change.contextHash
   ||result.recorded.decision!==change.decision||result.recorded.previousApprovalId!==change.expectedApprovalId))throw Error('invalid_award_review');
+ if(change)notifyReviewStatus(setupId);
  return result;
 }

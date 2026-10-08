@@ -1,3 +1,4 @@
+vi.mock('../components/ReviewStatusPills',()=>({default:()=> <span>Verified campaign status</span>}));
 import {fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedReviewQueue from './HostedReviewQueue';
@@ -9,9 +10,9 @@ beforeEach(()=>{mocks.read.mockReset();});
 it('opens retained contract rules through reviewer authority and preserves every wei',async()=>{
  mocks.read.mockResolvedValue({items:[item]});render(<HostedReviewQueue hr={false}/>);
  await screen.findByRole('button',{name:'Review awards: Copied campaign'});
- expect(screen.getByText('Awaiting contract')).toBeInTheDocument();expect(screen.getByTitle('1.000000000000000001 test MON')).toBeInTheDocument();
+ expect(screen.getByText('Verified campaign status')).toBeInTheDocument();expect(screen.getByTitle('1.000000000000000001 test MON')).toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Review awards: Copied campaign'}));expect(screen.getByText('Preview copied r2 reviewer')).toBeInTheDocument();
- fireEvent.click(screen.getByRole('button',{name:'Review queue'}));expect(screen.getByRole('button',{name:'Review awards: Copied campaign'})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Review queue'}));expect(await screen.findByRole('button',{name:'Review awards: Copied campaign'})).toBeInTheDocument();expect(mocks.read).toHaveBeenCalledTimes(2);
 });
 it('opens only an authorized requested campaign and retains the selected contract pot',async()=>{
  mocks.read.mockResolvedValue({items:[item]});render(<HostedReviewQueue hr={false} requestedCampaign={item.id} requestedSlot={4}/>);

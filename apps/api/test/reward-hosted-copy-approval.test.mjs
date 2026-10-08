@@ -93,5 +93,12 @@ test('HTTP rejects monetary/source overrides, untrusted origin and wrong methods
   await dispatchHostedCopyReviews({method:'POST'},res,url,deps);assert.deepEqual(response,{status:400,code:'invalid_sponsor_allocation'});assert.equal(calls,0);
   originDenied=true;await dispatchHostedCopyReviews({method:'POST'},res,url,deps);assert.equal(response.status,403);assert.equal(calls,0);
   await dispatchHostedCopyReviews({method:'DELETE'},res,url,deps);assert.equal(response.status,405);
+  const statusUrl=new URL(`https://podium.raceson.com/api/v1/rewards/demo-copy/reviews/${setupId}/status`);
+  await dispatchHostedCopyReviews({method:'GET'},res,statusUrl,deps);assert.equal(response.status,403);assert.equal(calls,0);
+  originDenied=false;
+  await dispatchHostedCopyReviews({method:'POST'},res,statusUrl,deps);assert.equal(response.status,405);assert.equal(calls,0);
+  deps.rpc=async()=>({data:null,error:{message:'reward_demo_reviewer_required'}});
+  await dispatchHostedCopyReviews({method:'GET'},res,statusUrl,deps);assert.equal(response.status,403);
+
  }finally{for(const [k,v] of Object.entries(old)){if(v===undefined)delete process.env[k];else process.env[k]=v;}}
 });

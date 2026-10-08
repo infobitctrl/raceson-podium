@@ -12,6 +12,7 @@ import {sponsorUploadV4} from '../../features/rewards/sponsor-upload-v4-service.
 import {sponsorLifecycleV4} from '../../features/rewards/sponsor-lifecycle-v4-service.js';
 import type {SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
 import {hostedReviewFunding} from '../../features/rewards/hosted-copy-review-funding.js';
+import {hostedReviewStatus} from '../../features/rewards/hosted-copy-review-status.js';
 import {readHostedCopyCatalogue} from '../../features/rewards/hosted-copy-catalogue.js';
 import {reviewPublication,reviewPublicationCommand} from '../../features/rewards/review-publication-service.js';
 import {reviewPublicationAccessFromEnv} from '../../features/rewards/review-publication-privy.js';
@@ -23,7 +24,8 @@ const decision=z.object({requestId:uuid,expectedApprovalId:uuid.nullable(),conte
 const upload=z.object({requestId:uuid,contextHash:hash,documentHash:hash}).strict();
 const publication=z.object({action:z.literal('publication'),requestId:uuid,documentHash:hash}).strict();
 export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerResponse,url:URL,deps:OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;publicationReader?:SponsorCreationDeps['reader'];resolveReviewerWallet?:(identity:RewardAccountIdentity)=>Promise<{address:string;owned:true;balanceWei:string}|null>}){
- const match=/^\/api\/v1\/rewards\/demo-copy\/reviews(?:\/([^/]+)(?:\/allocations\/([0-5])(?:\/([^/]+)\/(upload|handoff|publish|wallet-ownership))?)?)?$/.exec(url.pathname);
+ const statusOnly=/^\/api\/v1\/rewards\/demo-copy\/reviews\/[^/]+\/status$/.test(url.pathname);
+ const match=/^\/api\/v1\/rewards\/demo-copy\/reviews(?:\/([^/]+)(?:\/allocations\/([0-5])(?:\/([^/]+)\/(upload|handoff|publish|wallet-ownership))?)?)?$/.exec(statusOnly?url.pathname.slice(0,-7):url.pathname);
  if(!match)return false;deps.applyPrivateSessionHeaders(res);
  try{
   const env=loadServerEnv();
@@ -45,6 +47,12 @@ export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerRe
   }
   if(match[2]){deps.sendSuccess(res,await hostedCopyAwardReview(actor,id!,Number(match[2]),rpc,req.method==='POST'?decision.parse(await deps.readJsonBody(req)):undefined));return true;}
   const records=await hostedCopyReviewSources(actor,id,hostedCopyPin,rpc);
+  if(statusOnly){
+   const record=records[0]!,status=await hostedReviewStatus(actor,record,rpc,deps.sponsorReader);
+   const fresh=await hostedCopyReviewSources(actor,id,hostedCopyPin,rpc);
+   if(fresh[0]!.launch.id!==record.launch.id||JSON.stringify(fresh[0]!.execution)!==JSON.stringify(record.execution))throw Error('reward_setup_conflict');
+   deps.sendSuccess(res,status);return true;
+  }
   const {catalogue}=await readHostedCopyCatalogue(env);
   for(const record of records)for(const pool of record.summary.pools)pool.name=pool.slot===0?catalogue.name:catalogue.rounds.find(round=>round.slot===pool.slot)!.name;
   const branding=await hostedCopyReviewBranding(actor,id,records.map(r=>r.summary.id),rpc);

@@ -1,3 +1,4 @@
+import {notifyReviewStatus} from './reviewStatus';
 import {z} from 'zod';
 import {apiRequest} from '@/lib/api';
 import type {HostedUploadScope} from './hostedAwardUpload';
@@ -23,5 +24,6 @@ export function checkedPublicationAuthorization(value:ReviewPublication,appId:st
 export async function readReviewPublication(scope:HostedUploadScope,documentHash:string,advance=false,authorization?:ReviewPublicationAuthorization){
  const value=view.parse(await apiRequest({path:`/v1/rewards/demo-copy/reviews/${uuid.parse(scope.id)}/allocations/${scope.slot}/${uuid.parse(scope.approvalId)}/publish`,method:advance?'POST':'GET',...(advance?{body:{expectedDocumentHash:hash.parse(documentHash),...authorization}}:{}),cache:'no-store'}));
  if(value.approvalId!==scope.approvalId||value.slot!==scope.slot||value.documentHash!==documentHash||value.claimsOpen!==(value.state===3))throw Error('invalid_review_publication');
+ if(advance&&(value.pending?.confirmed||value.claimsOpen&&!value.pending))notifyReviewStatus(scope.id);
  return value;
 }

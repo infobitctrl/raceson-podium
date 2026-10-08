@@ -1,3 +1,4 @@
+import {notifyReviewStatus} from './reviewStatus';
 import {z} from 'zod';
 import {apiRequest} from '@/lib/api';
 import {decodeSponsorLifecycleView} from './sponsorLifecycleCodec';
@@ -11,10 +12,12 @@ export async function readHostedAwardUpload(scope:HostedUploadScope,change?:{req
  const value=upload.parse(await apiRequest({path:path(scope,'upload'),method:change?'POST':'GET',...(change?{body:change}:{}),cache:'no-store'}));
  if(value.approvalId!==scope.approvalId||value.slot!==scope.slot||BigInt(value.budgetWei)!==BigInt(value.allocatedWei)+BigInt(value.unallocatedWei)
   ||change&&(value.contextHash!==change.contextHash||value.documentHash!==change.documentHash||value.prepared?.id!==change.requestId))throw Error('invalid_sponsor_upload');
+ if(change)notifyReviewStatus(scope.id);
  return value;
 }
 export async function readHostedAwardHandoff(scope:HostedUploadScope,change?:{action:'publication';requestId:string;documentHash:string}){
  const value=decodeSponsorLifecycleView(await apiRequest({path:path(scope,'handoff'),method:change?'POST':'GET',...(change?{body:change}:{}),cache:'no-store'}));
  if(value.approvalId!==scope.approvalId||value.slot!==scope.slot||value.transaction!==null||value.pot!==null||change&&(value.publication?.id!==change.requestId||value.publicationHash!==change.documentHash))throw Error('invalid_sponsor_lifecycle');
+ if(change)notifyReviewStatus(scope.id);
  return value;
 }

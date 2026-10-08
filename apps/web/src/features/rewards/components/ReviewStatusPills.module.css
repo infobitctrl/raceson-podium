@@ -1,0 +1,4 @@
+.pills{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.pills>span{display:inline-flex;align-items:center;gap:5px;border:1px solid #ded9d1;border-radius:16px;padding:6px 9px;background:#fffaf3;color:#6a5741;font-size:11px;line-height:1.4;font-weight:600}
+.pills>span[data-complete=true]{border-color:#c3ded1;background:#edf7f1;color:#0c634a}
+.pills svg{flex-shrink:0}

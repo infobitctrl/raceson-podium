@@ -1,3 +1,4 @@
+import ReviewStatusPills from '../components/ReviewStatusPills';
 import CampaignOverview from '../components/CampaignOverview';
 import CampaignChart from '../components/CampaignChart';
 import {CampaignSponsorRecords} from '../components/CampaignSponsor';
@@ -43,7 +44,7 @@ function ReviewContent({data,requestedSlot,hr,campaign}:{data:HostedReviewWorksp
  const filtered=totals.filter(r=>r.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())),pages=Math.max(1,Math.ceil(filtered.length/12)),current=Math.min(page,pages-1);
  const proposed=groups.reduce((sum,g)=>sum+BigInt(g.proposedWei),0n),retained=BigInt(pool.budgetWei)-proposed,held=groups.filter(g=>BigInt(g.budgetWei)>BigInt(g.proposedWei)),funding=data.funding,observed=funding.pools.find(p=>p.slot===selected);
  return <>
-  <header className={p.heading}><div><span className={p.eyebrow}>{t('Review','Pregled')}</span><h1>{campaign.name}</h1><p>{data.pools.length===1?pool.name:t('Select a sponsored prize pool','Odaberite sponzorirani nagradni fond')}</p></div><span className={p.badge} data-state={funding.state}>{reviewFundingLabel(funding.state,hr)}</span></header>
+  <header className={p.heading}><div><span className={p.eyebrow}>{t('Review','Pregled')}</span><h1>{campaign.name}</h1><p>{data.pools.length===1?pool.name:t('Select a sponsored prize pool','Odaberite sponzorirani nagradni fond')}</p></div><ReviewStatusPills id={campaign.id} revision={campaign.revision} hr={hr}/></header>
   <CampaignOverview id={campaign.id} selection={data.selection} hr={hr}/>
   <div className={s.summary}><CampaignChart title={t('Award allocation','Raspodjela nagrada')} description={t('Proposed awards and reserved funds in the selected pool','Predložene nagrade i zadržana sredstva odabranog fonda')} total={pool.budgetWei} hr={hr} rows={[{label:t('Proposed awards','Predložene nagrade'),value:proposed.toString(),color:'#f56617'},{label:t('Reserved','Zadržano'),value:retained.toString(),color:'#d9b38c'}]}/><dl className={s.summaryMetrics}><div><dt>{t('Selected prize pool','Odabrani fond nagrada')}</dt><dd><Money value={pool.budgetWei} hr={hr}/></dd></div><div><dt>{t('Proposed recipients','Predloženi primatelji')}</dt><dd>{totals.length}</dd></div><div><dt>{t('Funding','Financiranje')}</dt><dd className={s.fundingState}>{reviewFundingLabel(funding.state,hr)}</dd></div></dl></div>
   {requestedSlot!==null&&!data.pools.some(p=>p.slot===requestedSlot)?<p className={s.notice} role="status">{t('The requested prize pool is not sponsored by this campaign. Showing its sponsored pool.','Traženi fond nije sponzoriran ovom kampanjom. Prikazan je sponzorirani fond.')}</p>:null}

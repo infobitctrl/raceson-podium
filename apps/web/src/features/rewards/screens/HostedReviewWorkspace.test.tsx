@@ -1,3 +1,4 @@
+vi.mock('../components/ReviewStatusPills',()=>({default:()=> <span>Verified campaign status</span>}));
 import {fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedReviewWorkspace from './HostedReviewWorkspace';
