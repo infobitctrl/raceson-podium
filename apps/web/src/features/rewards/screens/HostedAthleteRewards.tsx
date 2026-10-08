@@ -15,7 +15,7 @@ export default function HostedAthleteRewards({userId,profileId,viewKey,hr}:{user
  const awards=useInfiniteQuery({queryKey:['hosted-copy-athlete-awards',userId,viewKey,profileId],initialPageParam:null as string|null,
   queryFn:({pageParam})=>getHostedAthleteAwards(pageParam),getNextPageParam:page=>page.nextCursor??undefined,retry:false,staleTime:0,gcTime:0});
  const loaded=awards.data?.pages.flatMap(page=>page.items)??[];
- const needsDestinations=loaded.some(award=>award.protocolVersion!==5);
+ const needsDestinations=loaded.some(award=>![5,6].includes(award.protocolVersion??4));
  const destinations=useInfiniteQuery({queryKey:['athlete-reward-destinations',userId,viewKey],initialPageParam:null as string|null,
   queryFn:({pageParam})=>getOwnRewardDestinations(pageParam),enabled:awards.isSuccess&&needsDestinations,getNextPageParam:page=>page.nextCursor??undefined,retry:false,staleTime:0,gcTime:0});
  const failed=!!accessError||awards.isError||needsDestinations&&destinations.isError;
@@ -29,7 +29,7 @@ export default function HostedAthleteRewards({userId,profileId,viewKey,hr}:{user
   else throw Error('reward_private_refresh_failed');
  }
  const complete=ready&&!awards.hasNextPage;
- const paid=items.filter(a=>a.protocolVersion===5?a.directClaim?.paid:a.claims.some(c=>c.paid)).reduce((sum,a)=>sum+BigInt(a.amountWei),0n);
+ const paid=items.filter(a=>[5,6].includes(a.protocolVersion??4)?a.directClaim?.paid:a.claims.some(c=>c.paid)).reduce((sum,a)=>sum+BigInt(a.amountWei),0n);
  const reviewable=items.filter(a=>!a.claims.some(c=>c.paid)&&a.claims.some(c=>c.prepared&&!c.consented)).reduce((sum,a)=>sum+BigInt(a.amountWei),0n);
  const total=items.reduce((sum,a)=>sum+BigInt(a.amountWei),0n);
  const t=(en:string,local:string)=>hr?local:en;

@@ -65,5 +65,16 @@ export async function clubDirectClaimsV5Scenarios({harness,scenario}){
   for(const role of ['anon','authenticated'])assert.equal(await scalar(`select has_function_privilege('${role}','public.service_reward_club_creation_members(uuid,uuid,uuid,uuid,uuid[])','EXECUTE')`),false);
   assert.equal(await scalar(`select has_table_privilege('service_role','app_private.reward_club_creation_members','SELECT')`),false);
  });
+
+ await scenario('V6 club reads immutable plans and rejects unknown versions without changing receipts',async()=>{
+  const setup=await scalar(`select setup_id::text from app_private.reward_sponsor_allocation_approvals_v4 where id=${q(row.approval_id)}`);
+  const change=version=>query(`begin;set local session_replication_role=replica;update app_private.reward_sponsor_executions set plan=jsonb_set(plan,'{version}',to_jsonb(${version}::integer)) where setup_id=${q(setup)};commit;`);
+  try{
+   await change(6);assert.equal((await read()).plan.version,6);
+   const page=await scalar(`select public.service_reward_demo_copy_club_awards(${q(id(1))},${q(id(2))},null)`);
+   const award=page.items.find(a=>a.entitlementId===row.entitlement);assert.equal(award.protocolVersion,6);assert.deepEqual(award.claims,[]);
+   await change(7);await assert.rejects(read(),/reward_sponsor_claim_not_ready/);
+  }finally{await change(5);}
+ });
  }finally{await query(source);}
 }

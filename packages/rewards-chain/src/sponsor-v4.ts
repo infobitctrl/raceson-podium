@@ -7,9 +7,11 @@ import {sponsorFactoryBuild} from "./sponsor-factory-v4-build.js";
 export {sponsorFactoryBuild} from "./sponsor-factory-v4-build.js";
 import {sponsorProgrammeBuildV5, sponsorCampaignBuildV5, sponsorFactoryBuildV5, walletRegistryBuildV1} from "./sponsor-v5-build.js";
 
+import {sponsorProgrammeBuildV6, sponsorCampaignBuildV6, sponsorFactoryBuildV6, walletRegistryBuildV2} from "./sponsor-v6-build.js";
+
 const configTuple = "(address funder,address operator,address unallocatedTreasury,address expiredTreasury,bytes32 programmeId,bytes32 manifestHash,uint256 budget,uint64 claimLifetime,uint256[6] caps,bytes32[6] campaignIds,uint64[6] reviewPeriods)";
 const configTupleV5 = configTuple.replace("address operator,", "address operator,address walletRegistry,");
-const configTupleFor = (p: SponsorExecutionPlan) => p.version === 5 ? configTupleV5 : configTuple;
+const configTupleFor = (p: SponsorExecutionPlan) => p.version >= 5 ? configTupleV5 : configTuple;
 export const sponsorProgrammeAbi = parseAbi([
   `constructor(${configTuple} c)`, "function fundProgramme() payable", "function funded() view returns(bool)",
   "function cancelled() view returns(bool)", "function caps(uint256) view returns(uint256)", "function campaigns(uint256) view returns(address)",
@@ -30,27 +32,27 @@ export function sponsorContractConfiguration(input: SponsorExecutionPlan) {
   const caps = tuple6(p.caps.map(BigInt)), reviewPeriods = tuple6(p.reviewPeriods.map(BigInt));
   const base = {funder: p.funder as Address, operator: p.operator as Address, unallocatedTreasury: p.unallocatedTreasury as Address,
     expiredTreasury: p.expiredTreasury as Address, programmeId, manifestHash: `0x${p.configurationHash}` as Hex,
-    ...(p.version === 5 ? {walletRegistry:p.walletRegistry as Address} : {}),
+    ...(p.version >= 5 ? {walletRegistry:p.walletRegistry as Address} : {}),
     budget: BigInt(p.budgetWei), claimLifetime: BigInt(p.claimLifetime), caps, campaignIds, reviewPeriods};
   // Full rules fingerprint + immutable economic/authority settings, not just labels.
   const manifestHash = keccak256(encodeAbiParameters(parseAbiParameters(`${configTupleFor(p)},uint256`), [base, BigInt(p.chainId)]));
   return {...base, manifestHash};
 }
 export function sponsorDeploymentData(plan: SponsorExecutionPlan): Hex {
-  const p=decodeSponsorExecutionPlan(plan),build=p.version===5?sponsorProgrammeBuildV5:sponsorProgrammeBuild;
+  const p=decodeSponsorExecutionPlan(plan),build=p.version===6?sponsorProgrammeBuildV6:p.version===5?sponsorProgrammeBuildV5:sponsorProgrammeBuild;
   check(keccak256(build.bytecode) === build.creationCodeHash);
   return encodeDeployData({abi: parseAbi([`constructor(${configTupleFor(p)} c)`]), bytecode: build.bytecode, args: [sponsorContractConfiguration(p)]});
 }
 export const sponsorFactoryAbi = parseAbi([`function deploy(${configTuple} c) returns(address programme)`,
  "event ProgrammeCreated(bytes32 indexed configurationHash,address indexed programme)"]);
-export const sponsorFactoryAbiForVersion = (version:4|5) => parseAbi([`function deploy(${version===5?configTupleV5:configTuple} c) returns(address programme)`,"event ProgrammeCreated(bytes32 indexed configurationHash,address indexed programme)"]);
+export const sponsorFactoryAbiForVersion = (version:4|5|6) => parseAbi([`function deploy(${version>=5?configTupleV5:configTuple} c) returns(address programme)`,"event ProgrammeCreated(bytes32 indexed configurationHash,address indexed programme)"]);
 export const sponsorFactoryData = (plan:SponsorExecutionPlan) => encodeFunctionData({abi:sponsorFactoryAbiForVersion(plan.version),functionName:"deploy",args:[sponsorContractConfiguration(plan)]});
 export const sponsorFactorySalt = (plan:SponsorExecutionPlan) => keccak256(encodeAbiParameters(parseAbiParameters(configTupleFor(plan)),[sponsorContractConfiguration(plan)]));
 export const sponsorFactoryProgrammeAddress = (plan:SponsorExecutionPlan,factory:Address) => getCreate2Address({from:factory,salt:sponsorFactorySalt(plan),bytecode:sponsorDeploymentData(plan)});
-export async function verifySponsorFactory(reader:Pick<PublicClient,"getChainId"|"getCode">,factory:Address,chainId=10143,blockNumber?:bigint,version:4|5=4){
+export async function verifySponsorFactory(reader:Pick<PublicClient,"getChainId"|"getCode">,factory:Address,chainId=10143,blockNumber?:bigint,version:4|5|6=4){
  check(await reader.getChainId()===chainId);
  const code=await reader.getCode({address:factory,...(blockNumber!==undefined?{blockNumber}:{blockTag:"finalized" as const})});
- check(code&&keccak256(code)===(version===5?sponsorFactoryBuildV5.runtimeTemplateHash:sponsorFactoryBuild.runtimeHash));
+ check(code&&keccak256(code)===(version===6?sponsorFactoryBuildV6.runtimeTemplateHash:version===5?sponsorFactoryBuildV5.runtimeTemplateHash:sponsorFactoryBuild.runtimeHash));
 }
 export const sponsorFundingData = () => encodeFunctionData({abi: sponsorProgrammeAbi, functionName: "fundProgramme"});
 
@@ -172,9 +174,9 @@ async function observeSponsorProgrammeScope(reader:SponsorChainReader,input:Spon
       reader.readContract({address, abi: sponsorProgrammeAbi, functionName: "caps", args: [BigInt(slot)], blockNumber}),
     ]))),
   ]);
-  if(p.version===5) await verifySponsorWalletRegistry(reader,p,blockNumber);
-  runtime(p.version===5?sponsorProgrammeBuildV5:sponsorProgrammeBuild, programmeCode, {
-    ...(p.version===5?{walletRegistry:word(p.walletRegistry!)}:{}),
+  if(p.version>=5) await verifySponsorWalletRegistry(reader,p,blockNumber);
+  runtime(p.version===6?sponsorProgrammeBuildV6:p.version===5?sponsorProgrammeBuildV5:sponsorProgrammeBuild, programmeCode, {
+    ...(p.version>=5?{walletRegistry:word(p.walletRegistry!)}:{}),
     funder: word(c.funder), operator: word(c.operator), unallocatedTreasury: word(c.unallocatedTreasury), expiredTreasury: word(c.expiredTreasury),
     programmeId: c.programmeId, programmeManifestHash: c.manifestHash, budget: word(c.budget), claimLifetime: word(c.claimLifetime),
   });
@@ -187,7 +189,7 @@ async function observeSponsorProgrammeScope(reader:SponsorChainReader,input:Spon
     if (cap === 0n) {check(BigInt(child) === 0n); continue;}
     check(same(child, getContractAddress({from: address, nonce: nonce++})));
     if(selectedSlot!==undefined&&slot!==selectedSlot)continue;
-    const name = "RacesOnRewardCampaign", version = p.version===5?"6":"5";
+    const name = "RacesOnRewardCampaign", version = p.version===6?"7":p.version===5?"6":"5";
     const short = (s: string) => `${padHex(stringToHex(s), {size: 31, dir: "right"})}${toHex(s.length, {size: 1}).slice(2)}` as Hex;
     const args = {address: child, abi: sponsorCampaignAbi, blockNumber};
     const [campaignCode, accounted, state, paused, deadline, count, allocatedRace, allocatedLeague, paidRace, paidLeague, returned, balance] = await Promise.all([
@@ -199,8 +201,8 @@ async function observeSponsorProgrammeScope(reader:SponsorChainReader,input:Spon
       reader.readContract({...args, functionName: "paid", args: [0n]}), reader.readContract({...args, functionName: "paid", args: [1n]}),
       reader.readContract({...args, functionName: "treasuryReturned"}), reader.getBalance({address: child, blockNumber}),
     ]);
-    runtime(p.version===5?sponsorCampaignBuildV5:sponsorCampaignBuild, campaignCode, {
-      ...(p.version===5?{walletRegistry:word(p.walletRegistry!)}:{}),
+    runtime(p.version===6?sponsorCampaignBuildV6:p.version===5?sponsorCampaignBuildV5:sponsorCampaignBuild, campaignCode, {
+      ...(p.version>=5?{walletRegistry:word(p.walletRegistry!)}:{}),
       operator: word(c.operator), treasury: word(c.unallocatedTreasury), expiredTreasury: word(c.expiredTreasury), cancellationTreasury: word(c.funder),
       fundingSource: word(address), CLAIM_LIFETIME: word(c.claimLifetime), programmeId: c.programmeId, campaignId: c.campaignIds[slot]!,
       programmeManifestHash: c.manifestHash, enabledPot: word(slot === 0 ? 1 : 0), reviewPeriod: word(c.reviewPeriods[slot]!),
@@ -244,10 +246,10 @@ async function observeSponsorProgrammeScope(reader:SponsorChainReader,input:Spon
 }
 
 export async function verifySponsorWalletRegistry(reader:Pick<PublicClient,"getCode">,input:SponsorExecutionPlan,blockNumber:bigint){
- const p=decodeSponsorExecutionPlan(input);check(p.version===5);
- const address=p.walletRegistry as Address,name="RacesOnWalletRegistry",version="1";
+ const p=decodeSponsorExecutionPlan(input);check(p.version>=5);
+ const address=p.walletRegistry as Address,name="RacesOnWalletRegistry",version=p.version===6?"2":"1";
  const short=(s:string)=>`${padHex(stringToHex(s),{size:31,dir:"right"})}${toHex(s.length,{size:1}).slice(2)}` as Hex;
- runtime(walletRegistryBuildV1,await reader.getCode({address,blockNumber}),{
+ runtime(p.version===6?walletRegistryBuildV2:walletRegistryBuildV1,await reader.getCode({address,blockNumber}),{
   identityIssuer:word(p.identityIssuer!),_cachedChainId:word(p.chainId),_cachedThis:word(address),
   _hashedName:keccak256(stringToHex(name)),_hashedVersion:keccak256(stringToHex(version)),_name:short(name),_version:short(version),
   _cachedDomainSeparator:hashDomain({domain:{name,version,chainId:BigInt(p.chainId),verifyingContract:address},types:{EIP712Domain:[

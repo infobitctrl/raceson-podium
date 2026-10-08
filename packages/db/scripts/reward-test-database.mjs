@@ -39,6 +39,7 @@ export function openRewardTestDatabase([psql, host, database], { chainRehearsal 
   const scalar = async (sql) => JSON.parse(await query(`select to_jsonb(value) from (${sql}) as row(value);`));
   const methods = {
     service_reward_review_issues:{p_actor_user_id:"uuid",p_actor_session_id:"uuid",p_chain_id:"integer",p_setup_id:"uuid",p_slot:"integer",p_change:"jsonb"},
+    service_reward_demo_copy_review_issues:{p_actor_user_id:"uuid",p_actor_session_id:"uuid",p_chain_id:"integer",p_setup_id:"uuid",p_slot:"integer",p_change:"jsonb"},
     service_reward_support_settings:{p_actor_user_id:"uuid",p_actor_session_id:"uuid",p_change:"jsonb"},
     service_resolve_reward_sponsor_source_v4:{p_actor_user_id:"uuid",p_actor_session_id:"uuid",p_chain_id:"integer",p_source_league_id:"uuid",p_source_season_id:"uuid",p_event_edition_id:"uuid",p_setup_id:"uuid"},
     service_reward_controller_transaction:{p_subject:"text",p_sender:"text",p_action:"text",p_id:"uuid",p_context:"jsonb",p_transaction:"jsonb",p_signed:"text",p_hash:"text"},

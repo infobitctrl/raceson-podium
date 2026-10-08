@@ -3,6 +3,7 @@ import {apiRequest} from '@/lib/api';
 import {decodeReviewIssues,decodeSupportSnapshot,decodeSupportSettings,type SupportSettings,type IssueChange} from '@raceson/domain/rewards/operations';
 export type {ReviewIssues,SupportSnapshot,SupportSettings} from '@raceson/domain/rewards/operations';
 export async function reviewIssues(setupId:string,slot:number,change?:IssueChange){return decodeReviewIssues(await apiRequest({path:`/v1/organizer/rewards/sponsor-setups/${setupId}/allocations/${slot}/issues`,cache:'no-store',...(change?{method:'POST' as const,body:change}:{})}));}
+export async function hostedReviewIssues(setupId:string,slot:number,change?:IssueChange){return decodeReviewIssues(await apiRequest({path:`/v1/rewards/demo-copy/reviews/${setupId}/allocations/${slot}/issues`,cache:'no-store',...(change?{method:'POST' as const,body:change}:{})}));}
 const gasSchema=z.object({address:z.string().regex(/^0x[0-9a-f]{40}$/),balanceWei:z.string().regex(/^\d+$/),low:z.boolean().nullable()}).strict().nullable();
 export async function readSupportSettings(){
  const raw=await apiRequest<Record<string,unknown>>({path:'/v1/rewards/admin/support',cache:'no-store'});

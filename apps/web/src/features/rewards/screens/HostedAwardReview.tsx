@@ -1,3 +1,5 @@
+import RewardReviewIssues from '../components/RewardReviewIssues';
+import {hostedReviewIssues} from '../data/operations';
 import {useEffect,useRef,useState} from 'react';
 import {CheckCircle2} from 'lucide-react';
 import RewardActionProgress from '../components/RewardActionProgress';
@@ -39,8 +41,10 @@ function SlotReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expe
     <p>{view.recipientCounts.athletes} {hr?'sportaša':'athletes'} · {view.recipientCounts.clubs} {hr?'klubova':'clubs'}</p>
     {view.reasons.length?<p>{hr?'Razlozi zadržavanja':'Hold reasons'}: {view.reasons.join(', ')}</p>:null}
     <details><summary>{hr?'Dokaz verzije':'Version evidence'}</summary><p style={{overflowWrap:'anywhere'}}>{view.documentHash}</p></details>
+    <RewardReviewIssues key={`${id}:${slot}:${view.contextHash}`} setupId={id} slot={slot} contextHash={view.contextHash} approved={!!(view.approval?.current&&view.approval.decision==='approved')} hr={hr} readIssues={hostedReviewIssues}>
     {!(view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash)?<><label className={s.acknowledgement}><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} disabled={busy}/>{hr?'Iznosi odgovaraju službenim rezultatima.':'Totals match the official results.'}</label>
-    <button className={p.primary} disabled={busy||!acknowledged||view.reasons.length>0||view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash} onClick={()=>void save('approved')}>{hr?'Odobri i otvori preuzimanje':'Approve and open claims'}</button></>:null}{' '}
+    <button className={p.primary} disabled={busy||!acknowledged||view.reasons.length>0||view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash} onClick={()=>void save('approved')}>{hr?'Odobri i otvori preuzimanje':'Approve and open claims'}</button></>:null}
+    </RewardReviewIssues>{' '}
     <button className={p.secondary} disabled={busy||view.approval?.current&&view.approval.decision==='held'&&view.approval.documentHash===view.documentHash} onClick={()=>void save('held')}>{hr?'Zadrži nagrade':'Hold awards'}</button>
    {view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash?<HostedAwardUpload key={view.approval.id} id={id} slot={slot} approvalId={view.approval.id} contextHash={view.contextHash} documentHash={view.documentHash} hr={hr} autoStart={continuePublication}/>:null}
    </>}

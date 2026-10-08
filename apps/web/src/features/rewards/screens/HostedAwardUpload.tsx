@@ -57,7 +57,7 @@ export default function HostedAwardUpload({id,slot,approvalId,contextHash,docume
     {view.prepared?<p className={s.confirmed}><Check size={18} aria-hidden="true"/>{hr?'Paket nagrada je pripremljen.':'Award package prepared.'}</p>:null}
     <p>{hr?'Nastavite spremljeno odobrenje kroz objavu. Nije potrebno ponovno odobravati rezultate.':'Continue the saved approval through publication. The results do not need another approval.'}</p>
     {!continuing?<button className={p.primary} onClick={()=>{intentScope.current=scopeKey;setContinuing(true);}}>{hr?'Nastavi odobrenu objavu':'Resume approved publication'}</button>:null}
-   </>:<><HostedReviewPublication id={id} slot={slot} approvalId={approvalId} documentHash={documentHash} hr={hr} autoStart={continuing}/>{view.protocolVersion===5?null:<><HostedClaimReviews approvalId={approvalId} hr={hr}/><HostedClubClaimReviews approvalId={approvalId} hr={hr}/></>}</>}
+   </>:<><HostedReviewPublication id={id} slot={slot} approvalId={approvalId} documentHash={documentHash} hr={hr} autoStart={continuing}/>{[5,6].includes(view.protocolVersion??4)?null:<><HostedClaimReviews approvalId={approvalId} hr={hr}/><HostedClubClaimReviews approvalId={approvalId} hr={hr}/></>}</>}
 
    {view.prepared?<details><summary>{hr?'Detalji pripreme':'Preparation details'}</summary><p className={s.confirmed}><Check size={16} aria-hidden="true"/>{hr?'Uplata provjerena · Nagrade pripremljene':'Funding verified · Awards prepared'}</p><p style={{overflowWrap:'anywhere'}}>{view.prepared.packageHash}</p></details>:null}
   </>:<p>{hr?'Ova odluka više nije važeća. Učitajte trenutačni pregled.':'This award decision is no longer current. Reload the review.'}</p>:null}

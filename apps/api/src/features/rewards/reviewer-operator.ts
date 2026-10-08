@@ -1,3 +1,5 @@
+import {decodeSponsorExecutionPolicy} from '@raceson/domain/rewards/sponsor-execution';
+import {directIdentityIssuerFromEnv} from './direct-claims-privy.js';
 import type {PrivyClient} from '@privy-io/node';
 import type {SponsorExecutionPolicy} from '@raceson/domain/rewards/sponsor-execution';
 import type {RewardAccountIdentity,RewardLedgerRpc} from '@raceson/db/rewards';
@@ -24,6 +26,13 @@ export async function reviewerSponsorPolicy(base:SponsorExecutionPolicy|null,env
  catch{return null;}
  const fresh=await walletRuntime(env,db);
  if(fresh.revision!==r.revision||JSON.stringify(fresh.settings)!==JSON.stringify(r.settings))return null;
+ if(r.settings.deployment.protocolVersion===6){
+  try{
+   const issuer=directIdentityIssuerFromEnv(env,2);if(!issuer)return null;
+   const c=JSON.parse(env.RACESON_REWARD_IDENTITY_ISSUER_V2!);
+   return decodeSponsorExecutionPolicy({...base,protocolVersion:6,operator:r.settings.controller.wallet,walletRegistry:c.registry,identityIssuer:issuer.address});
+  }catch{return null;}
+ }
  return {...base,operator:r.settings.controller.wallet};
 }
 export async function reviewerWalletSummary(identity:RewardAccountIdentity,env:Env,readBalance:(address:string)=>Promise<bigint>,rpc?:RewardLedgerRpc){

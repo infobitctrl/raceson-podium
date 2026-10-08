@@ -56,10 +56,10 @@ export function sponsorAllocationCommitmentV4(plan: SponsorExecutionPlan, slot: 
   const {latestPublicationAt: _, allocationDigest: __, ...rows} = rewardAllocationCommitment({programmeId: c.programmeId,
     campaignId: c.campaignIds[slot]!, programmeManifestHash: c.manifestHash, snapshotDigest: input.snapshotDigest,
     latestPublicationAt: publication.officialPublishedAt, awards: input.awards, enabledPot: slot === 0 ? 1 : 0, budget: c.caps[slot]!});
-  const parameters = parseAbiParameters("bytes32,bytes32,bytes32,bytes32,uint8,uint256[2],uint256[2],bytes32,uint256,uint256,uint256,address,address,address,uint64,uint64,bytes32" + (plan.version===5?",address":""));
+  const parameters = parseAbiParameters("bytes32,bytes32,bytes32,bytes32,uint8,uint256[2],uint256[2],bytes32,uint256,uint256,uint256,address,address,address,uint64,uint64,bytes32" + (plan.version>=5?",address":""));
   const allocationDigest = keccak256(encodeAbiParameters(parameters,[rows.programmeId, rows.campaignId, rows.programmeManifestHash, rows.snapshotDigest, rows.enabledPot,
     rows.budgets, rows.allocated, rows.uploadDigest, rows.entitlementCount, publication.reviewPeriod,
     c.claimLifetime, c.unallocatedTreasury, c.expiredTreasury, c.funder, publication.reviewStartedAt,
-    publication.officialPublishedAt, publication.publicationEvidenceHash, ...(plan.version===5 ? [plan.walletRegistry as Address] : [])]));
+    publication.officialPublishedAt, publication.publicationEvidenceHash, ...(plan.version>=5 ? [plan.walletRegistry as Address] : [])]));
   return {...rows, ...publication, protocolVersion: plan.version, allocationDigest};
 }

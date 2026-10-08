@@ -14,7 +14,7 @@ export function composeHostedCopyAwardDocument(facts:{launch:SponsorLaunch;execu
  const {launch,execution,contextHash}=facts,plan=execution.plan;
  check(plan.chainId===10143&&Number.isInteger(slot)&&slot>=0&&slot<=5&&/^[0-9a-f]{64}$/.test(contextHash));
  check(canonical(plan)===canonical(createSponsorExecutionPlan(launch,plan.funder,{operator:plan.operator,treasury:plan.unallocatedTreasury,reviewPeriods:plan.reviewPeriods,
-  ...(plan.version===5?{walletRegistry:plan.walletRegistry!,identityIssuer:plan.identityIssuer!}:{})})));
+  ...(plan.version>=5?{...(plan.version===6?{protocolVersion:6 as const}:{}),walletRegistry:plan.walletRegistry!,identityIssuer:plan.identityIssuer!}:{})})));
  const source=verifyFiveRoundCopyV1(policy.pin,facts.sourceFacts);
  const quote=composeHostedCopyAllocation(launch.setup,source,policy.pin,policy.selections,policy.unaffiliatedReview).allocation;
  const groups=quote.groups.filter(g=>g.slot===slot),budgetWei=BigInt(plan.caps[slot]!);

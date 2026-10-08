@@ -1,3 +1,6 @@
+import {clubOwnersHashV1,walletBindingMessageV2,encodeWalletRegistrationV2,clubClaimMessageV6} from '@raceson/rewards-chain/club-signatures-v6';
+import {validateClubClaimV6} from './clubDirectClaimsV5';
+import type {Address} from 'viem';
 import {it,expect,vi} from 'vitest';
 import {privateKeyToAccount} from 'viem/accounts';
 import {toHex} from 'viem';
@@ -57,4 +60,30 @@ it('supports the Privy bigint gas estimate without changing the approved claim',
  const p=provider(),base=p.request.getMockImplementation()!;
  p.request.mockImplementation(async args=>args.method==='eth_estimateGas'?200000n:base(args));
  await expect(sendDirectClubClaimV5(p,v,signatures,owners[0].address.toLowerCase(),()=>true)).resolves.toBe(id);
+});
+async function v6Registration():Promise<ClubDirectClaimV5>{
+ const v=await fixture(),old=v.transaction!.binding!,context={chainId:10143 as const,registry};
+ const b={...old,beneficiaryId:id,recipient:safe,beneficiaryKind:1 as const,nonce:0n,issuedAt:BigInt(old.issuedAt),expiresAt:BigInt(old.expiresAt),clubOwnersHash:clubOwnersHashV1(v.owners as Address[])};
+ const proof=await issuer.signTypedData(walletBindingMessageV2(context,b));
+ return {...v,protocolVersion:6,phase:'register',clubClaim:null,registrationReceipt:null,chainState:{registrationNonce:'0',authorizationNonce:'0',clubOwnersHash:toHex(0n,{size:32}),allocationDigest:id},transaction:{...v.transaction!,data:encodeWalletRegistrationV2(context,b,proof),identityProof:proof,binding:{...old,clubOwnersHash:b.clubOwnersHash}}};
+}
+it('V6 registration verifies domain 2 and original three owners; V5 and altered owner bindings fail closed',async()=>{
+ const v=await v6Registration();expect((await directClubCallV5(v)).to).toBe(registry);
+ for(const bad of [{...v,protocolVersion:undefined},{...v,owners:[issuer.address.toLowerCase(),...v.owners.slice(1)]},{...v,transaction:{...(await fixture()).transaction!}}])await expect(directClubCallV5(bad as ClubDirectClaimV5)).rejects.toThrow();
+});
+it('V6 claim signs the reward domain, requires two fresh distinct owners and broadcasts only claimClub',async()=>{
+ const registration=await v6Registration(),b=registration.transaction!.binding!,ownersHash=b.clubOwnersHash!;
+ const v:ClubDirectClaimV5={...registration,phase:'claim',recipient:safe,chainState:{registrationNonce:'1',authorizationNonce:'0',clubOwnersHash:ownersHash,allocationDigest:id},
+  transaction:{chainId:10143,from:safe,to:campaign,data:'0x',value:'0',binding:null,identityProof:null},
+  clubClaim:{entitlementId:id,recipient:safe,amount:'100',pot:0,nonce:'0',issuedAt:b.issuedAt,expiresAt:b.expiresAt,allocationDigest:id,clubOwnersHash:ownersHash,registrationNonce:'1'}};
+ const p=provider(),address=owners[0].address.toLowerCase();
+ const first=await signDirectClubClaimV5(p,v,address,()=>true),claim=validateClubClaimV6(v);
+ const second=await owners[1].signTypedData(clubClaimMessageV6({chainId:10143,campaign},claim));
+ const safeCall=await directClubCallV5(registration),oldProof=await owners[1].signTypedData(directSafeMessageV5(safeCall));
+ for(const signatures of [[first],[first,first],[first,oldProof]])await expect(sendDirectClubClaimV5(p,v,signatures,address,()=>true)).rejects.toThrow();
+ for(const patch of [{registrationNonce:'2'},{amount:'101'},{clubOwnersHash:toHex(0n,{size:32})},{expiresAt:'1'}])await expect(signDirectClubClaimV5(p,{...v,clubClaim:{...v.clubClaim!,...patch}},address,()=>true)).rejects.toThrow();
+ expect(p.request.mock.calls.some(([x])=>x.method==='eth_sendTransaction')).toBe(false);
+ await expect(sendDirectClubClaimV5(p,v,[first,second],address,()=>true)).resolves.toBe(id);
+ const tx=p.request.mock.calls.find(([x])=>x.method==='eth_sendTransaction')![0].params![0] as {to:string;data:string};expect(tx.to).toBe(campaign);expect(tx.data).not.toBe('0x');
+ expect(p.request.mock.calls.some(([x])=>x.method==='eth_call')).toBe(false);
 });

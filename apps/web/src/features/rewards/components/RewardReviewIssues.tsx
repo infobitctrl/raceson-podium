@@ -3,17 +3,17 @@ import {Flag,RefreshCw} from 'lucide-react';
 import {reviewIssues,type ReviewIssues} from '../data/operations';
 import s from './RewardOperations.module.css';
 
-export default function RewardReviewIssues({setupId,slot,contextHash,approved,hr,children}:{setupId:string;slot:number;contextHash:string;approved:boolean;hr:boolean;children:ReactNode}){
+export default function RewardReviewIssues({setupId,slot,contextHash,approved,hr,children,readIssues=reviewIssues}:{setupId:string;slot:number;contextHash:string;approved:boolean;hr:boolean;children:ReactNode;readIssues?:typeof reviewIssues}){
  const [data,setData]=useState<ReviewIssues|null>(null),[editing,setEditing]=useState(false),[description,setDescription]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[reload,setReload]=useState(0);
  const flight=useRef(false),mounted=useRef(true),request=useRef<{key:string;id:string}|null>(null);
  const t=(en:string,local:string)=>hr?local:en;
- useEffect(()=>{let active=true;mounted.current=true;setData(null);setError('');void reviewIssues(setupId,slot).then(v=>{if(active)setData(v);}).catch(()=>{if(active)setError('load');});return()=>{active=false;mounted.current=false;};},[setupId,slot,contextHash,reload]);
+ useEffect(()=>{let active=true;mounted.current=true;setData(null);setError('');void readIssues(setupId,slot).then(v=>{if(active)setData(v);}).catch(()=>{if(active)setError('load');});return()=>{active=false;mounted.current=false;};},[setupId,slot,contextHash,reload,readIssues]);
  async function change(action:'report'|'withdraw',issueId?:string){
   if(!data||flight.current)return;
   const key=JSON.stringify([action,data.revision,description.trim(),issueId]);
   if(request.current?.key!==key)request.current={key,id:crypto.randomUUID()};
   flight.current=true;setBusy(true);setError('');
-  try{const common={requestId:request.current.id,expectedRevision:data.revision};const next=await reviewIssues(setupId,slot,action==='report'?{...common,action,contextHash:data.contextHash,description:description.trim()}:{...common,action,issueId:issueId!});if(mounted.current){setData(next);setEditing(false);setDescription('');request.current=null;}}
+  try{const common={requestId:request.current.id,expectedRevision:data.revision};const next=await readIssues(setupId,slot,action==='report'?{...common,action,contextHash:data.contextHash,description:description.trim()}:{...common,action,issueId:issueId!});if(mounted.current){setData(next);setEditing(false);setDescription('');request.current=null;}}
   catch{if(mounted.current)setError('save');}
   finally{flight.current=false;if(mounted.current)setBusy(false);}
  }

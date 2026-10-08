@@ -1,6 +1,7 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {createAdminSupabaseClient,loadServerEnv} from '@raceson/db';
 import {hostedCopyReviewBranding,hostedCopyReviewSources,composeHostedCopyAllocation,hostedCopyLifecycleRpc,hostedCopySetupNodeId} from '@raceson/db/rewards';
+import {rewardReviewIssues} from '@raceson/db/rewards';
 import {setupId} from '@raceson/domain/rewards/distribution-setup';
 import {hostedCopyOperationsEnabled,hostedCopyPin} from '../../features/rewards/hosted-copy-preview.js';
 import {hostedCopySelections,hostedCopyUnaffiliatedReview,hostedCopyReviewNote} from '../../features/rewards/hosted-copy-review.js';
@@ -24,8 +25,9 @@ const decision=z.object({requestId:uuid,expectedApprovalId:uuid.nullable(),conte
 const upload=z.object({requestId:uuid,contextHash:hash,documentHash:hash}).strict();
 const publication=z.object({action:z.literal('publication'),requestId:uuid,documentHash:hash}).strict();
 export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerResponse,url:URL,deps:OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;publicationReader?:SponsorCreationDeps['reader'];resolveReviewerWallet?:(identity:RewardAccountIdentity)=>Promise<{address:string;owned:true;balanceWei:string}|null>}){
+ const issueOnly=/^\/api\/v1\/rewards\/demo-copy\/reviews\/[^/]+\/allocations\/[0-5]\/issues$/.test(url.pathname);
  const statusOnly=/^\/api\/v1\/rewards\/demo-copy\/reviews\/[^/]+\/status$/.test(url.pathname);
- const match=/^\/api\/v1\/rewards\/demo-copy\/reviews(?:\/([^/]+)(?:\/allocations\/([0-5])(?:\/([^/]+)\/(upload|handoff|publish|wallet-ownership))?)?)?$/.exec(statusOnly?url.pathname.slice(0,-7):url.pathname);
+ const match=/^\/api\/v1\/rewards\/demo-copy\/reviews(?:\/([^/]+)(?:\/allocations\/([0-5])(?:\/([^/]+)\/(upload|handoff|publish|wallet-ownership))?)?)?$/.exec(statusOnly||issueOnly?url.pathname.slice(0,-7):url.pathname);
  if(!match)return false;deps.applyPrivateSessionHeaders(res);
  try{
   const env=loadServerEnv();
@@ -34,6 +36,7 @@ export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerRe
   if([...url.searchParams].length||match[1]&&!setupId(match[1]))throw Error('invalid_reward_setup');
   const actor=await deps.requireIdentity(req),id=match[1]??null;
   const rpc=deps.rpc??((name:string,args:Record<string,unknown>)=>createAdminSupabaseClient(env).rpc(name,args));
+  if(issueOnly){deps.sendSuccess(res,await rewardReviewIssues(actor,{chainId:10143,setupId:id!,slot:Number(match[2])},req.method==='POST'?await deps.readJsonBody(req):undefined,rpc,true));return true;}
   if(match[3]){
    const scope={chainId:10143 as const,setupId:id!,slot:Number(match[2]),approvalId:uuid.parse(match[3])},transport=hostedCopyLifecycleRpc(actor,rpc);
    if(match[4]==='publish'){
@@ -75,6 +78,9 @@ export async function dispatchHostedCopyReviews(req:IncomingMessage,res:ServerRe
   if(['Unauthorized','Missing bearer token','reward_account_session_required'].includes(code))deps.sendError(res,401,'reward_auth_required','Sign in to the isolated demo.');
   else if(code==='Untrusted browser origin')deps.sendError(res,403,'forbidden','This browser request is not allowed.');
   else if(['reward_demo_account_required','reward_demo_reviewer_required'].includes(code))deps.sendError(res,403,'reward_demo_reviewer_required','An active results-team or master-administrator account is required.');
+  else if(code==='reward_review_issue_not_owned')deps.sendError(res,403,code,'Only the reporting reviewer can withdraw this flag.');
+  else if(['reward_review_issue_open','reward_review_issue_conflict','reward_review_issue_limit'].includes(code))deps.sendError(res,409,code,'Reload reported issues before approving or retrying.');
+  else if(code==='invalid_reward_review_issue')deps.sendError(res,400,code,'Check the issue report.');
   else if(code==='reward_setup_not_found')deps.sendError(res,404,code,'No source-bound campaign is available.');
   else if(code==='reward_setup_conflict')deps.sendError(res,409,code,'Reload the current contract version before reviewing.');
   else if(['review_publication_authorization_required','review_publication_authorization_failed'].includes(code))deps.sendError(res,409,code,'Wallet authorization was not completed. Resume publication from your reviewer session.');

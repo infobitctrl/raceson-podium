@@ -20,7 +20,7 @@ export function decodeDirectClaimFactsV5(data:unknown,identity:RewardAccountIden
  if(!hex(entitlementId))throw new RewardLedgerStoreError('invalid_sponsor_claim');
  const v=object(copy(data),['approvalId','slot','plan','deploymentHash','fundingHash','award','challenge','receipt','rehearsalPolicy']);
  const plan=decodeSponsorExecutionPlan(v.plan),award=object(v.award,['entitlementId','beneficiaryId','pot','amount','explanationHash','beneficiaryKind']);
- if(v.approvalId!==id||plan.version!==5||plan.chainId!==10143||!Number.isInteger(v.slot)||Number(v.slot)<0||Number(v.slot)>5
+ if(v.approvalId!==id||![5,6].includes(plan.version)||plan.chainId!==10143||!Number.isInteger(v.slot)||Number(v.slot)<0||Number(v.slot)>5
   ||!hex(v.deploymentHash)||!hex(v.fundingHash)||award.entitlementId!==entitlementId||!hex(award.beneficiaryId)||!hex(award.explanationHash)
   ||award.beneficiaryKind!==kind||award.pot!==(v.slot===0?1:0)||typeof award.amount!=='string'||!/^[1-9][0-9]{0,24}$/.test(award.amount)
   ||v.rehearsalPolicy!=='podium-demo-alias-rehearsal-v1')throw new RewardLedgerStoreError('invalid_sponsor_claim');

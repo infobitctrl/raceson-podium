@@ -1,10 +1,10 @@
 import {z} from 'zod';
 import {apiRequest} from '@/lib/api';
 const address=z.string().regex(/^0x[0-9a-f]{40}$/),fingerprint=z.string().regex(/^[0-9a-f]{64}$/);
-const deployment=z.object({version:z.literal(1),appId:z.string(),walletId:z.string(),address,ownerId:z.string(),signerId:z.string(),policyId:z.string(),factory:address,protocolVersion:z.literal(5).optional()}).strict();
+const deployment=z.object({version:z.literal(1),appId:z.string(),walletId:z.string(),address,ownerId:z.string(),signerId:z.string(),policyId:z.string(),factory:address,protocolVersion:z.union([z.literal(5),z.literal(6)]).optional()}).strict();
 const controller=z.object({subject:z.string(),wallet:address,walletId:z.string().optional(),ownerId:z.string().optional(),reviewerUserId:z.string().uuid().optional()}).strict();
 export const walletSettingsSchema=z.object({deployment,controller}).strict();
-export const walletAdministrationSchema=z.object({revision:z.number().int().nonnegative(),settings:walletSettingsSchema.nullable(),fingerprint,history:z.array(z.object({revision:z.number().int(),settings:walletSettingsSchema,changed_by:z.string(),reason:z.string(),changed_at:z.string()}))}).strict();
+export const walletAdministrationSchema=z.object({upgradeVersion:z.literal(6).optional(),revision:z.number().int().nonnegative(),settings:walletSettingsSchema.nullable(),fingerprint,history:z.array(z.object({revision:z.number().int(),settings:walletSettingsSchema,changed_by:z.string(),reason:z.string(),changed_at:z.string()}))}).strict();
 export const walletReviewSchema=z.object({candidate:walletSettingsSchema,fingerprint,revision:z.number().int()}).strict();
 export type WalletAdministration=z.infer<typeof walletAdministrationSchema>;
 export type WalletReview=z.infer<typeof walletReviewSchema>;

@@ -2,11 +2,14 @@ import {concatHex,encodeAbiParameters,encodeFunctionData,hashTypedData,keccak256
 import {bytes32,demand,signatureBytes,walletAddress} from './validation.js';
 import {walletBindingMessageV1,type WalletBindingV1,type WalletRegistryContextV1} from './sponsor-direct-claims-v5.js';
 
-/** Future V6 protocol only. Existing V5 plans must never use these signatures. */
+/** V6 protocol only. Existing V5 plans must never use these signatures. */
 export const clubClaimAbiV6=parseAbi([
  'function claimClub(bytes32 entitlementId,uint256 nonce,uint64 issuedAt,uint64 expiresAt,bytes ownerSignatures)',
 ]);
 export const walletRegistryAbiV2=parseAbi([
+ 'function registrations(bytes32) view returns(address recipient,uint8 beneficiaryKind,uint256 nonce,bytes32 clubOwnersHash)',
+ 'function registerAndClaim((bytes32 beneficiaryId,address recipient,uint8 beneficiaryKind,uint256 nonce,uint64 issuedAt,uint64 expiresAt,bytes32 clubOwnersHash) b,bytes identityProof,address campaign,bytes32 entitlementId)',
+ 'event WalletRegistered(bytes32 indexed beneficiaryId,address indexed recipient,uint8 beneficiaryKind,uint256 nonce)',
  'function register((bytes32 beneficiaryId,address recipient,uint8 beneficiaryKind,uint256 nonce,uint64 issuedAt,uint64 expiresAt,bytes32 clubOwnersHash) b,bytes identityProof)',
 ]);
 export type WalletBindingV2=WalletBindingV1&{clubOwnersHash:Hex};
@@ -55,4 +58,14 @@ export async function verifyClubClaimSignaturesV6(context:ClubClaimContextV6,cla
 export async function encodeClubClaimV6(context:ClubClaimContextV6,claim:ClubClaimV6,owners:readonly Address[],signatures:readonly Hex[]){
  const proof=await verifyClubClaimSignaturesV6(context,claim,owners,signatures);
  return encodeFunctionData({abi:clubClaimAbiV6,functionName:'claimClub',args:[claim.entitlementId,claim.nonce,claim.issuedAt,claim.expiresAt,proof.signature]});
+}
+
+export async function verifyWalletBindingProofV2(context:WalletRegistryContextV1,binding:WalletBindingV2,issuer:Address,proof:Hex){
+ const message=walletBindingMessageV2(context,binding);
+ demand((await recoverTypedDataAddress({...message,signature:signatureBytes(proof)})).toLowerCase()===walletAddress(issuer).toLowerCase(),'wallet_binding_issuer_mismatch');
+ return hashTypedData(message);
+}
+export function encodeRegisterAndClaimV6(context:WalletRegistryContextV1,binding:WalletBindingV2,proof:Hex,campaign:Address,entitlementId:Hex){
+ demand(binding.beneficiaryKind===0,'club_claim_requires_fresh_signatures');
+ return encodeFunctionData({abi:walletRegistryAbiV2,functionName:'registerAndClaim',args:[walletBindingMessageV2(context,binding).message,signatureBytes(proof),walletAddress(campaign),bytes32(entitlementId)]});
 }

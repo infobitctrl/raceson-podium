@@ -9,7 +9,7 @@ function enabled(){if(!publicEnv.rewardPortalEnabled||!publicEnv.hostedOperation
 export async function getHostedClubAwards(after:string|null=null){
  enabled();if(after!==null)cursor.parse(after);
  const v=page.parse(await apiRequest({path:`/v1/rewards/demo-copy/club-awards${after?`?after=${after}`:''}`,cache:'no-store'}));let previous=after;
- for(const item of v.items){if((item.protocolVersion===5 ? !item.directClaim||item.claims.length!==0 : item.directClaim!==undefined)||previous!==null&&item.entitlementId<=previous||item.claims.some(c=>c.consented&&!c.prepared||c.approved&&!c.consented||c.paid&&!c.approved))throw Error('invalid_claim');previous=item.entitlementId;}
+ for(const item of v.items){if(([5,6].includes(item.protocolVersion??4) ? !item.directClaim||item.claims.length!==0 : item.directClaim!==undefined)||previous!==null&&item.entitlementId<=previous||item.claims.some(c=>c.consented&&!c.prepared||c.approved&&!c.consented||c.paid&&!c.approved))throw Error('invalid_claim');previous=item.entitlementId;}
  if(v.nextCursor!==null&&(v.items.length!==50||v.nextCursor!==previous))throw Error('invalid_claim');return v;
 }
 export async function getHostedClubClaimReviews(approvalId:string,after:string|null=null){

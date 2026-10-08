@@ -11,9 +11,9 @@ import {hostedCopyOperationsEnabled} from './hosted-copy-preview.js';
 
 const address=z.string().regex(/^0x[0-9a-f]{40}$/);
 export const controllerDeploymentConfig=z.object({version:z.literal(1),appId:z.string(),walletId:z.string(),address,
- ownerId:z.string(),signerId:z.string(),policyId:z.string(),factory:address,protocolVersion:z.literal(5).optional()}).strict();
+ ownerId:z.string(),signerId:z.string(),policyId:z.string(),factory:address,protocolVersion:z.union([z.literal(5),z.literal(6)]).optional()}).strict();
 export type ControllerDeploymentConfig=z.infer<typeof controllerDeploymentConfig>;
-export function controllerDeploymentRules(factory:string,_controller:string,protocolVersion:4|5=4){return [{name:"Deploy RacesOn campaigns only",method:"eth_signTransaction" as const,action:"ALLOW" as const,conditions:[
+export function controllerDeploymentRules(factory:string,_controller:string,protocolVersion:4|5|6=4){return [{name:"Deploy RacesOn campaigns only",method:"eth_signTransaction" as const,action:"ALLOW" as const,conditions:[
  {field_source:"ethereum_transaction" as const,field:"chain_id" as const,operator:"eq" as const,value:"10143"},
  {field_source:"ethereum_transaction" as const,field:"value" as const,operator:"eq" as const,value:"0"},
  {field_source:"ethereum_transaction" as const,field:"to" as const,operator:"eq" as const,value:getAddress(factory)},

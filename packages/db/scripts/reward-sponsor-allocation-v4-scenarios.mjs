@@ -1,3 +1,4 @@
+import {hostedIssuesScenarios} from './reward-hosted-issues-scenarios.mjs';
 import {rewardOperationsScenarios} from './reward-operations-scenarios.mjs';
 import {fixtureSigner} from "../../rewards-chain/integration/owned-chain.mjs";
 import {sponsorUploadV4Scenarios} from "./reward-sponsor-upload-v4-scenarios.mjs";
@@ -40,6 +41,7 @@ export async function sponsorAllocationV4Scenarios({harness,scenario}){
  const scope={chainId:31337,setupId,slot:1},read=()=>sponsorAllocationReviewV4(actor,scope,undefined,rpc),save=change=>sponsorAllocationReviewV4(actor,scope,change,rpc);
  const command=(view,decision='approved')=>({requestId:next(),expectedApprovalId:view.approval?.id??null,contextHash:view.contextHash,documentHash:view.documentHash,decision});
  const recipients=()=>query(`select beneficiary_kind,beneficiary_id,amount_wei,encode(entitlement_id,'hex') entitlement,encode(opaque_beneficiary_id,'hex') opaque from app_private.reward_sponsor_recipients_v4 where approval_id in(select id from app_private.reward_sponsor_allocation_approvals_v4 where setup_id=${q(setupId)}) order by approval_id,beneficiary_id`);
+ await hostedIssuesScenarios({harness,scenario,actor,sponsor,scope,next,read,save,command});
  await rewardOperationsScenarios({harness,scenario,actor,sponsor,scope,next,read,save,command});
  let initial,first;
  await scenario('V4 sponsor may fund permissionlessly but only source organizer reviews exact frozen awards',async()=>{

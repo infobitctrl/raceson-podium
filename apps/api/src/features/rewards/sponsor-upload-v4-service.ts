@@ -75,7 +75,7 @@ export async function sponsorUploadV4(identity: RewardAccountIdentity, input: Sp
   // Recheck session/source authority after all IO, even for historical retries.
   const after = await sponsorUploadFactsV4(actor, scope, undefined, rpc);
   check(canonical(after.prepared) === canonical(facts.prepared) && after.current === facts.current, "reward_planning_revision_changed");
-  return {schema: "raceson-sponsor-upload-view-v4", ...(after.execution.plan.version===5?{protocolVersion:5}:{}), approvalId: scope.approvalId, slot: scope.slot, contextHash: after.contextHash,
+  return {schema: "raceson-sponsor-upload-view-v4", ...(after.execution.plan.version>=5?{protocolVersion:after.execution.plan.version}:{}), approvalId: scope.approvalId, slot: scope.slot, contextHash: after.contextHash,
     documentHash: after.documentHash, current: after.current, sourceKind: after.document.schema==='podium-copy-allocation-document-v1'?'historical_copy':after.document.source.kind,
     budgetWei: after.document.calculation.budgetWei.toString(), allocatedWei: after.document.calculation.proposedWei.toString(),
     unallocatedWei: after.document.calculation.retainedWei.toString(), recipientCount: after.recipients.length,

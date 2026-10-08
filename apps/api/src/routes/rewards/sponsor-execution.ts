@@ -15,7 +15,7 @@ const command = z.discriminatedUnion("action", [
   z.object({action: z.literal("prepare"), launchId: uuid, funder: z.string().regex(/^0x[0-9a-fA-F]{40}$/)}).strict(),
   z.object({action: z.literal("deployment"), hash}).strict(), z.object({action: z.literal("funding"), hash}).strict(),
 ]);
-export type SponsorExecutionDependencies = OrganizerRewardRouteDependencies & {sponsorPolicy?: () => SponsorExecutionPolicy | null; sponsorReader?: SponsorChainReader; creation?:SponsorCreationDeps;resolveCreation?: (identity:Parameters<typeof advanceSponsorCreation>[0],id:string,rpc?:RewardLedgerRpc,protocolVersion?:4|5)=>Promise<SponsorCreationDeps>;resolveSponsorPolicy?:()=>Promise<SponsorExecutionPolicy|null>;resolveRpc?:(identity:RewardAccountIdentity,id:string)=>Promise<RewardLedgerRpc>};
+export type SponsorExecutionDependencies = OrganizerRewardRouteDependencies & {sponsorPolicy?: () => SponsorExecutionPolicy | null; sponsorReader?: SponsorChainReader; creation?:SponsorCreationDeps;resolveCreation?: (identity:Parameters<typeof advanceSponsorCreation>[0],id:string,rpc?:RewardLedgerRpc,protocolVersion?:4|5|6)=>Promise<SponsorCreationDeps>;resolveSponsorPolicy?:()=>Promise<SponsorExecutionPolicy|null>;resolveRpc?:(identity:RewardAccountIdentity,id:string)=>Promise<RewardLedgerRpc>};
 
 /** Explicit server configuration is an execution gate; no wallet addresses or
  * review policy are guessed from historical pilots. No operator key is loaded. */

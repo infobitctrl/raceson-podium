@@ -8,6 +8,7 @@ vi.mock('../data/reviewPublication',()=>({readReviewPublication:mocks.publish}))
 vi.mock('../components/RewardEmbeddedWalletContext',()=>({useRewardEmbeddedWallet:()=>({status:'ready',wallet:null,reviewerConnected:true,authorizePublication:mocks.authorize})}));
 vi.mock('@/lib/auth',()=>({useAuth:()=>({session:null})}));
 vi.mock('../model/useRewardSessionEpoch',()=>({useRewardSessionEpoch:()=> 'same-session'}));
+vi.mock('../data/operations',()=>({hostedReviewIssues:vi.fn(async()=>({revision:0,contextHash:'c'.repeat(64),canReport:true,issues:[]}))}));
 const contextHash='c'.repeat(64),documentHash='d'.repeat(64);
 const review={contextHash,documentHash,historicalAcknowledgement:false,approval:null,recorded:null,proposedWei:'880000000000000000',retainedWei:'120000000000000000',reasons:[],recipientCounts:{athletes:17,clubs:0}};
 const approved={...review,approval:{id:'approval',decision:'approved',current:true,documentHash}};

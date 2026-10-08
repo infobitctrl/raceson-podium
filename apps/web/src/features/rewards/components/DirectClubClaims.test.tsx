@@ -36,3 +36,19 @@ it('names the submitting owner wallet when gas is insufficient and preserves bot
  expect(await screen.findByRole('alert')).toHaveTextContent('connected owner’s wallet');expect(sessionStorage.length).toBe(0);expect(screen.getByText(/2\/2 owner signatures/)).toBeVisible();
  fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Submit club claim'}));await screen.findByRole('button',{name:'Check payment'});expect(m.sign).toHaveBeenCalledTimes(2);
 });
+it('V6 registration recovery confirms registration without payment and requires new claim signatures',async()=>{
+ const v6={...view,protocolVersion:6,phase:'claim',recipient:safe,chainState:{registrationNonce:'1',authorizationNonce:'0',clubOwnersHash:hash,allocationDigest:hash},clubClaim:null,registrationReceipt:{transactionHash:hash,blockNumber:'1',blockHash:hash}};
+ sessionStorage.setItem(`podium:club-direct:${id}:${hash}`,JSON.stringify({creationId,hash,kind:'registrationReceipt'}));
+ m.read.mockResolvedValue(v6);
+ render(<DirectClubClaim award={{...award,protocolVersion:6}} hr={false}/>);
+ await screen.findByRole('button',{name:'Prepare club claim'});expect(screen.queryByText('Reward paid')).not.toBeInTheDocument();
+ expect(m.read).toHaveBeenCalledWith({approvalId:id,entitlementId:hash},creationId,{action:'registrationReceipt',hash});
+ expect(m.sign).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();expect(sessionStorage.length).toBe(0);
+});
+it('V6 first-time registration is explicit and does not describe it as an award payment',async()=>{
+ const registered={...view,protocolVersion:6,phase:'register',chainState:{registrationNonce:'0',authorizationNonce:'0',clubOwnersHash:hash,allocationDigest:hash},clubClaim:null,registrationReceipt:null};
+ m.read.mockImplementation(async(_a,_c,command)=>({...registered,transaction:command?.action==='prepare'?{from:safe}:null}));
+ render(<DirectClubClaim award={{...award,protocolVersion:6}} hr={false}/>);fireEvent.click(await screen.findByRole('button',{name:'Connect owner one'}));
+ fireEvent.click(screen.getByRole('button',{name:'Prepare treasury registration'}));await screen.findByRole('checkbox',{name:/registering this treasury/});
+ expect(screen.getByText(/Registration does not pay the award/)).toBeVisible();expect(m.send).not.toHaveBeenCalled();
+});

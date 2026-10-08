@@ -39,8 +39,8 @@ export default function SponsorClaims({role,approvalId,hr,chainId,shared,onAcces
  });
  const visible=ordered.filter(a=>filter==="all"||(filter==="paid")===a.claims.some(c=>c.paid));
  if(athletePresentation&&role==="recipient"&&shared) return <>
-  {shared.awards.some(a=>a.protocolVersion===5)?<DirectAthleteClaims awards={shared.awards.filter(a=>a.protocolVersion===5)} hr={hr} onRefresh={shared.refresh} onAccessError={onAccessError}/>:null}
-  {!shared.awards.length||shared.awards.some(a=>a.protocolVersion!==5)?<AthleteAwardCards awards={shared.awards.filter(a=>a.protocolVersion!==5)} busy={busy} failed={failed} destinations={shared.destinations} chainId={chainId} hr={hr}
+  {shared.awards.some(a=>[5,6].includes(a.protocolVersion??4))?<DirectAthleteClaims awards={shared.awards.filter(a=>[5,6].includes(a.protocolVersion??4))} hr={hr} onRefresh={shared.refresh} onAccessError={onAccessError}/>:null}
+  {!shared.awards.length||shared.awards.some(a=>![5,6].includes(a.protocolVersion??4))?<AthleteAwardCards awards={shared.awards.filter(a=>![5,6].includes(a.protocolVersion??4))} busy={busy} failed={failed} destinations={shared.destinations} chainId={chainId} hr={hr}
     onReview={setPreview} onClaim={setSelected} onRefresh={()=>{setSelected(null);void load();}}/>:null}
   {preview?<RewardClaimDialog title={t("Claim your reward","Preuzmite svoju nagradu")} hr={hr} onClose={()=>setPreview(null)}>{onBusy=> <AthleteAwardReview onBusy={onBusy} award={preview} hr={hr} chainId={chainId} destinations={shared.destinations} complete={shared.destinationsComplete===true} busy={busy} failed={failed}
     refresh={shared.refresh} onRecover={()=>void load()} onRequest={destinationId=>void request(preview,destinationId)}/>}</RewardClaimDialog>:null}

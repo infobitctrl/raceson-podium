@@ -83,4 +83,15 @@ export async function directClaimsV5Scenarios({harness,scenario}){
   await assert.rejects(query(`select public.service_reward_demo_copy_claim(${q(r.user_id)},${q(r.session_id)},'72000000-0000-4000-8000-000000000098','recipient','request',${q(JSON.stringify(body))})`),/reward_claim_scope_required/);
   assert.equal(await scalar('select count(*) from app_private.reward_sponsor_claims_v4'),count);
  });
+ await scenario('V6 athlete reads immutable plans and rejects unknown versions without changing receipts',async()=>{
+  const setup=await scalar(`select setup_id::text from app_private.reward_sponsor_allocation_approvals_v4 where id=${q(r.approval_id)}`);
+  const change=version=>query(`begin;set local session_replication_role=replica;update app_private.reward_sponsor_executions set plan=jsonb_set(plan,'{version}',to_jsonb(${version}::integer)) where setup_id=${q(setup)};commit;`);
+  try{
+   await change(6);assert.equal((await read()).plan.version,6);
+   const page=await scalar(`select public.service_reward_demo_copy_athlete_awards(${q(r.user_id)},${q(r.session_id)},null)`);
+   const award=page.items.find(a=>a.entitlementId===r.entitlement);assert.equal(award.protocolVersion,6);assert.deepEqual(award.claims,[]);
+   await change(7);await assert.rejects(read(),/reward_sponsor_claim_not_ready/);
+  }finally{await change(5);}
+ });
+
 }

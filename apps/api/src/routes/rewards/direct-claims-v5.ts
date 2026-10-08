@@ -10,7 +10,7 @@ import type {OrganizerRewardRouteDependencies} from './organizer.js';
 import type {SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
 const uuid=z.string().uuid(),hash=z.string().regex(/^0x[0-9a-f]{64}$/);
 const command=z.discriminatedUnion('action',[
- z.object({action:z.literal('prepare'),proofId:uuid}).strict(),z.object({action:z.literal('receipt'),hash}).strict(),
+ z.object({action:z.literal('prepare'),proofId:uuid}).strict(),z.object({action:z.literal('receipt'),hash}).strict(),z.object({action:z.literal('registrationReceipt'),hash}).strict(),
 ]);
 export async function dispatchDirectClaimsV5(req:IncomingMessage,res:ServerResponse,url:URL,deps:OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;identityIssuer?:IdentityBindingIssuerV1|null}){
  const match=/^\/api\/v1\/athlete\/rewards\/direct-claims\/([^/]+)\/([^/]+)$/.exec(url.pathname);
@@ -22,6 +22,7 @@ export async function dispatchDirectClaimsV5(req:IncomingMessage,res:ServerRespo
   if(!['GET','POST'].includes(req.method??'')||[...url.searchParams].length)throw Error('invalid_sponsor_claim');
   const actor=await deps.requireIdentity(req),approvalId=uuid.parse(route[1]),entitlementId=hash.parse(route[2]);
   const change=req.method==='POST'?command.parse(await deps.readJsonBody(req)):undefined;
+  if(change?.action==='registrationReceipt'&&!club)throw Error('invalid_sponsor_claim');
   const rpc=deps.rpc??((name,args)=>createAdminSupabaseClient(env).rpc(name,args));
   const shared={rpc,reader:deps.sponsorReader,issuer:deps.identityIssuer===undefined?directIdentityIssuerFromEnv(process.env):deps.identityIssuer};
   if(club){

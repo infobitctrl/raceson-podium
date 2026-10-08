@@ -152,3 +152,15 @@ test('saved V4 plans without a transaction retain their factory after the V5 upg
  state.deployments=[];
  assert.equal(await resolveDeploymentSigner(hosted,identity,uuid(3),unreserved,runtime,4),null);
 });
+
+test('V6 grant preparation preserves wallet ownership and V5 plans retain their historical factory',async()=>{
+ const {configuredDeploymentUpgrade,readWalletAdministration}=await import('../dist/features/rewards/wallet-administration.js');
+ const f=fixture();f.seed();const current=await readWalletAdministration(identity,env,f.rpc);
+ const v5={...replacement,protocolVersion:5,factory:a(5),signerId:'v5-signer',policyId:'v5-policy'};
+ const v6={...replacement,protocolVersion:6,factory:a(6),signerId:'v6-signer',policyId:'v6-policy'};
+ const configured={...env,RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V5:JSON.stringify(v5),RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V6:JSON.stringify(v6)};
+ assert.deepEqual(configuredDeploymentUpgrade(configured,{...current.settings,deployment:v5}),v6);
+ for(const bad of [{...v6,protocolVersion:5},{...v6,ownerId:'foreign'},{...v6,walletId:'foreign'},{...v6,address:a(9)}])assert.throws(()=>configuredDeploymentUpgrade({...configured,RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V6:JSON.stringify(bad)},{...current.settings,deployment:v5}),/upgrade_unavailable/);
+ const runtime=async()=>({error:null,data:{revision:5,settings:{deployment:v6,controller},controllers:[],deployments:[v5,replacement]}}),unreserved=async()=>({error:null,data:null});
+ for(const [version,expected] of [[4,replacement],[5,v5],[6,v6]])assert.equal((await resolveDeploymentSigner(env,identity,uuid(3),unreserved,runtime,version)).factoryAddress,expected.factory);
+});

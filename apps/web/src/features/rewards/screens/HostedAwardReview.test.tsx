@@ -1,11 +1,12 @@
 import {act,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedAwardReview from './HostedAwardReview';
-const mocks=vi.hoisted(()=>({read:vi.fn()}));
+const mocks=vi.hoisted(()=>({read:vi.fn(),issues:vi.fn()}));
 vi.mock('./HostedAwardUpload',()=>({default:({autoStart}:{autoStart:boolean})=><p>{autoStart?'Continue publication automatically':'Saved approval requires resume'}</p>}));
 vi.mock('../data/hostedAwardReview',()=>({readHostedAwardReview:mocks.read}));
+vi.mock('../data/operations',()=>({hostedReviewIssues:mocks.issues}));
 const base={historicalAcknowledgement:false,contextHash:'c'.repeat(64),documentHash:'d'.repeat(64),approval:null,recorded:null,proposedWei:'1000000000000000001',retainedWei:'2',reasons:[],recipientCounts:{athletes:1,clubs:0}};
-beforeEach(()=>mocks.read.mockReset());
+beforeEach(()=>{mocks.read.mockReset();mocks.issues.mockReset().mockResolvedValue({revision:0,contextHash:'c'.repeat(64),canReport:true,issues:[]});});
 it('recovers a failed initial load without suggesting an unsubmitted decision was saved',async()=>{
  mocks.read.mockRejectedValueOnce(Error('load failed')).mockResolvedValueOnce(base);
  render(<HostedAwardReview id="setup" slot={5} hr={false}/>);
@@ -85,4 +86,28 @@ it('loading an existing approval offers resume without automatically authorizing
  mocks.read.mockResolvedValue({...base,approval:{id:'approval',decision:'approved',current:true,documentHash:base.documentHash}});
  render(<HostedAwardReview id="setup" slot={4} hr={false}/>);
  expect(await screen.findByText('Saved approval requires resume')).toBeVisible();expect(mocks.read).toHaveBeenCalledOnce();
+});
+
+it('hosted issue failure and open flags block approval; only its author can withdraw',async()=>{
+ mocks.read.mockResolvedValue(base);mocks.issues.mockRejectedValueOnce(Error('offline'));
+ render(<HostedAwardReview id="setup" slot={0} hr={false}/>);
+ await screen.findByText('Issue status could not be confirmed. Reload before approving or retrying.');
+ expect(screen.queryByRole('button',{name:'Approve and open claims'})).not.toBeInTheDocument();
+ mocks.issues.mockResolvedValue({revision:1,contextHash:base.contextHash,canReport:true,issues:[{id:'issue',description:'Synthetic source needs review',createdAt:'2026-10-08T12:00:00Z',withdrawnAt:null,canWithdraw:false}]});
+ fireEvent.click(screen.getByRole('button',{name:'Reload issues'}));await screen.findByText('Issue flagged');
+ expect(screen.queryByRole('button',{name:'Approve and open claims'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'Withdraw flag'})).not.toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'Hold awards'})).toBeEnabled();
+});
+it('hosted reviewer can report and withdraw before explicitly approving',async()=>{
+ mocks.read.mockResolvedValue(base);render(<HostedAwardReview id="setup" slot={0} hr={false}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Flag an issue'}));
+ fireEvent.change(screen.getByRole('textbox'),{target:{value:'Check the official result allocation'}});
+ const flagged={revision:1,contextHash:base.contextHash,canReport:true,issues:[{id:'issue',description:'Check the official result allocation',createdAt:'2026-10-08T12:00:00Z',withdrawnAt:null,canWithdraw:true}]};
+ mocks.issues.mockResolvedValueOnce(flagged);fireEvent.click(screen.getByRole('button',{name:'Submit flag'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Withdraw flag'}));
+ await screen.findByRole('button',{name:'Approve and open claims'});
+ expect(mocks.issues.mock.calls[1][2]).toMatchObject({action:'report',contextHash:base.contextHash});
+ expect(mocks.issues.mock.calls[2][2]).toMatchObject({action:'withdraw',issueId:'issue',expectedRevision:1});
+ expect(mocks.read).toHaveBeenCalledOnce();
 });

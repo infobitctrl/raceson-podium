@@ -31,7 +31,7 @@ export async function walletRuntime(env:Env,rpc?:RewardLedgerRpc){
  return {...r,settings:r.settings??initial,controllers:[...(r.settings?[r.settings.controller]:[]),...r.controllers,...(initial?[initial.controller]:base?[{subject:base.subject,wallet:base.wallet}]:[])],deployments:[...(r.settings?[r.settings.deployment]:[]),...r.deployments,...(initial?[initial.deployment]:[])]};
 }
 export async function readWalletAdministration(identity:RewardAccountIdentity,env:Env,rpc?:RewardLedgerRpc){
- const r=stored.parse(await rewardWalletSettings(identity,undefined,walletRpc(env,rpc))),settings=r.settings??initialWalletSettings(env);return {...r,settings,fingerprint:walletSettingsFingerprint(settings)};
+ const r=stored.parse(await rewardWalletSettings(identity,undefined,walletRpc(env,rpc))),settings=r.settings??initialWalletSettings(env);return {...r,settings,fingerprint:walletSettingsFingerprint(settings),...(env.RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V6?{upgradeVersion:6 as const}:{})};
 }
 export const walletSettingsFingerprint=(v:WalletSettings|null)=>createHash('sha256').update(canonical(v)).digest('hex');
 export type WalletCandidateVerifier=(role:'deployment'|'controller',walletId:string,current:WalletSettings)=>Promise<WalletSettings['deployment']|WalletSettings['controller']>;
@@ -41,8 +41,8 @@ export function verifyControllerOwner(user:unknown,walletId:string,walletAddress
  return value.id;
 }
 export function configuredDeploymentUpgrade(env:Env,current:WalletSettings){
- let next;try{next=controllerDeploymentConfig.parse(JSON.parse(env.RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V5??'null'));}catch{throw Error('reward_wallet_upgrade_unavailable');}
- if(next.appId!==env.RACESON_REWARD_PRIVY_APP_ID||!next||next.protocolVersion!==5||next.appId!==current.deployment.appId||next.walletId!==current.deployment.walletId
+ let next;try{next=controllerDeploymentConfig.parse(JSON.parse(env.RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V6??env.RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V5??'null'));}catch{throw Error('reward_wallet_upgrade_unavailable');}
+ if(next.appId!==env.RACESON_REWARD_PRIVY_APP_ID||!next||next.protocolVersion!==(env.RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V6?6:5)||next.appId!==current.deployment.appId||next.walletId!==current.deployment.walletId
   ||next.address!==current.deployment.address||next.ownerId!==current.deployment.ownerId
   ||next.factory===current.deployment.factory||next.signerId===current.deployment.signerId)throw Error('reward_wallet_upgrade_unavailable');
  return next;
@@ -63,7 +63,7 @@ export function privyWalletVerifier(env:Env):WalletCandidateVerifier{return asyn
   if(w.additional_signers.length||w.policy_ids.length)throw Error('reward_wallet_unverified');
   return controllerWalletSchema.parse({subject,wallet:w.address.toLowerCase(),walletId:w.id,ownerId:w.owner_id});
  }
- const target=env.RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V5&&current.deployment.protocolVersion!==5
+ const target=(env.RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V6||env.RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V5)&&current.deployment.protocolVersion!==(env.RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V6?6:5)
   ?configuredDeploymentUpgrade(env,current):current.deployment;
  const c=controllerDeploymentConfig.parse({...target,appId:env.RACESON_REWARD_PRIVY_APP_ID,walletId:w.id,address:w.address.toLowerCase(),ownerId:w.owner_id});
  if(!env.RACESON_CONTROLLER_DEPLOYMENT_AUTH_KEY)throw Error('reward_wallet_provider_unavailable');
@@ -103,7 +103,7 @@ export const privyCreationOwner=(env:Env)=>async(current:WalletSettings,role:'de
    ||owner.user_ids[0]!==current.controller.subject||verifyControllerOwner(user,wallet.id,wallet.address)!==current.controller.subject)throw Error('reward_wallet_unverified');
   return current.controller.subject;
  }
- await privyWalletVerifier({...env,RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V5:undefined,RACESON_CONTROLLER_DEPLOYMENT:JSON.stringify(current.deployment)})('deployment',current.deployment.walletId,current);
+ await privyWalletVerifier({...env,RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V5:undefined,RACESON_CONTROLLER_DEPLOYMENT_UPGRADE_V6:undefined,RACESON_CONTROLLER_DEPLOYMENT:JSON.stringify(current.deployment)})('deployment',current.deployment.walletId,current);
  const client=new PrivyClient({appId:env.RACESON_REWARD_PRIVY_APP_ID!,appSecret:env.RACESON_SPONSOR_DEPLOYMENT_APP_SECRET!,maxRetries:0,timeout:15000});
  const owner=await client.keyQuorums().get(current.deployment.ownerId);
  if(owner.user_ids?.length!==1)throw Error('reward_wallet_unverified');

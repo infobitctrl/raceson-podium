@@ -2,7 +2,7 @@ import {rewardSponsorCreation,type RewardAccountIdentity,type RewardLedgerRpc} f
 import {walletRuntime,deploymentSignerFor,hostedWalletEnvironment} from './wallet-administration.js';
 import {sponsorCreationSignerFromEnv} from './sponsor-creation-privy.js';
 /** Select the journal's original gas wallet before consulting the active default. */
-export async function resolveDeploymentSigner(env:Record<string,string|undefined>,identity?:RewardAccountIdentity,setupId?:string,rpc?:RewardLedgerRpc,runtimeRpc?:RewardLedgerRpc,protocolVersion?:4|5){
+export async function resolveDeploymentSigner(env:Record<string,string|undefined>,identity?:RewardAccountIdentity,setupId?:string,rpc?:RewardLedgerRpc,runtimeRpc?:RewardLedgerRpc,protocolVersion?:4|5|6){
  const hosted=hostedWalletEnvironment(env);
  const r=await walletRuntime(env,runtimeRpc??(hosted?undefined:rpc));
  const baseline=hosted?JSON.parse(env.RACESON_CONTROLLER_DEPLOYMENT??'null'):null;

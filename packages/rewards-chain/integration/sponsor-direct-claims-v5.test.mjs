@@ -1,3 +1,6 @@
+import {clubOwnersHashV1,walletBindingMessageV2,verifyWalletBindingProofV2,encodeWalletRegistrationV2,encodeRegisterAndClaimV6,clubClaimMessageV6,encodeClubClaimV6} from '../dist/club-signatures-v6.js';
+import {sponsorProgrammeBuildV6,sponsorCampaignBuildV6,sponsorFactoryBuildV6,walletRegistryBuildV2} from '../dist/sponsor-v6-build.js';
+import {verifyClubRegistrationReceiptV6} from '../dist/sponsor-direct-claims-v5.js';
 import {clubDirectClaimV5} from '../../../apps/api/dist/features/rewards/club-direct-claims-v5-service.js';
 import {rewardClubSafeTestnetDependencies} from '../dist/club-safe-creation.js';
 import {deployOriginalClubSafeFixture} from './safe-deployment-fixture.mjs';
@@ -15,19 +18,22 @@ import {walletBindingMessageV1,verifyWalletBindingProofV1,encodeWalletRegistrati
 import {sponsorProgrammeBuildV5,sponsorCampaignBuildV5,sponsorFactoryBuildV5,walletRegistryBuildV1} from '../dist/sponsor-v5-build.js';
 const artifact=name=>JSON.parse(readFileSync(new URL(`../../../contracts/out/${name}.sol/${name}.json`,import.meta.url)));
 const h=n=>'0x'+String(n).padStart(64,'0');
-for(const chainId of [31337,10143])test(`V5 publication → explicit wallet registration → direct claim, owned local chain ${chainId}`,{timeout:120000},async t=>{
+for(const version of [5,6])for(const chainId of [31337,10143])test(`V${version} publication → explicit wallet registration → direct claim, owned local chain ${chainId}`,{timeout:120000},async t=>{
  const chain=await startOwnedRewardChain({chainId});
+ const bindingMessage=version===6?walletBindingMessageV2:walletBindingMessageV1,verifyBinding=version===6?verifyWalletBindingProofV2:verifyWalletBindingProofV1,register=version===6?encodeWalletRegistrationV2:encodeWalletRegistrationV1;
+ const programmeBuild=version===6?sponsorProgrammeBuildV6:sponsorProgrammeBuildV5,campaignBuild=version===6?sponsorCampaignBuildV6:sponsorCampaignBuildV5,factoryBuild=version===6?sponsorFactoryBuildV6:sponsorFactoryBuildV5,registryBuild=version===6?walletRegistryBuildV2:walletRegistryBuildV1;
+ const registryName=version===6?'RacesOnWalletRegistryV2':'RacesOnWalletRegistryV1';
  try{
-  for(const [name,pin] of [['RacesOnRewardProgrammeV5',sponsorProgrammeBuildV5],['RacesOnRewardCampaignV5',sponsorCampaignBuildV5],['RacesOnSponsorFactoryV5',sponsorFactoryBuildV5],['RacesOnWalletRegistryV1',walletRegistryBuildV1]]){
+  for(const [name,pin] of [[`RacesOnRewardProgrammeV${version}`,programmeBuild],[`RacesOnRewardCampaignV${version}`,campaignBuild],[`RacesOnSponsorFactoryV${version}`,factoryBuild],[registryName,registryBuild]]){
    const a=artifact(name);assert.equal(keccak256(a.bytecode.object),pin.creationCodeHash);assert.equal(keccak256(a.deployedBytecode.object),pin.runtimeTemplateHash);
    assert.deepEqual(Object.values(a.deployedBytecode.immutableReferences??{}).flat().map(x=>x.start).sort((a,b)=>a-b),Object.values(pin.offsets).flat().sort((a,b)=>a-b));
   }
   const issuer=fixtureSigner(0x990),reviewer=fixtureSigner(0x991),athlete=fixtureSigner(0x992),wrong=fixtureSigner(0x993);
   for(const account of [reviewer,athlete,wrong])await chain.testClient.setBalance({address:account.address,value:10n**19n});
   const send=async(tx,ok=true)=>{const hash=await chain.operatorClient.sendTransaction({...tx,gas:tx.gas??2_000_000n});const r=await chain.publicClient.waitForTransactionReceipt({hash});assert.equal(r.status,ok?'success':'reverted');return r;};
-  const registry=(await send({data:encodeDeployData({abi:artifact('RacesOnWalletRegistryV1').abi,bytecode:walletRegistryBuildV1.bytecode,args:[issuer.address]})})).contractAddress;
-  const factory=(await send({data:sponsorFactoryBuildV5.bytecode,gas:8_000_000n})).contractAddress;
-  const plan={version:5,chainId,launchId:'73000000-0000-4000-8000-000000000003',setupRevision:4,configurationHash:'a'.repeat(64),
+  const registry=(await send({data:encodeDeployData({abi:artifact(registryName).abi,bytecode:registryBuild.bytecode,args:[issuer.address]})})).contractAddress;
+  const factory=(await send({data:factoryBuild.bytecode,gas:8_000_000n})).contractAddress;
+  const plan={version,chainId,launchId:'73000000-0000-4000-8000-000000000003',setupRevision:4,configurationHash:'a'.repeat(64),
    funder:chain.operator.address.toLowerCase(),operator:reviewer.address.toLowerCase(),walletRegistry:registry.toLowerCase(),identityIssuer:issuer.address.toLowerCase(),
    unallocatedTreasury:chain.treasury.toLowerCase(),expiredTreasury:chain.operator.address.toLowerCase(),claimLifetime:7*86400,reviewPeriods:[0,0,0,0,0,0],
    caps:['300000000000000000','0','0','0','0','0'],budgetWei:'300000000000000000'};
@@ -59,13 +65,13 @@ for(const chainId of [31337,10143])test(`V5 publication → explicit wallet regi
   assert.equal(walletless.claimable,false);assert.equal(walletless.registeredAddress,null);assert.equal(walletless.paid,false);
   const reviewerNonce=await chain.publicClient.getTransactionCount({address:reviewer.address});
   const bindingTime=(await chain.publicClient.getBlock()).timestamp;
-  const binding={beneficiaryId:award.beneficiaryId,recipient:athlete.address,beneficiaryKind:0,nonce:0n,issuedAt:bindingTime,expiresAt:bindingTime+3600n};
+  const binding={beneficiaryId:award.beneficiaryId,recipient:athlete.address,beneficiaryKind:0,nonce:0n,issuedAt:bindingTime,expiresAt:bindingTime+3600n,...(version===6?{clubOwnersHash:h(0)}:{})};
   const context={chainId,registry};
-  const proof=await issuer.signTypedData(walletBindingMessageV1(context,binding));
-  await verifyWalletBindingProofV1(context,binding,issuer.address,proof);
-  await assert.rejects(verifyWalletBindingProofV1(context,{...binding,recipient:wrong.address},issuer.address,proof));
-  await send({account:wrong,to:registry,data:encodeWalletRegistrationV1(context,binding,proof)},false);
-  await send({account:athlete,to:registry,data:encodeWalletRegistrationV1(context,binding,proof)});await finalized();
+  const proof=await issuer.signTypedData(bindingMessage(context,binding));
+  await verifyBinding(context,binding,issuer.address,proof);
+  await assert.rejects(verifyBinding(context,{...binding,recipient:wrong.address},issuer.address,proof));
+  await send({account:wrong,to:registry,data:register(context,binding,proof)},false);
+  await send({account:athlete,to:registry,data:register(context,binding,proof)});await finalized();
   assert.equal((await observeSponsorDirectClaimV5(chain.publicClient,scope)).claimable,true);
   await send({account:wrong,to:input.campaignAddress,data:encodeSponsorDirectClaimV5(award.entitlementId)},false);
   const before=await chain.publicClient.getBalance({address:athlete.address});
@@ -87,14 +93,22 @@ for(const chainId of [31337,10143])test(`V5 publication → explicit wallet regi
    await finalized();const treasury=fixture.provenance,observed=await observeDirectClubTreasuryV5(chain.publicClient,treasury);
    const cscope={...scope,entitlementId:clubAward.entitlementId,beneficiaryId:clubAward.beneficiaryId,beneficiaryKind:1};
    const at=(await chain.publicClient.getBlock()).timestamp;
-   const b={beneficiaryId:clubAward.beneficiaryId,recipient:treasury.safe.context.verifyingContract,beneficiaryKind:1,nonce:0n,issuedAt:at,expiresAt:at+3600n};
-   const proof=await issuer.signTypedData(walletBindingMessageV1(context,b));
-   const call={chainId,safe:b.recipient,to:registry,data:encodeRegisterAndClaimV5(context,b,proof,input.campaignAddress,clubAward.entitlementId),nonce:observed.nonce};
+   const b={beneficiaryId:clubAward.beneficiaryId,recipient:treasury.safe.context.verifyingContract,beneficiaryKind:1,nonce:0n,issuedAt:at,expiresAt:at+3600n,...(version===6?{clubOwnersHash:clubOwnersHashV1(treasury.safe.owners)}:{})};
+   const proof=await issuer.signTypedData(bindingMessage(context,b));
+   const call={chainId,safe:b.recipient,to:registry,data:version===6?register(context,b,proof):encodeRegisterAndClaimV5(context,b,proof,input.campaignAddress,clubAward.entitlementId),nonce:observed.nonce};
    const signatures=await Promise.all(chain.clubOwners.slice(0,2).map(owner=>owner.signTypedData(directSafeMessageV5(call))));
    await assert.rejects(verifyDirectSafeSignaturesV5(call,treasury.safe.owners,[signatures[0],signatures[0]]));
    await assert.rejects(verifyDirectSafeSignaturesV5({...call,nonce:1n},treasury.safe.owners,signatures));
    const consent=await verifyDirectSafeSignaturesV5(call,treasury.safe.owners,signatures);
-   const receipt=await send({to:call.safe,data:encodeDirectSafeCallV5(call,consent.signature)});await finalized();
+   let receipt=await send({to:call.safe,data:encodeDirectSafeCallV5(call,consent.signature)});await finalized();
+   if(version===6){
+    await verifyClubRegistrationReceiptV6(chain.publicClient,cscope,receipt.transactionHash,treasury);
+    await assert.rejects(verifySponsorDirectReceiptV5(chain.publicClient,cscope,receipt.transactionHash,treasury));
+    const view=await observeSponsorDirectClaimV5(chain.publicClient,cscope);assert.equal(view.paid,false);
+    const claim={entitlementId:clubAward.entitlementId,recipient:b.recipient,amount:clubAward.amount,pot:1,nonce:0n,issuedAt:at,expiresAt:at+3600n,allocationDigest:view.allocationDigest,clubOwnersHash:b.clubOwnersHash,registrationNonce:1n};
+    const ctx={chainId,campaign:input.campaignAddress},proofs=await Promise.all(chain.clubOwners.slice(0,2).map(o=>o.signTypedData(clubClaimMessageV6(ctx,claim))));
+    receipt=await send({to:input.campaignAddress,data:await encodeClubClaimV6(ctx,claim,treasury.safe.owners,proofs)});await finalized();
+   }
    const checked=await verifySponsorDirectReceiptV5(chain.publicClient,cscope,receipt.transactionHash,treasury);
    assert.equal(checked.recipient,call.safe.toLowerCase());assert.equal(await chain.publicClient.getBalance({address:call.safe}),clubAward.amount);
    await assert.rejects(verifySponsorDirectReceiptV5(chain.publicClient,scope,receipt.transactionHash,treasury));
@@ -133,7 +147,8 @@ for(const chainId of [31337,10143])test(`V5 publication → explicit wallet regi
       return{error:null,data:{approvalId,slot:0,plan:p,deploymentHash:i.deploymentHash,fundingHash:i.fundingHash,
        award:{...row,amount:row.amount.toString()},challenge:c,receipt:savedReceipt,rehearsalPolicy:'podium-demo-alias-rehearsal-v1'}};
      };
-     const deps={reader:chain.publicClient,rpc,issuer:{address:issuer.address,sign:async(context,binding)=>{signatures++;return issuer.signTypedData(walletBindingMessageV1(context,binding));}}};
+     const deps={reader:chain.publicClient,rpc,issuer:{address:issuer.address,sign:async(context,binding)=>{signatures++;return issuer.signTypedData(bindingMessage(context,binding));}}};
+     deps.issuerV2=deps.issuer;
      const get=command=>directClaimV5(actor,approvalId,row.entitlementId,command,deps);
      const beforeReviewer=await chain.publicClient.getTransactionCount({address:reviewer.address});
      assert.equal((await get()).status,'claimable');assert.equal(signatures,0);
@@ -179,7 +194,16 @@ for(const chainId of [31337,10143])test(`V5 publication → explicit wallet regi
      const call={chainId,safe:safeAddress,to:cp.transaction.to,data:cp.transaction.data,nonce:BigInt(cp.safeNonce)};
      const clubSignatures=await Promise.all(chain.clubOwners.slice(0,2).map(o=>o.signTypedData(directSafeMessageV5(call))));
      const consent=await verifyDirectSafeSignaturesV5(call,chain.clubOwners.map(o=>o.address),clubSignatures);
-     const paidClub=await send({to:safeAddress,data:encodeDirectSafeCallV5(call,consent.signature)});await finalized();
+     let paidClub=await send({to:safeAddress,data:encodeDirectSafeCallV5(call,consent.signature)});await finalized();
+     if(version===6){
+      assert.equal(cp.phase,'register');await assert.rejects(clubGet({action:'receipt',hash:paidClub.transactionHash}));assert.equal(clubReceipt,null);
+      const registered=await clubGet({action:'registrationReceipt',hash:paidClub.transactionHash});assert.equal(registered.phase,'claim');assert.equal(registered.status,'claimable');assert.equal(clubReceipt,null);
+      const ready=await clubGet({action:'prepare',proofId});assert.equal(ready.phase,'claim');
+      const c=ready.clubClaim,claim={...c,amount:BigInt(c.amount),nonce:BigInt(c.nonce),issuedAt:BigInt(c.issuedAt),expiresAt:BigInt(c.expiresAt),registrationNonce:BigInt(c.registrationNonce)};
+      const ctx={chainId,campaign:ready.campaignAddress},owners=chain.clubOwners.map(o=>o.address),proofs=await Promise.all(chain.clubOwners.slice(0,2).map(o=>o.signTypedData(clubClaimMessageV6(ctx,claim))));
+      await assert.rejects(encodeClubClaimV6(ctx,claim,owners,[proofs[0],proofs[0]]));
+      paidClub=await send({to:ready.campaignAddress,data:await encodeClubClaimV6(ctx,claim,owners,proofs)});await finalized();
+     }
      assert.equal((await clubGet({action:'receipt',hash:paidClub.transactionHash})).status,'paid');assert.equal(clubReceipt.recipient,safeAddress);
      assert.equal((await clubGet()).status,'paid');assert.equal(await chain.publicClient.getTransactionCount({address:reviewer.address}),beforeReviewer);
      revoked=true;await assert.rejects(get(),{code:'reward_account_session_required'});
