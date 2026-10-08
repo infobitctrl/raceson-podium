@@ -63,7 +63,12 @@ export async function observeSponsorDirectClaimV5(reader:SponsorChainReader,inpu
   reader.readContract({address:campaign,abi:directClaimAbiV5,functionName:'entitlements',args:[scope.entitlementId],blockNumber}),
   reader.readContract({address:registry,abi:walletRegistryAbiV1,functionName:'registrations',args:[scope.beneficiaryId],blockNumber}),
  ]);
- demand(award[0]===scope.beneficiaryId&&award[1]===BigInt(scope.amountWei)&&award[2]===scope.explanationHash
+ // Approved database awards can be visible before the reviewer uploads them.
+ // Only an entirely empty mapping in Review is an expected unpublished award;
+ // a conflicting entry or a missing staged/active award must still fail closed.
+ const unpublished=pot.state===1&&BigInt(award[0])===0n&&award[1]===0n&&BigInt(award[2])===0n
+  &&award[3]===0n&&BigInt(award[4])===0n&&award[5]===0&&award[6]===false&&award[7]===0;
+ demand(unpublished||award[0]===scope.beneficiaryId&&award[1]===BigInt(scope.amountWei)&&award[2]===scope.explanationHash
   &&award[5]===(scope.slot===0?1:0)&&award[7]===scope.beneficiaryKind,'direct_claim_award_mismatch');
  demand(binding[2]===0n||binding[1]===scope.beneficiaryKind,'direct_claim_binding_mismatch');
  const anchor=await reader.getBlock({blockNumber});demand(anchor.hash===observed.blockHash&&await reader.getChainId()===plan.chainId,'direct_claim_chain_changed');

@@ -11,6 +11,7 @@ import s from './AthleteRewards.module.css';
 import claimStyle from './AthleteClaimReview.module.css';
 import d from './DirectAthleteClaims.module.css';
 import {Check,Circle,LoaderCircle} from 'lucide-react';
+import {directClaimError,directClaimErrorCopy,type DirectClaimPhase,type DirectClaimError} from '../model/directClaimError';
 import {awardDisplay} from '../model/awardDisplay';
 export default function DirectAthleteClaims({awards,hr,onRefresh,onAccessError}:{awards:SponsorAward[];hr:boolean;onRefresh:()=>Promise<void>;onAccessError?:(error:unknown)=>void}){
  const [selected,setSelected]=useState<SponsorAward|null>(null),t=(en:string,local:string)=>hr?local:en;
@@ -22,8 +23,8 @@ export default function DirectAthleteClaims({awards,hr,onRefresh,onAccessError}:
 }
 export function DirectAthleteClaim({award,hr,onBusy,onAccessError}:{award:SponsorAward;hr:boolean;onBusy?:(busy:boolean)=>void;onAccessError?:(error:unknown)=>void}){
  const [view,setView]=useState<DirectClaimV5|null>(null),[wallet,setWallet]=useState<{wallet:DetectedRewardWallet;address:string}|null>(null);
- const [phase,setPhase]=useState<'checking'|'wallet'|'preparing'|'sending'|'receipt'>('checking');
- const [busy,setBusy]=useState(false),[error,setError]=useState<'sponsorship'|'unknown'|null>(null),[ack,setAck]=useState(false),[pending,setPending]=useState<string|null>(null),[submittedTo,setSubmittedTo]=useState<string|null>(null);
+ const [phase,setPhase]=useState<DirectClaimPhase>('checking');const phaseRef=useRef<DirectClaimPhase>('checking'),changePhase=useCallback((value:DirectClaimPhase)=>{phaseRef.current=value;setPhase(value);},[]);
+ const [busy,setBusy]=useState(false),[error,setError]=useState<DirectClaimError|null>(null),[ack,setAck]=useState(false),[pending,setPending]=useState<string|null>(null),[submittedTo,setSubmittedTo]=useState<string|null>(null);
  const active=useRef(true),flight=useRef(false),currentWallet=useRef(wallet),abort=useRef<AbortController|null>(null),accessError=useRef(onAccessError);currentWallet.current=wallet;accessError.current=onAccessError;
  const t=(en:string,local:string)=>hr?local:en,storage=`podium:direct-claim:${award.approvalId}:${award.entitlementId}`;
  const choose=useCallback((value:{wallet:DetectedRewardWallet;address:string}|null)=>{setWallet(value);setAck(false);},[]);
@@ -33,36 +34,37 @@ export function DirectAthleteClaim({award,hr,onBusy,onAccessError}:{award:Sponso
   if(v.amountWei!==award.amountWei)throw Error('award_changed');
   if(active.current){setView(v);if(v.status==='paid'){setPending(null);try{sessionStorage.removeItem(storage);}catch{/* Optional recovery only. */}}}
  },[award.approvalId,award.entitlementId,award.amountWei,storage]);
- const run=useCallback(async(work:()=>Promise<void>,operation:typeof phase='checking')=>{if(flight.current)return;flight.current=true;setPhase(operation);setBusy(true);setError(null);
-  try{await work();}catch(e){if(active.current){setError(e instanceof Error&&e.message==='claim_sponsorship_unavailable'?'sponsorship':'unknown');setAck(false);if(e&&typeof e==='object'&&'status'in e&&[401,403].includes(Number(e.status)))accessError.current?.(e);}}
-  finally{flight.current=false;if(active.current)setBusy(false);}},[]);
+ const run=useCallback(async(work:()=>Promise<void>,operation:typeof phase='checking')=>{if(flight.current)return;flight.current=true;changePhase(operation);setBusy(true);setError(null);
+  try{await work();}catch(e){if(active.current){setError(directClaimError(e,phaseRef.current));setAck(false);if(e&&typeof e==='object'&&'status'in e&&[401,403].includes(Number(e.status)))accessError.current?.(e);}}
+  finally{flight.current=false;if(active.current)setBusy(false);}},[changePhase]);
  useEffect(()=>{active.current=true;let hash:string|null=null;try{const saved=sessionStorage.getItem(storage);if(saved&&/^0x[0-9a-f]{64}$/.test(saved))hash=saved;}catch{/* Optional recovery only. */}
-  setPending(hash);void run(()=>load(hash));return()=>{active.current=false;abort.current?.abort();};},[load,run,storage]);
+  setPending(hash);void run(()=>load(hash),hash?'receipt':'checking');return()=>{active.current=false;abort.current?.abort();};},[load,run,storage]);
  async function claim(){if(!wallet||!ack||view?.status!=='claimable'||pending)return;
   if(!wallet.wallet.sendDirectClaim)throw Error('claim_sponsorship_unavailable');
   const chosen=wallet,isCurrent=()=>active.current&&currentWallet.current===chosen;
   const controller=new AbortController();abort.current=controller;
   const proof=await prepareBrowserWalletProof(chosen.wallet.provider,window.location.origin,isCurrent,()=>{if(active.current){setWallet(null);setAck(false);}},controller.signal);
   try{
-   const confirmed=await proof.confirm();await proof.assertCurrent();if(active.current)setPhase('preparing');
+   const confirmed=await proof.confirm();await proof.assertCurrent();if(active.current)changePhase('preparing');
    const fresh=await readDirectClaimV5({approvalId:award.approvalId!,entitlementId:award.entitlementId!},{action:'prepare',proofId:confirmed.proofId});
    if(!isCurrent()||fresh.amountWei!==award.amountWei||fresh.transaction?.from!==chosen.address)throw Error('wallet_changed');
-   if(active.current)setPhase('sending');
+   if(active.current)changePhase('sending');
    const hash=await chosen.wallet.sendDirectClaim!(fresh,isCurrent);
    try{sessionStorage.setItem(storage,hash);}catch{/* Keep the returned hash visible. */}
    if(active.current){setPending(hash);setSubmittedTo(chosen.address);setView({...fresh,transaction:null});setAck(false);}
   }finally{proof.dispose();controller.abort();}
  }
  const paid=view?.status==='paid',claiming=busy&&phase!=='checking'&&phase!=='receipt';
- const destination=paid?view.recipient:pending?submittedTo??view?.recipient:wallet?.address??view?.recipient;
+ const walletReady=!!wallet?.wallet.sendDirectClaim;
+ const destination=paid?view.recipient:pending?submittedTo??view?.recipient:walletReady?wallet?.address:null;
  const date=view&&Number(view.deadline)>0?new Date(Number(view.deadline)*1000):null;
  const deadline=date&&Number.isFinite(date.getTime())?date.toLocaleString(hr?'hr-HR':'en-GB',{dateStyle:'medium',timeStyle:'short',timeZone:'UTC'})+' UTC':null;
  const status=busy?phase==='wallet'?t('Confirm wallet ownership…','Potvrdite vlasništvo novčanika…'):phase==='preparing'?t('Preparing your claim…','Priprema preuzimanja…'):phase==='sending'?t('Confirm in your wallet…','Potvrdite u novčaniku…'):phase==='receipt'?t('Checking payment…','Provjera isplate…'):t('Checking your reward…','Provjera nagrade…')
   :paid?t('Reward paid','Nagrada je isplaćena'):pending?t('Submitted · awaiting confirmation','Poslano · čeka potvrdu'):null;
  const steps=[
   {title:t('Award','Nagrada'),done:!!view,current:!view,detail:view?t('Verified','Provjereno'):t('Checking…','Provjera…')},
-  {title:t('Wallet','Novčanik'),done:!!destination||!!pending,current:!!view&&!destination&&!pending,detail:destination?`${destination.slice(0,6)}…${destination.slice(-4)}`:pending?t('Confirmed','Potvrđeno'):t('Connect to receive','Povežite za primitak')},
-  {title:t('Payment','Isplata'),done:paid,current:(!!destination||!!pending)&&!paid,detail:paid?t('Confirmed','Potvrđeno'):pending?t('Confirming','Potvrđivanje'):t('Your confirmation','Vaša potvrda')},
+  {title:t('Wallet','Novčanik'),done:!!destination||!!pending,current:view?.status==='claimable'&&!destination&&!pending,detail:view?.status==='not_open'?t('After claims open','Nakon otvaranja preuzimanja'):destination?`${destination.slice(0,6)}…${destination.slice(-4)}`:pending?t('Confirmed','Potvrđeno'):t('Connect to receive','Povežite za primitak')},
+  {title:t('Payment','Isplata'),done:paid,current:(!!destination||!!pending)&&!paid,detail:view?.status==='not_open'?t('Not open','Nije otvoreno'):paid?t('Confirmed','Potvrđeno'):pending?t('Confirming','Potvrđivanje'):t('Your confirmation','Vaša potvrda')},
  ];
  return <section className={`${claimStyle.review} ${d.review}`}>
   <ol className={d.steps} aria-label={t('Claim progress','Napredak preuzimanja')}>{steps.map(step=><li key={step.title} data-state={step.done?'complete':step.current?'current':'waiting'} aria-current={step.current?'step':undefined}>
@@ -79,15 +81,14 @@ export function DirectAthleteClaim({award,hr,onBusy,onAccessError}:{award:Sponso
   {paid?view.receipt?<RewardExplorerLink chainId={10143} kind="tx" value={view.receipt.transactionHash}>{t('View receipt','Pregledaj potvrdu')}</RewardExplorerLink>:null
    :pending?<><RewardExplorerLink chainId={10143} kind="tx" value={pending}>{t('View transaction','Pregledaj transakciju')}</RewardExplorerLink><button className={s.primary} disabled={busy} onClick={()=>void run(()=>load(pending),'receipt')}>{t('Check payment','Provjeri isplatu')}</button></>
    :view?.status==='claimable'?<>
-    <div className={d.wallet} hidden={claiming}><SponsorWallet compact hideConnectedSummary purpose="recipient" chainId={10143} hr={hr} onWallet={choose}/></div>
+    {!claiming&&!walletReady?<div className={d.setup}><h3>{t('Set up your reward wallet','Postavite novčanik za nagrade')}</h3><p>{t('Connect your reward wallet. If you do not have one, create it here first.','Povežite novčanik za nagrade. Ako ga nemate, prvo ga kreirajte ovdje.')}</p><p>{t('RacesOn pays the network fee. You do not need test MON.','RacesOn plaća mrežnu naknadu. Ne trebate test MON.')}</p></div>:null}
+    <div className={d.wallet} hidden={claiming}><SponsorWallet compact embeddedOnly hideConnectedSummary purpose="recipient" chainId={10143} hr={hr} onWallet={choose}/></div>
     {wallet&&!wallet.wallet.sendDirectClaim?<p role="status">{t('Use your Privy wallet for RacesOn-paid fees.','Za naknade koje plaća RacesOn koristite Privy novčanik.')}</p>:null}
-    {!claiming?<><label className={claimStyle.consent}><input type="checkbox" checked={ack} disabled={busy||!wallet?.wallet.sendDirectClaim} onChange={e=>setAck(e.target.checked)}/>{t('Send this reward to the wallet above.','Pošalji nagradu na navedeni novčanik.')}</label>
+    {!claiming&&walletReady&&error!=='unknown'?<><label className={claimStyle.consent}><input type="checkbox" checked={ack} disabled={busy||!wallet?.wallet.sendDirectClaim} onChange={e=>setAck(e.target.checked)}/>{t('Send this reward to the wallet above.','Pošalji nagradu na navedeni novčanik.')}</label>
      <button className={s.primary} disabled={busy||!wallet?.wallet.sendDirectClaim||!ack} onClick={()=>void run(claim,'wallet')}>{t('Claim reward','Preuzmi nagradu')}</button></>:null}
    </>
    :view?<p role="status">{view.status==='not_open'?t('Claims have not opened yet.','Preuzimanja još nisu otvorena.'):view.status==='paused'?t('Claims are temporarily paused.','Preuzimanja su privremeno zaustavljena.'):t('The claim deadline has passed.','Rok preuzimanja je istekao.')}</p>:null}
-  {error?<RewardErrorNotice title={error==='sponsorship'?t('Sponsored claim unavailable','Sponzorirano preuzimanje nije dostupno'):t('Claim needs attention','Potrebna je provjera preuzimanja')}>
-   {error==='sponsorship'?t('Try your Privy wallet again. You do not need to add test MON.','Pokušajte ponovno s Privy novčanikom. Ne trebate dodavati test MON.'):t('Check wallet activity, then refresh payment status before retrying.','Provjerite aktivnost novčanika pa osvježite stanje prije ponovnog pokušaja.')}
-  </RewardErrorNotice>:null}
+  {error?<RewardErrorNotice title={t(...directClaimErrorCopy[error].title)}>{t(...directClaimErrorCopy[error].body)}</RewardErrorNotice>:null}
   {!busy&&!pending&&!paid&&(error||view?.status!=='claimable')?<button className={d.refresh} onClick={()=>void run(()=>load())}>{t('Refresh status','Osvježi stanje')}</button>:null}
   <details className={d.details}><summary>{t('Claim details','Detalji preuzimanja')}</summary>{destination?<p><RewardExplorerLink chainId={10143} kind="address" value={destination}/></p>:null}
    {!busy&&!pending&&!paid&&!error&&view?.status==='claimable'?<button className={d.refresh} onClick={()=>void run(()=>load())}>{t('Refresh status','Osvježi stanje')}</button>:null}

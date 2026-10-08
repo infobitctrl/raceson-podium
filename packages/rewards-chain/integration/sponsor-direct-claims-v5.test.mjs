@@ -44,11 +44,17 @@ for(const chainId of [31337,10143])test(`V5 publication → explicit wallet regi
   const now=BigInt(initial.blockTimestamp);
   const publication={reviewPeriod:'0',reviewStartedAt:now.toString(),officialPublishedAt:now.toString(),publicationEvidenceHash:h(301)};
   const input={plan,slot:0,deploymentHash:deployed.transactionHash,fundingHash:funding.transactionHash,campaignAddress:initial.pots[0].address,snapshotDigest:h(401),awards:[award,clubAward],publication};
+  const scope={...input,entitlementId:award.entitlementId,beneficiaryId:award.beneficiaryId,beneficiaryKind:0,amountWei:award.amount.toString(),explanationHash:award.explanationHash};
+  const unpublished=await observeSponsorDirectClaimV5(chain.publicClient,scope);
+  assert.equal(unpublished.state,1);assert.equal(unpublished.paid,false);assert.equal(unpublished.claimable,false);assert.equal(unpublished.deadline,'0');
   for(const action of ['upload','stage','activate']){
    assert.equal((await observeSponsorLifecycleV4(chain.publicClient,input)).next,action);
    await send({account:reviewer,to:input.campaignAddress,data:sponsorLifecycleDataV4(input,action)});await finalized();
+   await assert.rejects(observeSponsorDirectClaimV5(chain.publicClient,{...scope,amountWei:'1'}),/direct_claim_award_mismatch/);
+   if(action==='stage')await assert.rejects(observeSponsorDirectClaimV5(chain.publicClient,{...scope,entitlementId:h(999)}),/direct_claim_award_mismatch/);
   }
-  const scope={...input,entitlementId:award.entitlementId,beneficiaryId:award.beneficiaryId,beneficiaryKind:0,amountWei:award.amount.toString(),explanationHash:award.explanationHash};
+  await assert.rejects(observeSponsorDirectClaimV5(chain.publicClient,{...scope,entitlementId:h(999)}),/direct_claim_award_mismatch/);
+  await assert.rejects(observeSponsorDirectClaimV5(chain.publicClient,{...scope,amountWei:'1'}),/direct_claim_award_mismatch/);
   const walletless=await observeSponsorDirectClaimV5(chain.publicClient,scope);
   assert.equal(walletless.claimable,false);assert.equal(walletless.registeredAddress,null);assert.equal(walletless.paid,false);
   const reviewerNonce=await chain.publicClient.getTransactionCount({address:reviewer.address});
@@ -104,6 +110,10 @@ for(const chainId of [31337,10143])test(`V5 publication → explicit wallet regi
     const o=await observeSponsorProgramme(chain.publicClient,p,deployment.transactionHash,fund.transactionHash);
     const row={...award,entitlementId:h(2),beneficiaryId:h(102)},clubrow={...clubAward,entitlementId:h(4),beneficiaryId:h(104)};
     const i={...input,plan:p,deploymentHash:deployment.transactionHash,fundingHash:fund.transactionHash,campaignAddress:o.pots[0].address,awards:[row,clubrow]};
+    const pendingFacts={approvalId:'73000000-0000-4000-8000-000000000001',slot:0,plan:p,deploymentHash:deployment.transactionHash,fundingHash:fund.transactionHash,award:{...row,amount:row.amount.toString()},challenge:null,receipt:null,rehearsalPolicy:'podium-demo-alias-rehearsal-v1'};
+    const pendingView=await directClaimV5({userId:pendingFacts.approvalId,sessionId:pendingFacts.approvalId},pendingFacts.approvalId,row.entitlementId,undefined,{reader:chain.publicClient,rpc:async()=>({data:pendingFacts,error:null}),issuer:null});
+    assert.equal(pendingView.status,'not_open');assert.equal(pendingView.transaction,null);assert.equal(pendingView.recipient,null);
+    await assert.rejects(directClaimV5({userId:pendingFacts.approvalId,sessionId:pendingFacts.approvalId},pendingFacts.approvalId,row.entitlementId,{action:'prepare',proofId:pendingFacts.approvalId},{reader:chain.publicClient,rpc:async()=>({data:pendingFacts,error:null}),issuer:null}));
     for(const action of ['upload','stage','activate']){await send({account:reviewer,to:i.campaignAddress,data:sponsorLifecycleDataV4(i,action)});await finalized();}
     const current=(await chain.publicClient.getBlock()).timestamp,realNow=Date.now;
     Date.now=()=>Number(current)*1000;

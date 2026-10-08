@@ -15,7 +15,9 @@ it('loading an award does not create/connect a wallet, prove ownership or submit
  await screen.findByRole('button',{name:'Create or connect my wallet'});
  expect(m.read).toHaveBeenCalledWith({approvalId:id,entitlementId:hash},undefined);
  expect(m.proof).not.toHaveBeenCalled();expect(m.confirm).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
- expect(screen.getByRole('button',{name:'Claim reward'})).toBeDisabled();
+ expect(screen.queryByRole('button',{name:'Claim reward'})).not.toBeInTheDocument();
+ expect(screen.getByRole('heading',{name:'Set up your reward wallet'})).toBeVisible();
+ expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
  expect(screen.queryByText(/Awaiting.*review/i)).not.toBeInTheDocument();
 });
 it('requires explicit wallet choice and consent, then sends without requesting reviewer approval',async()=>{
@@ -53,7 +55,7 @@ it('explains sponsorship failure and permits explicit retry without asking the a
  m.send.mockRejectedValueOnce(Error('claim_sponsorship_unavailable')).mockResolvedValue(hash);
  render(<DirectAthleteClaim award={award} hr={false}/>);fireEvent.click(await screen.findByRole('button',{name:'Create or connect my wallet'}));
  m.read.mockResolvedValue({...view,transaction:{from:address}});fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Claim reward'}));
- expect(await screen.findByRole('alert')).toHaveTextContent('Sponsored claim unavailable');expect(screen.getByRole('alert')).toHaveTextContent('You do not need to add test MON');
+ expect(await screen.findByRole('alert')).toHaveTextContent('RacesOn fee sponsorship unavailable');expect(screen.getByRole('alert')).toHaveTextContent('You do not need to add test MON');
  expect(screen.queryByRole('button',{name:'Check payment'})).not.toBeInTheDocument();expect(sessionStorage.length).toBe(0);expect(screen.getByRole('checkbox')).not.toBeChecked();
  fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Claim reward'}));await screen.findByRole('button',{name:'Check payment'});
  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -87,4 +89,36 @@ it('shows signing progress without the contradictory checking message and keeps 
  await waitFor(()=>expect(m.send).toHaveBeenCalledOnce());expect(screen.getByRole('status')).toHaveTextContent('Confirm in your wallet');expect(screen.queryByText('Checking your reward…')).not.toBeInTheDocument();
  expect(onBusy).toHaveBeenLastCalledWith(true);await act(async()=>resolve(hash));expect(await screen.findByRole('button',{name:'Check payment'})).toBeEnabled();
  expect(screen.queryByText('Reward paid')).not.toBeInTheDocument();expect(onBusy).toHaveBeenLastCalledWith(false);
+});
+
+it('a failed initial award check points to refresh and never claims a payment was sent',async()=>{
+ m.read.mockRejectedValueOnce(Error('reward_direct_claim_unavailable'));
+ render(<DirectAthleteClaim award={award} hr={false}/>);
+ expect(await screen.findByRole('alert')).toHaveTextContent('Reward check unavailable');
+ expect(screen.getByRole('alert')).toHaveTextContent('No claim was submitted');
+ expect(screen.queryByText(/Check wallet activity/)).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
+ await screen.findByRole('heading',{name:'Set up your reward wallet'});
+ expect(m.send).not.toHaveBeenCalled();expect(m.proof).not.toHaveBeenCalled();
+});
+it('an uncertain send requires a status refresh and recovers a payment without a second submission',async()=>{
+ m.send.mockRejectedValueOnce(Error('transaction_unknown'));
+ render(<DirectAthleteClaim award={award} hr={false}/>);fireEvent.click(await screen.findByRole('button',{name:'Create or connect my wallet'}));
+ m.read.mockResolvedValue({...view,transaction:{from:address}});fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Claim reward'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('Payment status needs checking');
+ expect(screen.queryByRole('button',{name:'Claim reward'})).not.toBeInTheDocument();
+ m.read.mockResolvedValue({...view,status:'paid',recipient:address,receipt:{transactionHash:hash,amountWei:award.amountWei}});
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));await screen.findByText('Reward paid');expect(m.send).toHaveBeenCalledOnce();
+});
+it('a failed receipt check preserves recovery and never exposes claim submission',async()=>{
+ sessionStorage.setItem(`podium:direct-claim:${id}:${hash}`,hash);m.read.mockRejectedValueOnce(Error('unavailable'));
+ render(<DirectAthleteClaim award={award} hr={false}/>);
+ expect(await screen.findByRole('alert')).toHaveTextContent('Your transaction is saved');
+ expect(screen.getByRole('button',{name:'Check payment'})).toBeEnabled();expect(screen.queryByRole('button',{name:'Claim reward'})).not.toBeInTheDocument();
+ expect(sessionStorage.getItem(`podium:direct-claim:${id}:${hash}`)).toBe(hash);
+});
+it('an existing registry address does not replace explicit wallet connection',async()=>{
+ m.read.mockResolvedValue({...view,recipient:address});render(<DirectAthleteClaim award={award} hr={false}/>);
+ await screen.findByRole('heading',{name:'Set up your reward wallet'});
+ expect(screen.getByText('Choose your wallet')).toBeVisible();expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
 });

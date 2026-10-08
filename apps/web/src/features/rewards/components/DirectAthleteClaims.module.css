@@ -14,3 +14,5 @@
 @keyframes direct-claim-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.spinner{animation:none}}
 @media(max-width:420px){.steps{gap:5px}.steps li{gap:5px}.steps li>span{width:20px;height:20px}.steps strong{font-size:11px}.steps small{font-size:10px}}
+
+.setup{padding:14px;background:#f7f4ef;border-radius:12px;margin:14px 0}.setup h3{font-size:15px!important;margin:0 0 7px!important}.setup p{font-size:12px!important;line-height:1.5!important;margin:6px 0!important}

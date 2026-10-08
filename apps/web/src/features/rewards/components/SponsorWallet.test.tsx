@@ -165,3 +165,18 @@ it('the claim checklist owns the connected summary while Change and disconnect r
  fireEvent.click(screen.getByRole('button',{name:'Change'}));expect(screen.getByRole('button',{name:'Advanced · external wallet'})).toBeVisible();
  act(()=>p.listeners.get('disconnect')?.());expect(onWallet).toHaveBeenLastCalledWith(null);expect(screen.queryByRole('button',{name:'Done'})).not.toBeInTheDocument();
 });
+
+it('sponsored claims require explicit wallet creation and offer no recipient-funded wallet path',async()=>{
+ const p=provider(),create=vi.fn(async()=>{}),onWallet=vi.fn();
+ const page=render(<SponsorWallet embeddedOnly compact purpose="recipient" chainId={10143} hr={false} onWallet={onWallet}/>);
+ expect(screen.queryByRole('button',{name:'Advanced · external wallet'})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Set up reward wallet'}));
+ mocks.embedded={status:'ready',wallet:null,create};page.rerender(<SponsorWallet embeddedOnly compact purpose="recipient" chainId={10143} hr={false} onWallet={onWallet}/>);
+ expect(create).not.toHaveBeenCalled();expect(p.request).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Create reward wallet'}));expect(create).toHaveBeenCalledOnce();
+ const wallet={id:'privy:test',name:'Privy',provider:p};mocks.embedded={status:'ready',wallet,address};
+ page.rerender(<SponsorWallet embeddedOnly compact purpose="recipient" chainId={10143} hr={false} onWallet={onWallet}/>);
+ await screen.findByText('Privy wallet connected and ready to use.');expect(onWallet).toHaveBeenLastCalledWith({wallet,address});
+ act(()=>p.listeners.get('disconnect')?.());expect(onWallet).toHaveBeenLastCalledWith(null);
+ expect(screen.getByRole('button',{name:'Connect reward wallet'})).toBeVisible();expect(p.request).toHaveBeenCalledTimes(3);
+});
