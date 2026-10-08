@@ -16,3 +16,11 @@ it('rejects duplicate/unordered rows and a premature or reused continuation curs
  }
  await expect(getHostedAthleteAwards(award.entitlementId)).rejects.toThrow('invalid_claim');
 });
+it('preserves optional saved display names and rejects malformed metadata',async()=>{
+ const display={campaignName:'Sponsor title',eventName:'Raslina 2026',scopeName:null};
+ mocks.request.mockResolvedValueOnce({items:[{...award,slot:5,display}],nextCursor:null});
+ expect((await getHostedAthleteAwards()).items[0].display).toEqual(display);
+ for(const invalid of [{...display,eventName:''},{...display,eventName:'x'.repeat(301)},{...display,scopeName:5},{...display,secret:'unrequested'}]){
+  mocks.request.mockResolvedValueOnce({items:[{...award,display:invalid}],nextCursor:null});await expect(getHostedAthleteAwards()).rejects.toThrow();
+ }
+});

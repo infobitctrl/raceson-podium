@@ -15,7 +15,7 @@ export default function HostedAthleteRewards({userId,profileId,viewKey,hr}:{user
  const awards=useInfiniteQuery({queryKey:['hosted-copy-athlete-awards',userId,viewKey,profileId],initialPageParam:null as string|null,
   queryFn:({pageParam})=>getHostedAthleteAwards(pageParam),getNextPageParam:page=>page.nextCursor??undefined,retry:false,staleTime:0,gcTime:0});
  const loaded=awards.data?.pages.flatMap(page=>page.items)??[];
- const needsDestinations=!loaded.length||loaded.some(award=>award.protocolVersion!==5);
+ const needsDestinations=loaded.some(award=>award.protocolVersion!==5);
  const destinations=useInfiniteQuery({queryKey:['athlete-reward-destinations',userId,viewKey],initialPageParam:null as string|null,
   queryFn:({pageParam})=>getOwnRewardDestinations(pageParam),enabled:awards.isSuccess&&needsDestinations,getNextPageParam:page=>page.nextCursor??undefined,retry:false,staleTime:0,gcTime:0});
  const failed=!!accessError||awards.isError||needsDestinations&&destinations.isError;

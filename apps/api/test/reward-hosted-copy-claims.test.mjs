@@ -130,3 +130,8 @@ test('rehearsal preparation refuses generic facts, wrong claim, chain, schema an
  // Correct policy still cannot override a held source, missing reader or cryptographic proof.
  await assert.rejects(sponsorClaimFromFactsV4(scope,change,deps),/reward_sponsor_claim_not_ready/);assert.equal(writes,0);
 });
+test('athlete award display metadata is bounded and does not change the private award facts',async()=>{
+ const row={approvalId:id(3),slot:5,entitlementId:'0x'+'a'.repeat(64),amountWei:'600000000000000',athleteProfileId:id(1),claims:[],protocolVersion:5,directClaim:{paid:false},display:{campaignName:'Race sponsor',eventName:'Raslina 2026',scopeName:null}};
+ const result=await hostedCopyAthleteAwards(actor,null,async()=>({data:{items:[row],nextCursor:null},error:null}));assert.deepEqual(result.items,[row]);
+ for(const display of [{...row.display,eventName:''},{...row.display,eventName:'x'.repeat(301)},{...row.display,scopeName:1},{...row.display,extra:true}])await assert.rejects(hostedCopyAthleteAwards(actor,null,async()=>({data:{items:[{...row,display}],nextCursor:null},error:null})));
+});

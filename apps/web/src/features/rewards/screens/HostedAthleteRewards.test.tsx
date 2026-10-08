@@ -51,3 +51,11 @@ it('claim access loss retires all private rows until a successful explicit refre
  mount();await screen.findByText('Copied award');fireEvent.click(screen.getByRole('button',{name:'Lose access'}));await screen.findByRole('alert');expect(mocks.wallet?.destinations).toEqual([]);
  fireEvent.click(screen.getByRole('button',{name:'Reload rewards and destinations'}));await screen.findByText('Copied award');
 });
+
+it('empty direct-claim workspace does not reintroduce recipient review or fetch legacy destinations',async()=>{
+ mocks.awards.mockResolvedValue({items:[],nextCursor:null});
+ mocks.destinations.mockRejectedValue(Error('Legacy setup must remain absent'));
+ mount();await screen.findByText('No copied awards');
+ expect(mocks.destinations).not.toHaveBeenCalled();expect(mocks.wallet).toBeNull();
+ expect(mocks.summary?.claimReadiness).toBeUndefined();expect(mocks.summary?.confirmedPaid).toBe(0n);
+});

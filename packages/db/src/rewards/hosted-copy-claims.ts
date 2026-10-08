@@ -51,8 +51,10 @@ export async function hostedCopyAthleteAwards(identity:RewardAccountIdentity,aft
  const v=object(await call(rpc,'service_reward_demo_copy_athlete_awards',{p_user_id:userId,p_session_id:sessionId,p_after:after}),['items','nextCursor']);
  if(!Array.isArray(v.items)||v.items.length>50||v.nextCursor!==null&&(typeof v.nextCursor!=='string'||!/^0x[0-9a-f]{64}$/.test(v.nextCursor)))throw Error('invalid_sponsor_claim');
  let previous=after;
- for(const row of v.items){const a=object(row,['approvalId','slot','entitlementId','amountWei','athleteProfileId','claims',...((row as {protocolVersion?:number}).protocolVersion===5?['protocolVersion','directClaim']:[])]);
+ for(const row of v.items){const a=object(row,['approvalId','slot','entitlementId','amountWei','athleteProfileId','claims',...('display' in (row as object)?['display']:[]),...((row as {protocolVersion?:number}).protocolVersion===5?['protocolVersion','directClaim']:[])]);
   uuid(a.approvalId);uuid(a.athleteProfileId);
+  if(a.display!==undefined){const d=object(a.display,['campaignName','eventName','scopeName']);
+   if(!Object.values(d).every(v=>v===null||typeof v==='string'&&v.trim().length>0&&v.length<=300))throw Error('invalid_sponsor_claim');}
   if(!Number.isInteger(a.slot)||Number(a.slot)<0||Number(a.slot)>5||typeof a.entitlementId!=='string'||!/^0x[0-9a-f]{64}$/.test(a.entitlementId)
    ||previous!==null&&a.entitlementId<=previous||typeof a.amountWei!=='string'||! /^(0|[1-9][0-9]*)$/.test(a.amountWei)||!Array.isArray(a.claims))throw Error('invalid_sponsor_claim');
   if(a.protocolVersion===5){const direct=object(a.directClaim,['paid']);if(typeof direct.paid!=='boolean'||a.claims.length)throw Error('invalid_sponsor_claim');}
