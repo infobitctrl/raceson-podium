@@ -11,11 +11,12 @@ import {hostedCopyPublicationEvidence} from '../dist/features/rewards/hosted-cop
 import {composeSponsorUploadV4} from '../dist/features/rewards/sponsor-upload-v4-service.js';
 import {hostedCopyRequestAllowed} from '../dist/features/rewards/hosted-copy-preview.js';
 import {hostedCopyResultDisplay} from '../dist/features/rewards/hosted-copy-result-display.js';
-function context(){
+function context(version=4){
  const source=fixture(),record=saved(source),pin={batchSha256:source.batchSha256,projectionSha256:fiveRoundCopyProjectionHashV1(source),leagueId:source.leagueId,seasonId:source.seasonId};
  const policy={pin,selections:[],unaffiliatedReview:undefined,versions:{combined:'synthetic-v1',unaffiliated:'synthetic-v1'}};
  const launch={id:id(9902),state:'prepared',configurationHash:'f'.repeat(64),createdAt:record.updatedAt,setup:record};
- const plan=createSponsorExecutionPlan(launch,'0x'+'1'.repeat(40),{operator:'0x'+'2'.repeat(40),treasury:'0x'+'3'.repeat(40),reviewPeriods:[0,0,0,0,0,0]});
+ const plan=createSponsorExecutionPlan(launch,'0x'+'1'.repeat(40),{operator:'0x'+'2'.repeat(40),treasury:'0x'+'3'.repeat(40),reviewPeriods:[0,0,0,0,0,0],
+  ...(version===5?{walletRegistry:'0x'+'4'.repeat(40),identityIssuer:'0x'+'6'.repeat(40)}:{})});
  const facts={launch,execution:{plan,deploymentHash:null,fundingHash:null},sourceFacts:source,contextHash:'e'.repeat(64)};
  return{source,policy,facts,document:composeHostedCopyAwardDocument(facts,0,policy),scope:{chainId:10143,setupId,slot:0}};
 }
@@ -38,11 +39,13 @@ test('stored copy reconstruction rejects changed amounts, source, plan, decision
  assert.throws(()=>decodeHostedCopyAwardDocument(x.document,x.scope)); // Synthetic source never passes the deployed pin.
  const empty=composeHostedCopyAwardDocument(x.facts,1,x.policy);assert.throws(()=>decodeHostedCopyAwardDocument(empty,{...x.scope,slot:1},x.policy));
 });
-test('copy upload uses existing private IDs and exact conservation without exposing sporting identities',()=>{
- const x=context(),h=n=>'0x'+n.toString(16).padStart(64,'0');
+for(const version of [4,5])test(`V${version} copy upload reconstructs approved walletless awards with exact conservation`,()=>{
+ const x=context(version),h=n=>'0x'+n.toString(16).padStart(64,'0');
+ assert.equal(canonical(decodeHostedCopyAwardDocument(JSON.parse(canonical(x.document)),x.scope,x.policy)),canonical(x.document));
  const f={document:x.document,documentHash:digest(x.document),contextHash:x.document.contextHash,approvalId:id(9903),current:true,execution:{...x.facts.execution,deploymentHash:h(1),fundingHash:h(2)},snapshotSalt:h(3),prepared:null,
   recipients:x.document.calculation.recipients.map((r,i)=>({...r,entitlementId:h(10+i),opaqueBeneficiaryId:h(20+i),explanationSalt:h(30+i)}))};
  const p=composeSponsorUploadV4(f,'0x'+'5'.repeat(40));assert.equal(p.allocatedWei,'101');assert.equal(p.unallocatedWei,'0');assert.equal(p.budgetWei,'101');
+ assert.equal(p.protocolVersion,version);
  assert.equal(p.awards[0].beneficiaryId,h(20));assert.equal(JSON.stringify(p).includes(f.recipients[0].beneficiaryId),false);
  f.execution.fundingHash=null;assert.throws(()=>composeSponsorUploadV4(f,'0x'+'5'.repeat(40)));
 });

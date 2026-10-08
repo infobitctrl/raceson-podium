@@ -8,11 +8,12 @@ import {fiveRoundCopyProjectionHashV1} from '../../../packages/db/dist/rewards/f
 import {createSponsorExecutionPlan} from '../../../packages/domain/dist/rewards/sponsor-execution.js';
 import {canonicalRewardProposalV2 as canonical} from '../../../packages/domain/dist/rewards/frozen-proposal-v2.js';
 import {sponsorAllocationDocumentHashV4 as digest} from '../../../packages/db/dist/rewards/sponsor-allocation-v4.js';
-function context(){
+function context(version=4){
  const source=fixture(),record=saved(source),actor={userId:id(9900),sessionId:id(9901)},pin={batchSha256:source.batchSha256,projectionSha256:fiveRoundCopyProjectionHashV1(source),leagueId:source.leagueId,seasonId:source.seasonId};
  const policy={pin,selections:[],unaffiliatedReview:undefined,versions:{combined:'synthetic-v1',unaffiliated:'synthetic-v1'}};
  const launch={id:id(9902),state:'prepared',configurationHash:'f'.repeat(64),createdAt:record.updatedAt,setup:record};
- const plan=createSponsorExecutionPlan(launch,'0x'+'1'.repeat(40),{operator:'0x'+'2'.repeat(40),treasury:'0x'+'3'.repeat(40),reviewPeriods:[0,0,0,0,0,0]});
+ const plan=createSponsorExecutionPlan(launch,'0x'+'1'.repeat(40),{operator:'0x'+'2'.repeat(40),treasury:'0x'+'3'.repeat(40),reviewPeriods:[0,0,0,0,0,0],
+  ...(version===5?{walletRegistry:'0x'+'4'.repeat(40),identityIssuer:'0x'+'5'.repeat(40)}:{})});
  const state={launch,execution:{plan,deploymentHash:null,fundingHash:null},sourceFacts:source,contextHash:'e'.repeat(64),approval:null,recorded:null};
  const calls=[];let written,fail=false;
  const rpc=async(name,args)=>{
@@ -28,6 +29,17 @@ function context(){
  return{read,state,calls,actor,source,policy,get written(){return written;},deny(){fail=true;}};
 }
 const command=v=>({requestId:id(9903),expectedApprovalId:null,contextHash:v.contextHash,documentHash:v.documentHash,decision:'approved'});
+test('V5 exact review preserves registry and issuer through approval and idempotent retry',async()=>{
+ const x=context(5),view=await x.read(),c=command(view);
+ assert.equal(view.proposedWei,'101');assert.deepEqual(view.recipientCounts,{athletes:1,clubs:0});
+ const final=await x.read(c);assert.equal(final.recorded.decision,'approved');
+ assert.deepEqual(x.written.plan,x.state.execution.plan);assert.equal(x.written.plan.version,5);
+ assert.equal(x.written.plan.walletRegistry,'0x'+'4'.repeat(40));assert.equal(x.written.plan.identityIssuer,'0x'+'5'.repeat(40));
+ const writes=x.calls.filter(a=>a.p_operation==='review').length;
+ assert.equal((await x.read(c)).recorded.documentHash,view.documentHash);
+ assert.equal(x.calls.filter(a=>a.p_operation==='review').length,writes);
+ assert.equal(final.payableWei,'0');assert.equal(final.stageReady,false);
+});
 test('exact walletless awards bind server plan, source and decisions with no payment authority',async()=>{
  const x=context(),view=await x.read();assert.equal(view.proposedWei,'101');assert.equal(view.payableWei,'0');assert.equal(view.stageReady,false);assert.deepEqual(view.recipientCounts,{athletes:1,clubs:0});assert.equal(x.calls.length,2);
  const final=await x.read(command(view));assert.equal(final.approval.decision,'approved');assert.equal(final.recorded.documentHash,view.documentHash);

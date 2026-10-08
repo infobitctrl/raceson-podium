@@ -6,6 +6,15 @@ vi.mock('./HostedAwardUpload',()=>({default:()=>null}));
 vi.mock('../data/hostedAwardReview',()=>({readHostedAwardReview:mocks.read}));
 const base={historicalAcknowledgement:false,contextHash:'c'.repeat(64),documentHash:'d'.repeat(64),approval:null,recorded:null,proposedWei:'1000000000000000001',retainedWei:'2',reasons:[],recipientCounts:{athletes:1,clubs:0}};
 beforeEach(()=>mocks.read.mockReset());
+it('recovers a failed initial load without suggesting an unsubmitted decision was saved',async()=>{
+ mocks.read.mockRejectedValueOnce(Error('load failed')).mockResolvedValueOnce(base);
+ render(<HostedAwardReview id="setup" slot={5} hr={false}/>);
+ expect(await screen.findByRole('alert')).toHaveTextContent('Review details could not be loaded.');
+ expect(screen.queryByRole('button',{name:'Retry same decision'})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Reload review'}));
+ expect(await screen.findByRole('button',{name:'Approve exact awards'})).toBeDisabled();
+ expect(mocks.read.mock.calls).toEqual([['setup',5],['setup',5]]);
+});
 it('shows exact amounts and submits only the reviewed digest and decision',async()=>{
  mocks.read.mockResolvedValue(base);render(<HostedAwardReview id="setup" slot={0} hr={false}/>);
  await screen.findByText('1.000000000000000001 test MON');fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Approve exact awards'}));
