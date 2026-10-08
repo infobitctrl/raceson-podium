@@ -253,6 +253,12 @@ it('authorizes the exact publication request for the verified reviewer without c
  const view={schema:'podium-review-publication-v1' as const,approvalId:id,slot:0,documentHash:'d'.repeat(64),operator:address,campaignAddress:address,state:2,claimsOpen:false,next:'activate' as const,ownership:'owned' as const,pending:{hash:null,confirmed:false,action:'activate' as const},authorization:{transactionId:id,request:{version:1 as const,method:'POST' as const,url:'https://api.privy.io/v1/wallets/wallet/rpc',headers:{'privy-app-id':configuration.appId,'privy-request-expiry':String(Date.now()+90000)},body:{method:'eth_signTransaction' as const,chain_type:'ethereum' as const,params:{transaction:{type:0 as const,chain_id:10143 as const,to:address,data:encodeFunctionData({abi:sponsorLifecycleAbi,functionName:'activate',args:[digest as `0x${string}`,digest as `0x${string}`]}),value:'0x0' as const,nonce:0,gas_limit:'0x1d4c0',gas_price:'0x1'}}}}}};
  mocks.authorize.mockResolvedValue({signature:'S'.repeat(88)});
  const signed=await state.authorizePublication(view,()=>true);expect(signed.transactionId).toBe(id);expect(mocks.authorize).toHaveBeenCalledWith(view.authorization.request);expect(mocks.create).not.toHaveBeenCalled();
+ mocks.authorize.mockRejectedValue(Error('private provider detail'));
+ await expect(state.authorizePublication(view,()=>true)).rejects.toThrow('review_publication_client_authorization_failed');
+ const expired={...view,authorization:{...view.authorization,request:{...view.authorization.request,headers:{...view.authorization.request.headers,'privy-request-expiry':String(Date.now()-1)}}}};
+ const attempts=mocks.authorize.mock.calls.length;
+ await expect(state.authorizePublication(expired,()=>true)).rejects.toThrow('review_publication_request_expired');
+ expect(mocks.authorize).toHaveBeenCalledTimes(attempts);
  let active=true;mocks.authorize.mockImplementation(async()=>{active=false;return {signature:'S'.repeat(88)};});
  await expect(state.authorizePublication(view,()=>active)).rejects.toThrow('review_publication_session_changed');
 });

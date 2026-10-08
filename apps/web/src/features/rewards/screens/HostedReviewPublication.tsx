@@ -13,6 +13,11 @@ function publicationFailure(error:unknown,hr:boolean){
  if(code==='controller_balance_required')return hr?'Novčaniku pregledavatelja treba test MON za mrežne naknade. Zatim nastavite spremljenu objavu.':'The reviewer wallet needs test MON for network fees. Then resume the saved publication.';
  if(code==='controller_source_not_ready')return hr?'Odobrene nagrade su promijenjene. Osvježite pregled prije objave.':'The approved awards changed. Refresh award review before publishing.';
  if(code==='controller_transaction_pending')return hr?'Druga kampanja ima nedovršenu objavu u ovom novčaniku. Nastavite tu objavu prije objave ove kampanje.':'Another campaign has an unfinished publication in this wallet. Resume that publication before publishing this campaign.';
+ if(code==='review_publication_authorization_failed')return hr?'Pružatelj novčanika odbio je autorizaciju pregledavatelja. Nagrade još nisu objavljene.':'The wallet provider rejected the reviewer authorization. Awards have not been published yet.';
+ if(code==='review_publication_request_expired')return hr?'Zahtjev za potpis je istekao. Nastavite objavu za novi zahtjev.':'The signing request expired. Resume publication to request a fresh authorization.';
+ if(code==='review_publication_request_invalid')return hr?'Zahtjev za potpis ne odgovara odobrenoj objavi. Osvježite stanje objave.':'The signing request does not match the approved publication. Refresh publication status.';
+ if(code==='review_publication_client_authorization_failed')return hr?'Autorizacija novčanika u pregledniku nije uspjela. Ponovno učitajte stranicu pa nastavite objavu.':'Browser wallet authorization failed. Reload this page, then resume publication.';
+ if(code==='review_publication_session_changed'||code==='review_publication_session_required')return hr?'Veza s novčanikom pregledavatelja nije spremna. Ponovno učitajte stranicu pa nastavite objavu.':'The reviewer wallet connection is not ready. Reload this page, then resume publication.';
  if(code?.startsWith('review_publication_'))return hr?'Autorizacija novčanika nije dovršena. Nastavite objavu iz povezane prijave pregledavatelja.':'Wallet authorization was not completed. Resume publication from your connected reviewer session.';
  return hr?'Objava nije potvrđena. Osvježite stanje ili nastavite spremljenu objavu.':'Publication could not be confirmed. Refresh its status or resume the saved publication.';
 }
@@ -30,7 +35,7 @@ export default function HostedReviewPublication({id,slot,approvalId,documentHash
    if(epoch.current!==generation)return;
    let v=await readReviewPublication({id,slot,approvalId},documentHash,true);if(epoch.current!==generation)return;setView(v);
    if(v.authorization){
-    if(!embedded.authorizePublication)throw Error('review_publication_authorization_required');
+    if(!embedded.authorizePublication)throw Error('review_publication_session_required');
     const authorization=await embedded.authorizePublication(v,()=>epoch.current===generation);
     if(epoch.current!==generation)return;
     v=await readReviewPublication({id,slot,approvalId},documentHash,true,authorization);if(epoch.current!==generation)return;setView(v);

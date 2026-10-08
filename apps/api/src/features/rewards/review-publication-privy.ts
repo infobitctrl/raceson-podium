@@ -13,7 +13,12 @@ export type ReviewPublicationSigner={address:string;verifyReady:()=>Promise<void
 export async function signAuthorizedPublication(client:PrivyClient,walletId:string,appId:string,tx:PublicationTransaction,signature:string,expiry:number){
  const request=publicationSigningRequest(appId,walletId,tx,expiry);
  try{const result=await client.wallets().ethereum().signTransaction(walletId,{params:request.body.params,request_expiry:expiry,authorization_context:{signatures:[signature]}});return result.signed_transaction;}
- catch{throw Error('review_publication_authorization_failed');}
+ catch(error){
+  const status=error&&typeof error==='object'&&'status' in error&&typeof error.status==='number'?error.status:null;
+  // Never log provider bodies, signatures, credentials or the signed request.
+  console.warn('review_publication_provider_rejected',{status});
+  throw Error('review_publication_authorization_failed');
+ }
 }
 export type ReviewWalletAccess={status:'owned'|'transfer_required'|'connect_required';operator:string;walletId:string;ownerId:string;ownerSubject:string;reviewerSubject:string|null;appId:string};
 type Registration=WalletSettings['controller'];

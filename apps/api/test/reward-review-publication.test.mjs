@@ -149,5 +149,8 @@ test('real Privy SDK submits the exact browser-authorized RPC without exchanging
  assert.equal(requests.length,1);assert.equal(requests[0].url,expected.url);assert.deepEqual(requests[0].body,expected.body);
  assert.equal(requests[0].headers.get('privy-authorization-signature'),'S'.repeat(88));assert.equal(requests[0].headers.get('privy-request-expiry'),String(expiry));
  const failed=new PrivyClient({appId:'c'.repeat(25),appSecret:'fictional-test-secret',maxRetries:0,fetch:async()=>new Response(JSON.stringify({error:'secret provider detail'}),{status:403,headers:{'content-type':'application/json'}})});
- await assert.rejects(signAuthorizedPublication(failed,'wallet','c'.repeat(25),tx,'S'.repeat(88),expiry),/^Error: review_publication_authorization_failed$/);
+ const warnings=[],warn=console.warn;console.warn=(...args)=>warnings.push(args);
+ try {await assert.rejects(signAuthorizedPublication(failed,'wallet','c'.repeat(25),tx,'S'.repeat(88),expiry),/^Error: review_publication_authorization_failed$/);}
+ finally {console.warn=warn;}
+ assert.deepEqual(warnings,[['review_publication_provider_rejected',{status:403}]]);
 });

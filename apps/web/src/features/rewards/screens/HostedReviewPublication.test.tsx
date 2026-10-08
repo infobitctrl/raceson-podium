@@ -43,6 +43,18 @@ it('explains another campaign reservation without starting or authorizing public
  expect(screen.queryByRole('button',{name:'Publish awards and open claims'})).not.toBeInTheDocument();
  expect(mocks.read).toHaveBeenCalledOnce();expect(mocks.authorize).not.toHaveBeenCalled();
 });
+it.each([
+ ['review_publication_authorization_failed','The wallet provider rejected the reviewer authorization.'],
+ ['review_publication_request_expired','The signing request expired.'],
+ ['review_publication_request_invalid','The signing request does not match the approved publication.'],
+ ['review_publication_client_authorization_failed','Browser wallet authorization failed.'],
+ ['review_publication_session_required','The reviewer wallet connection is not ready.'],
+ ['review_publication_session_changed','The reviewer wallet connection is not ready.'],
+])('identifies %s without retrying a wallet operation',async(code,message)=>{
+ mocks.read.mockRejectedValue(Error(code));render(<HostedReviewPublication {...props}/>);
+ expect(await screen.findByRole('alert')).toHaveTextContent(message);
+ expect(mocks.authorize).not.toHaveBeenCalled();expect(mocks.read).toHaveBeenCalledOnce();
+});
 
 it('authorizes only the prepared transaction in the reviewer browser before submission',async()=>{
  const authorization={transactionId:'saved',request:{headers:{'privy-request-expiry':'999'}}};

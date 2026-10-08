@@ -173,8 +173,12 @@ function AuthenticatedWallet({ configuration, sessionKey, walletUserId, onState 
     const snapshot=scope.current;
     const active=()=>isCurrent()&&scope.current.identityMatches&&scope.current.session===snapshot.session&&scope.current.privyUserId===snapshot.privyUserId;
     if(!active())throw Error('review_publication_session_changed');
-    const request=checkedPublicationAuthorization(view,configuration.appId);
-    const {signature}=await authorizeRef.current(request);
+    let request;
+    try {request=checkedPublicationAuthorization(view,configuration.appId);}
+    catch {throw Error(Number(view.authorization?.request.headers['privy-request-expiry'])<=Date.now()?'review_publication_request_expired':'review_publication_request_invalid');}
+    let signature:string;
+    try {({signature}=await authorizeRef.current(request));}
+    catch {throw Error('review_publication_client_authorization_failed');}
     if(!active())throw Error('review_publication_session_changed');
     return {transactionId:view.authorization!.transactionId,authorizationSignature:signature,requestExpiry:Number(request.headers['privy-request-expiry'])};
   },[configuration.appId]);
