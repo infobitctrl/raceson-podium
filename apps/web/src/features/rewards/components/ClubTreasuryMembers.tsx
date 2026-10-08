@@ -31,6 +31,7 @@ export default function ClubTreasuryMembers({clubId,disabled,onChange}:{clubId:s
    <span className="min-w-0"><span className="block break-words font-medium">{m.name}</span><span className={`mt-1 flex items-center gap-1 text-xs ${m.status==='ready'?'text-emerald-700':'text-muted-foreground'}`}>{m.status==='ready'?<CheckCircle2 size={14} aria-hidden="true"/>:<Clock3 size={14} aria-hidden="true"/>}{m.status==='ready'?'Wallet ready':m.status==='setup_needed'?'Wallet setup needed':'Wallet check unavailable'}</span></span>
   </label>;})}</div>
   {!busy&&!error&&!visible.length?<p className="text-sm text-muted-foreground">{members.length?'No matching members.':'No active club members found.'}</p>:null}
+  {!busy&&!error&&!cursor&&members.length<3?<p role="status" className="rounded-lg bg-muted p-3 text-sm">This club has {members.length} active {members.length===1?'member':'members'} recorded. Three active members are needed to create a treasury.</p>:null}
   {cursor?<Button variant="outline" disabled={busy||disabled} onClick={()=>void load(cursor)}>Load more members</Button>:null}
   {members.some(m=>selected.includes(m.memberId)&&m.status!=='ready')?<p role="status" className="rounded-lg bg-muted p-3 text-sm">Each selected member needs to sign in and set up their Privy wallet. Then refresh wallets and select the three members again.</p>:null}
  </div>;

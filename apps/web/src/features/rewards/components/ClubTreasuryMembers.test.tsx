@@ -18,3 +18,7 @@ it('ignores late member results from another club',async()=>{
  let finish:(v:unknown)=>void=()=>{};m.read.mockImplementation((club:string)=>club==='one'?new Promise(resolve=>{finish=resolve;}):Promise.resolve({clubId:'two',items:[{...rows[0],name:'Other member'}],nextCursor:null}));
  const change=vi.fn(),v=render(<ClubTreasuryMembers clubId="one" disabled={false} onChange={change}/>);v.rerender(<ClubTreasuryMembers clubId="two" disabled={false} onChange={change}/>);await screen.findByLabelText('Select Other member');finish({clubId:'one',items:rows,nextCursor:null});await waitFor(()=>expect(screen.queryByLabelText('Select Member 1')).not.toBeInTheDocument());
 });
+
+it('explains when the recorded club membership is too small for a treasury',async()=>{
+ m.read.mockResolvedValue({clubId:'one',items:[rows[0]],nextCursor:null});render(<ClubTreasuryMembers clubId="one" disabled={false} onChange={()=>{}}/>);expect(await screen.findByText(/This club has 1 active member recorded/)).toBeInTheDocument();
+});
