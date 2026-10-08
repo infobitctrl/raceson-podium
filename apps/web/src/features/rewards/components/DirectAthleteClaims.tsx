@@ -25,6 +25,7 @@ export function DirectAthleteClaim({award,hr,onBusy,onAccessError}:{award:Sponso
  const [view,setView]=useState<DirectClaimV5|null>(null),[wallet,setWallet]=useState<{wallet:DetectedRewardWallet;address:string}|null>(null);
  const [phase,setPhase]=useState<DirectClaimPhase>('checking');const phaseRef=useRef<DirectClaimPhase>('checking'),changePhase=useCallback((value:DirectClaimPhase)=>{phaseRef.current=value;setPhase(value);},[]);
  const [busy,setBusy]=useState(false),[error,setError]=useState<DirectClaimError|null>(null),[ack,setAck]=useState(false),[pending,setPending]=useState<string|null>(null),[submittedTo,setSubmittedTo]=useState<string|null>(null);
+ const uncertainSend=useRef(false);
  const active=useRef(true),flight=useRef(false),currentWallet=useRef(wallet),abort=useRef<AbortController|null>(null),accessError=useRef(onAccessError);currentWallet.current=wallet;accessError.current=onAccessError;
  const t=(en:string,local:string)=>hr?local:en,storage=`podium:direct-claim:${award.approvalId}:${award.entitlementId}`;
  const choose=useCallback((value:{wallet:DetectedRewardWallet;address:string}|null)=>{setWallet(value);setAck(false);},[]);
@@ -32,10 +33,10 @@ export function DirectAthleteClaim({award,hr,onBusy,onAccessError}:{award:Sponso
  const load=useCallback(async(hash?:string|null)=>{
   const v=await readDirectClaimV5({approvalId:award.approvalId!,entitlementId:award.entitlementId!},hash?{action:'receipt',hash}:undefined);
   if(v.amountWei!==award.amountWei)throw Error('award_changed');
-  if(active.current){setView(v);if(v.status==='paid'){setPending(null);try{sessionStorage.removeItem(storage);}catch{/* Optional recovery only. */}}}
+  if(active.current){uncertainSend.current=false;setView(v);if(v.status==='paid'){setPending(null);try{sessionStorage.removeItem(storage);}catch{/* Optional recovery only. */}}}
  },[award.approvalId,award.entitlementId,award.amountWei,storage]);
  const run=useCallback(async(work:()=>Promise<void>,operation:typeof phase='checking')=>{if(flight.current)return;flight.current=true;changePhase(operation);setBusy(true);setError(null);
-  try{await work();}catch(e){if(active.current){setError(directClaimError(e,phaseRef.current));setAck(false);if(e&&typeof e==='object'&&'status'in e&&[401,403].includes(Number(e.status)))accessError.current?.(e);}}
+  try{await work();}catch(e){if(active.current){const failure=directClaimError(e,phaseRef.current);if(failure==='unknown')uncertainSend.current=true;setError(uncertainSend.current&&failure==='checking'?'unknown':failure);setAck(false);if(e&&typeof e==='object'&&'status'in e&&[401,403].includes(Number(e.status)))accessError.current?.(e);}}
   finally{flight.current=false;if(active.current)setBusy(false);}},[changePhase]);
  useEffect(()=>{active.current=true;let hash:string|null=null;try{const saved=sessionStorage.getItem(storage);if(saved&&/^0x[0-9a-f]{64}$/.test(saved))hash=saved;}catch{/* Optional recovery only. */}
   setPending(hash);void run(()=>load(hash),hash?'receipt':'checking');return()=>{active.current=false;abort.current?.abort();};},[load,run,storage]);

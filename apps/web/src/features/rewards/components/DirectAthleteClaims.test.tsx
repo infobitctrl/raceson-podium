@@ -107,6 +107,9 @@ it('an uncertain send requires a status refresh and recovers a payment without a
  m.read.mockResolvedValue({...view,transaction:{from:address}});fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Claim reward'}));
  expect(await screen.findByRole('alert')).toHaveTextContent('Payment status needs checking');
  expect(screen.queryByRole('button',{name:'Claim reward'})).not.toBeInTheDocument();
+ m.read.mockRejectedValueOnce(Error('temporary_read_failure'));fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('Payment status needs checking');
+ expect(screen.queryByRole('button',{name:'Claim reward'})).not.toBeInTheDocument();
  m.read.mockResolvedValue({...view,status:'paid',recipient:address,receipt:{transactionHash:hash,amountWei:award.amountWei}});
  fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));await screen.findByText('Reward paid');expect(m.send).toHaveBeenCalledOnce();
 });
