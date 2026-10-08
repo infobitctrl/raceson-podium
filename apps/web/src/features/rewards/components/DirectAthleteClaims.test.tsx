@@ -3,7 +3,7 @@ import {DirectAthleteClaim} from './DirectAthleteClaims';
 const m=vi.hoisted(()=>({read:vi.fn(),send:vi.fn(),proof:vi.fn(),confirm:vi.fn(),dispose:vi.fn(),assertCurrent:vi.fn()}));
 vi.mock('../data/directClaimsV5',()=>({readDirectClaimV5:m.read,sendDirectClaimV5:m.send}));
 vi.mock('../data/browserWallet',()=>({prepareBrowserWalletProof:m.proof}));
-vi.mock('./SponsorWallet',()=>({default:({onWallet}:{onWallet:(v:unknown)=>void})=><button onClick={()=>onWallet({wallet:{provider:{}},address:'0x'+'12'.repeat(20)})}>Create or connect my wallet</button>}));
+vi.mock('./SponsorWallet',()=>({default:({onWallet}:{onWallet:(v:unknown)=>void})=><button onClick={()=>onWallet({wallet:{provider:{},sendDirectClaim:m.send},address:'0x'+'12'.repeat(20)})}>Create or connect my wallet</button>}));
 const id='73000000-0000-4000-8000-000000000001',hash='0x'+'ab'.repeat(32),address='0x'+'12'.repeat(20);
 const award={approvalId:id,entitlementId:hash,slot:1,amountWei:'1000000000000000000',athleteProfileId:id,claims:[],protocolVersion:5 as const,directClaim:{paid:false}};
 const view={schema:'podium-direct-claim-v5',approvalId:id,entitlementId:hash,chainId:10143,amountWei:award.amountWei,status:'claimable',recipient:null,deadline:'1801000000',transaction:null,receipt:null};
@@ -46,11 +46,11 @@ it('wallet proof failure prevents preparing or sending a claim',async()=>{
  await screen.findByRole('alert');expect(m.send).not.toHaveBeenCalled();expect(m.read).toHaveBeenCalledTimes(1);expect(m.dispose).toHaveBeenCalledOnce();
 });
 
-it('explains insufficient gas and permits explicit retry after a top-up without losing the award',async()=>{
- m.send.mockRejectedValueOnce(Error('claim_insufficient_balance')).mockResolvedValue(hash);
+it('explains sponsorship failure and permits explicit retry without asking the athlete for gas',async()=>{
+ m.send.mockRejectedValueOnce(Error('claim_sponsorship_unavailable')).mockResolvedValue(hash);
  render(<DirectAthleteClaim award={award} hr={false}/>);fireEvent.click(await screen.findByRole('button',{name:'Create or connect my wallet'}));
  m.read.mockResolvedValue({...view,transaction:{from:address}});fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Claim reward'}));
- expect(await screen.findByRole('alert')).toHaveTextContent('Not enough test MON for gas');expect(screen.getByRole('alert')).toHaveTextContent('connected wallet');
+ expect(await screen.findByRole('alert')).toHaveTextContent('Sponsored claim unavailable');expect(screen.getByRole('alert')).toHaveTextContent('You do not need to add test MON');
  expect(screen.queryByRole('button',{name:'Check payment'})).not.toBeInTheDocument();expect(sessionStorage.length).toBe(0);expect(screen.getByRole('checkbox')).not.toBeChecked();
  fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Claim reward'}));await screen.findByRole('button',{name:'Check payment'});
  expect(screen.queryByRole('alert')).not.toBeInTheDocument();

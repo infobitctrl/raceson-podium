@@ -1,7 +1,7 @@
 import {sendDirectClubClaimV5} from "@/features/rewards/data/clubDirectClaimsV5";
 import {sendDirectClaimV5} from "@/features/rewards/data/directClaimsV5";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAuthorizationSignature, useCreateWallet, usePrivy, useSubscribeToJwtAuthWithFlag, useWallets, type PrivyClientConfig } from "@privy-io/react-auth";
+import { useAuthorizationSignature, useCreateWallet, usePrivy, useSendTransaction, useSubscribeToJwtAuthWithFlag, useWallets, type PrivyClientConfig } from "@privy-io/react-auth";
 import PrivyUiProvider from "./PrivyUiProvider";
 import { useAuth } from "@/lib/auth";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
@@ -35,6 +35,9 @@ function AuthenticatedWallet({ configuration, sessionKey, walletUserId, onState 
   const privy = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
   const { createWallet } = useCreateWallet();
+  const {sendTransaction}=useSendTransaction();
+  const sponsoredSendRef=useRef(sendTransaction);
+  useEffect(()=>{sponsoredSendRef.current=sendTransaction;},[sendTransaction]);
   const {generateAuthorizationSignature}=useAuthorizationSignature();
   const authorizeRef=useRef(generateAuthorizationSignature);
   useEffect(()=>{authorizeRef.current=generateAuthorizationSignature;},[generateAuthorizationSignature]);
@@ -126,7 +129,7 @@ function AuthenticatedWallet({ configuration, sessionKey, walletUserId, onState 
           sendDirectClubClaim: (view, signatures, address, clubCurrent) => sendDirectClubClaimV5(provider, view, signatures, address, () => isCurrent() && clubCurrent()),
           sendDirectClaim: (view, athleteCurrent) => {
             if (view.transaction?.from !== wallet.address.toLowerCase() || view.transaction.chainId !== 10143 || !isCurrent()) return Promise.reject(new Error("wallet_changed"));
-            return sendDirectClaimV5(provider, view, () => isCurrent() && athleteCurrent());
+            return sendDirectClaimV5(provider, view, () => isCurrent() && athleteCurrent(), (tx,options)=>sponsoredSendRef.current(tx,options));
           },
           sendProgrammeTransaction: (view, operatorCurrent) => {
             if (view.transaction?.from !== wallet.address.toLowerCase() || view.transaction.chainId !== 10143 || !isCurrent()) return Promise.reject(new Error("wallet_changed"));

@@ -28,27 +28,24 @@ export async function validateDirectClaimTransactionV5(view:DirectClaimV5){
  }else if(tx.identityProof!==null||tx.to!==v.campaignAddress||tx.from!==v.recipient||tx.data!==encodeSponsorDirectClaimV5(v.entitlementId as Hex))throw Error('invalid_direct_claim_transaction');
  return tx;
 }
-/** Exact recipient transaction capability. Never creates a wallet or requests a
- * reviewer signature, and never accepts arbitrary browser-authored calldata. */
-export async function sendDirectClaimV5(provider:RewardWalletProvider,view:DirectClaimV5,current:()=>boolean){
+export type SponsoredClaimSenderV5=(transaction:{chainId:10143;from:Address;to:Address;data:Hex;value:0n},
+ options:{address:Address;sponsor:true;uiOptions:{showWalletUIs:true}})=>Promise<{hash:string}>;
+/** Only the explicit app-paid SDK capability may submit. Never fall back to a
+ * recipient-funded transaction or estimate against the athlete's balance. */
+export async function sendDirectClaimV5(provider:RewardWalletProvider,view:DirectClaimV5,current:()=>boolean,send?:SponsoredClaimSenderV5){
+ if(!send)throw Error('claim_sponsorship_unavailable');
  const tx=await validateDirectClaimTransactionV5(view);
  let changed=false;const change=()=>{changed=true;},events=['accountsChanged','chainChanged','disconnect'];
  const check=async()=>{if(changed||!current())throw Error('wallet_changed');
   const accounts=await provider.request({method:'eth_accounts'}),chain=await provider.request({method:'eth_chainId'});
   if(changed||!current()||!Array.isArray(accounts)||typeof accounts[0]!=='string'||accounts[0].toLowerCase()!==tx.from
    ||typeof chain!=='string'||!/^0x[0-9a-f]+$/i.test(chain)||BigInt(chain)!==10143n)throw Error('wallet_changed');};
- const quantity=(value:unknown)=>{if(typeof value==='bigint')return value;if(typeof value!=='string'||!/^0x[0-9a-f]+$/i.test(value))throw Error('invalid_wallet_response');return BigInt(value);};
  events.forEach(event=>provider.on(event,change));
  try{
-  await check();const transaction={from:tx.from,to:tx.to,data:tx.data,value:'0x0',chainId:'0x279f'};
-  const initialBalance=quantity(await provider.request({method:'eth_getBalance',params:[tx.from,'pending']}));
-  await check();if(initialBalance===0n)throw Error('claim_insufficient_balance');
-  const gas=(quantity(await provider.request({method:'eth_estimateGas',params:[transaction]}))*12n+9n)/10n;
-  const price=quantity(await provider.request({method:'eth_gasPrice'}));
-  if(gas<=0n||gas>2_000_000n||price<=0n||gas*price>500_000_000_000_000_000n)throw Error('claim_gas_limit');
-  const balance=quantity(await provider.request({method:'eth_getBalance',params:[tx.from,'pending']}));
-  await check();if(balance<gas*price)throw Error('claim_insufficient_balance');
-  const result=await provider.request({method:'eth_sendTransaction',params:[{...transaction,gas:`0x${gas.toString(16)}`,gasPrice:`0x${price.toString(16)}`}]});
+  await check();
+  await validateDirectClaimTransactionV5(view);await check();
+  const {hash:result}=await send({from:tx.from as Address,to:tx.to as Address,data:tx.data as Hex,value:0n,chainId:10143},
+   {address:tx.from as Address,sponsor:true,uiOptions:{showWalletUIs:true}});
   if(typeof result!=='string'||!/^0x[0-9a-f]{64}$/i.test(result))throw Error('transaction_unknown');
   return result.toLowerCase();
  }finally{events.forEach(event=>provider.removeListener(event,change));}

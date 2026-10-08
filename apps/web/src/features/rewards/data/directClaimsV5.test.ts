@@ -26,22 +26,21 @@ describe('athlete direct claim transaction boundary',()=>{
  it('a registered wallet needs only its direct claim transaction',async()=>{
   const v=await fixture();v.recipient=v.transaction!.from;v.transaction={...v.transaction!,to:campaign,data:encodeSponsorDirectClaimV5(id),binding:null,identityProof:null};
   await expect(validateDirectClaimTransactionV5(v)).resolves.toEqual(v.transaction);
-  const p=provider();await expect(sendDirectClaimV5(p,v,()=>true)).resolves.toBe(id);
-  expect(p.request.mock.calls.map(([x])=>x.method)).toEqual(['eth_accounts','eth_chainId','eth_getBalance','eth_accounts','eth_chainId','eth_estimateGas','eth_gasPrice','eth_getBalance','eth_accounts','eth_chainId','eth_sendTransaction']);
+  const p=provider();await expect(sendDirectClaimV5(p,v,()=>true,vi.fn().mockResolvedValue({hash:id}))).resolves.toBe(id);
+  expect(p.request.mock.calls.map(([x])=>x.method)).toEqual(['eth_accounts','eth_chainId','eth_accounts','eth_chainId']);
   expect(p.listeners.size).toBe(0);
  });
- it('wallet/network/session changes and excessive fees stop submission',async()=>{
+ it('wallet/network/session changes stop sponsored submission',async()=>{
   const v=await fixture();
-  for(const mode of ['account','network','session','event','fee']){
+  for(const mode of ['account','network','session','event']){
    const p=provider(),original=p.request.getMockImplementation()!;
    p.request.mockImplementation(async args=>{
     if(mode==='account'&&args.method==='eth_accounts')return [issuer.address];
     if(mode==='network'&&args.method==='eth_chainId')return '0x1';
-    if(mode==='fee'&&args.method==='eth_gasPrice')return '0xffffffffffffffff';
-    if(mode==='event'&&args.method==='eth_gasPrice')p.listeners.get('accountsChanged')?.();
+        if(mode==='event'&&args.method==='eth_chainId')p.listeners.get('accountsChanged')?.();
     return original(args);
    });
-   await expect(sendDirectClaimV5(p,v,()=>mode!=='session')).rejects.toThrow();
+   const send=vi.fn();await expect(sendDirectClaimV5(p,v,()=>mode!=='session',send)).rejects.toThrow();expect(send).not.toHaveBeenCalled();
    expect(p.request.mock.calls.some(([x])=>x.method==='eth_sendTransaction')).toBe(false);expect(p.listeners.size).toBe(0);
   }
  });
@@ -53,9 +52,20 @@ describe('athlete direct claim transaction boundary',()=>{
  });
 });
 
-it.each(['0x0','0x1'])('insufficient athlete gas balance %s stops before sending',async balance=>{
+it.each(['0x0','0x1'])('sponsors an athlete with balance %s without requesting funds or a raw send',async balance=>{
  const p=provider(),base=p.request.getMockImplementation()!;
  p.request.mockImplementation(async args=>args.method==='eth_getBalance'?balance:base(args));
- await expect(sendDirectClaimV5(p,await fixture(),()=>true)).rejects.toThrow('claim_insufficient_balance');
- expect(p.request.mock.calls.some(([x])=>x.method==='eth_sendTransaction')).toBe(false);expect(p.listeners.size).toBe(0);
+ const send=vi.fn().mockResolvedValue({hash:id}),v=await fixture();
+ await expect(sendDirectClaimV5(p,v,()=>true,send)).resolves.toBe(id);
+ expect(send).toHaveBeenCalledWith({chainId:10143,from:v.transaction!.from,to:registry,data:v.transaction!.data,value:0n},
+  {address:v.transaction!.from,sponsor:true,uiOptions:{showWalletUIs:true}});
+ expect(p.request.mock.calls.every(([x])=>['eth_accounts','eth_chainId'].includes(x.method))).toBe(true);expect(p.listeners.size).toBe(0);
+});
+it('sponsorship absence or provider failure never falls back to charging the athlete',async()=>{
+ const p=provider(),v=await fixture();
+ await expect(sendDirectClaimV5(p,v,()=>true)).rejects.toThrow('claim_sponsorship_unavailable');
+ const send=vi.fn().mockRejectedValue(Error('provider sponsorship unavailable'));
+ await expect(sendDirectClaimV5(p,v,()=>true,send)).rejects.toThrow('provider sponsorship unavailable');
+ expect(send).toHaveBeenCalledOnce();expect(p.request.mock.calls.some(([x])=>x.method==='eth_sendTransaction')).toBe(false);
+ expect(p.listeners.size).toBe(0);
 });

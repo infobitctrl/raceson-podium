@@ -71,7 +71,7 @@ export async function observeSponsorDirectClaimV5(reader:SponsorChainReader,inpu
  return {observation:observed,campaignAddress:campaign.toLowerCase(),registryAddress:registry.toLowerCase(),
   entitlementId:scope.entitlementId,beneficiaryId:scope.beneficiaryId,beneficiaryKind:scope.beneficiaryKind,amountWei:scope.amountWei,
   registeredAddress:binding[2]===0n?null:binding[0].toLowerCase(),registrationNonce:binding[2].toString(),
-  paid,recipient:BigInt(recipient)===0n?null:recipient.toLowerCase(),
+  paid,authorizationNonce:award[3].toString(),recipient:BigInt(recipient)===0n?null:recipient.toLowerCase(),
   claimable:!paid&&pot.state===3&&!pot.paused&&BigInt(observed.blockTimestamp)<BigInt(pot.claimDeadline)&&binding[2]>0n,
   deadline:pot.claimDeadline,paused:pot.paused,state:pot.state};
 }
@@ -88,21 +88,29 @@ export async function verifySponsorDirectReceiptV5(reader:SponsorChainReader,sco
  if(scope.beneficiaryKind===1){
   demand(safeReader(reader)&&treasury&&treasury.safe.context.verifyingContract.toLowerCase()===view.recipient&&callTo===view.recipient,'direct_claim_receipt_mismatch');
   const inner=await directSafeReceiptCallV5(reader,treasury,tx.input,receipt.logs);callTo=inner.to;callData=inner.data;
- }else demand(!treasury&&tx.from.toLowerCase()===view.recipient,'direct_claim_receipt_mismatch');
- if(callTo===view.campaignAddress){
+ }else demand(!treasury,'direct_claim_receipt_mismatch');
+ // App-paid EIP-7702 claims arrive inside a bundler transaction. Its outer
+ // sender/calldata are not the recipient's call. The pinned immutable campaign
+ // enforces recipient authorization; its canonical RewardPaid event and paid
+ // entitlement below are the payment evidence, irrespective of the gas payer.
+ const routedAthlete=scope.beneficiaryKind===0&&tx.from.toLowerCase()!==view.recipient;
+ if(!routedAthlete&&callTo===view.campaignAddress){
   demand(callData===encodeSponsorDirectClaimV5(scope.entitlementId),'direct_claim_receipt_mismatch');
- }else{
+ }else if(!routedAthlete){
   demand(callTo===view.registryAddress,'direct_claim_receipt_mismatch');
   const call=decodeFunctionData({abi:walletRegistryAbiV1,data:callData});
   demand(call.functionName==='registerAndClaim'&&call.args[0].beneficiaryId===scope.beneficiaryId
    &&call.args[0].recipient.toLowerCase()===view.recipient&&call.args[0].beneficiaryKind===scope.beneficiaryKind
    &&call.args[2].toLowerCase()===view.campaignAddress&&call.args[3]===scope.entitlementId,'direct_claim_receipt_mismatch');
  }
- const events=receipt.logs.filter(log=>!log.removed&&log.address.toLowerCase()===view.campaignAddress).flatMap(log=>{
+ const events=receipt.logs.filter(log=>!log.removed&&log.address.toLowerCase()===view.campaignAddress
+  &&log.transactionHash===hash&&log.blockHash===receipt.blockHash&&log.blockNumber===receipt.blockNumber).flatMap(log=>{
   try{const e=decodeEventLog({abi:directClaimAbiV5,data:log.data,topics:log.topics});return e.eventName==='RewardPaid'?[e]:[];}catch{return [];}
  });
- demand(events.length===1&&events[0]!.args.entitlementId===scope.entitlementId&&events[0]!.args.recipient.toLowerCase()===view.recipient
-  &&events[0]!.args.amount===BigInt(scope.amountWei)&&events[0]!.args.pot===(scope.slot===0?1:0),'direct_claim_receipt_mismatch');
+ const matches=events.filter(event=>event.args.entitlementId===scope.entitlementId);
+ demand(matches.length===1&&matches[0]!.args.recipient.toLowerCase()===view.recipient
+  &&matches[0]!.args.amount===BigInt(scope.amountWei)&&matches[0]!.args.pot===(scope.slot===0?1:0)
+  &&matches[0]!.args.nonce+1n===BigInt(view.authorizationNonce),'direct_claim_receipt_mismatch');
  const [block,anchor]=await Promise.all([reader.getBlock({blockNumber:receipt.blockNumber}),reader.getBlock({blockNumber:BigInt(view.observation.blockNumber)})]);
  demand(block.hash===receipt.blockHash&&anchor.hash===view.observation.blockHash&&await reader.getChainId()===scope.plan.chainId,'direct_claim_chain_changed');
  return {transactionHash:hash,amountWei:scope.amountWei,recipient:view.recipient,blockNumber:receipt.blockNumber.toString(),blockHash:receipt.blockHash};

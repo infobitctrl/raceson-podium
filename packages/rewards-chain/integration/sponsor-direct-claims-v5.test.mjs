@@ -5,7 +5,7 @@ import {directSafeMessageV5,verifyDirectSafeSignaturesV5,encodeDirectSafeCallV5,
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {encodeDeployData,keccak256,hashMessage} from 'viem';
+import {encodeDeployData,encodeFunctionData,keccak256,hashMessage} from 'viem';
 import {rewardWalletControlMessage} from '../dist/wallet-control.js';
 import {directClaimV5} from '../../../apps/api/dist/features/rewards/direct-claims-v5-service.js';
 import {startOwnedRewardChain,fixtureSigner} from './owned-chain.mjs';
@@ -130,7 +130,26 @@ for(const chainId of [31337,10143])test(`V5 publication → explicit wallet regi
      mode='wrong-proof';await assert.rejects(get({action:'prepare',proofId}));assert.equal(signatures,0);mode='normal';
      const prepared=await get({action:'prepare',proofId});assert.equal(signatures,1);assert.equal(prepared.transaction.to,registry.toLowerCase());
      assert.equal(prepared.transaction.from,athlete.address.toLowerCase());assert.equal(writes.length,0);
-     const receipt=await send({account:athlete,to:prepared.transaction.to,data:prepared.transaction.data});await finalized();
+     // Real EIP7702 envelope on this disposable loopback chain. The fixture
+     // models the sponsored routing, not Privy's hosted bundler/paymaster.
+     const delegate=artifact('SponsoredClaimFixture');
+     const implementation=(await send({data:encodeDeployData({abi:delegate.abi,bytecode:delegate.bytecode.object,args:[chain.operator.address]})})).contractAddress;
+     await chain.testClient.setBalance({address:athlete.address,value:0n});
+     assert.equal(await chain.publicClient.getBalance({address:athlete.address}),0n);
+     const authorization=await chain.operatorClient.signAuthorization({account:athlete,contractAddress:implementation});
+     const outer={to:athlete.address,data:encodeFunctionData({abi:delegate.abi,functionName:'execute',args:[prepared.transaction.to,prepared.transaction.data]}),authorizationList:[authorization]};
+     const receipt=await send(outer);await finalized();
+     assert.equal(await chain.publicClient.getBalance({address:athlete.address}),row.amount);
+     assert.notEqual(receipt.from.toLowerCase(),athlete.address.toLowerCase());
+     // Replaying the same atomic register+claim cannot pay again.
+     await send({...outer,authorizationList:undefined},false);
+     assert.equal(await chain.publicClient.getBalance({address:athlete.address}),row.amount);
+     const receiptScope={...i,entitlementId:row.entitlementId,beneficiaryId:row.beneficiaryId,beneficiaryKind:0,amountWei:row.amount.toString(),explanationHash:row.explanationHash};
+     for(const change of [r=>({...r,logs:[]}),r=>({...r,status:'reverted'}),r=>({...r,logs:r.logs.map(l=>({...l,transactionHash:h(999)}))}),r=>({...r,logs:r.logs.map(l=>({...l,blockHash:h(999)}))})]){
+      const reader={...chain.publicClient,getTransactionReceipt:async args=>change(await chain.publicClient.getTransactionReceipt(args))};
+      await assert.rejects(verifySponsorDirectReceiptV5(reader,receiptScope,receipt.transactionHash));
+     }
+
      const verified=await get({action:'receipt',hash:receipt.transactionHash});assert.equal(verified.status,'paid');assert.equal(writes.length,1);
      assert.equal((await get()).status,'paid');assert.equal(signatures,1);
      assert.equal(await chain.publicClient.getTransactionCount({address:reviewer.address}),beforeReviewer);

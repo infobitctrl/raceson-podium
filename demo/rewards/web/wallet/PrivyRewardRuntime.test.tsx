@@ -1,3 +1,4 @@
+import {encodeSponsorDirectClaimV5} from '@raceson/rewards-chain/sponsor-direct-claims-v5';
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCallback, useState, type ReactNode } from "react";
@@ -6,7 +7,7 @@ import RewardEmbeddedWalletControls from "@/features/rewards/components/RewardEm
 import { I18nProvider } from "@/shared/i18n/I18nProvider";
 import { RewardEmbeddedWalletContext, type RewardEmbeddedState } from "@/features/rewards/components/RewardEmbeddedWalletContext";
 
-const mocks = vi.hoisted(() => ({ authorize: vi.fn(), sendProgramme: vi.fn(), auth: { user: { id: "demo-user" }, account: { userId: "demo-user", hasAthleteAccess: true },
+const mocks = vi.hoisted(() => ({ sponsoredSend: vi.fn(), authorize: vi.fn(), sendProgramme: vi.fn(), auth: { user: { id: "demo-user" }, account: { userId: "demo-user", hasAthleteAccess: true },
   session: { access_token: "synthetic" }, isLoading: false }, walletList: [] as unknown[], walletsReady: true, authenticated: true,
   customUserId: "demo-user", privyUserId: "privy-demo-user", privyReady: true, linkedWallet: false, jwtStatus: "done", unstableCreate: false, provider: vi.fn(), sync: vi.fn(), create: vi.fn(), token: vi.fn(), logout: vi.fn() }));
 vi.mock("@/features/rewards/data/sponsorProgrammeWallet", () => ({sendProgrammeTransaction: mocks.sendProgramme}));
@@ -20,6 +21,7 @@ vi.mock("@privy-io/react-auth", () => ({
     return props.children;
   },
   usePrivy: () => ({ ready: mocks.privyReady, authenticated: mocks.authenticated, logout: mocks.logout, user: { id: mocks.privyUserId, linkedAccounts: [{ type: "custom_auth", customUserId: mocks.customUserId }, ...(mocks.linkedWallet ? [{ type:"wallet",chainType:"ethereum",walletClientType:"privy" }] : [])] } }),
+  useSendTransaction: () => ({sendTransaction:mocks.sponsoredSend}),
   useAuthorizationSignature: () => ({generateAuthorizationSignature:mocks.authorize}),
   useWallets: () => ({ ready: mocks.walletsReady, wallets: mocks.walletList }),
   useCreateWallet: () => {
@@ -261,4 +263,18 @@ it('authorizes the exact publication request for the verified reviewer without c
  expect(mocks.authorize).toHaveBeenCalledTimes(attempts);
  let active=true;mocks.authorize.mockImplementation(async()=>{active=false;return {signature:'S'.repeat(88)};});
  await expect(state.authorizePublication(view,()=>active)).rejects.toThrow('review_publication_session_changed');
+});
+
+it('the actual embedded claim adapter requests app-paid fees for the exact wallet and never sends raw',async()=>{
+ const address=`0x${'ab'.repeat(20)}`,campaign=`0x${'cd'.repeat(20)}`,hash=`0x${'ef'.repeat(32)}` as const;
+ const provider={request:vi.fn(async({method}:{method:string})=>method==='eth_accounts'?[address]:method==='eth_chainId'?'0x279f':'0x0'),on:vi.fn(),removeListener:vi.fn()};
+ mocks.walletList=[{address,walletClientType:'privy',connectorType:'embedded',linked:true,imported:false,getEthereumProvider:async()=>provider}];
+ mocks.sponsoredSend.mockResolvedValue({hash});const onState=vi.fn();
+ render(<PrivyRewardRuntime configuration={configuration} sessionKey="sponsored" walletUserId="demo-user" onState={onState}/>);await act(async()=>{});
+ const binding=onState.mock.lastCall?.[1].wallet;
+ const claim={schema:'podium-direct-claim-v5',approvalId:'72000000-0000-4000-8000-000000000001',entitlementId:hash,chainId:10143,amountWei:'100',campaignAddress:campaign,registryAddress:campaign,identityIssuer:campaign,beneficiaryId:hash,status:'claimable',recipient:address,deadline:'1999999999',receipt:null,rehearsalPolicy:'podium-demo-alias-rehearsal-v1',transaction:{chainId:10143,from:address,to:campaign,data:encodeSponsorDirectClaimV5(hash),value:'0',binding:null,identityProof:null}};
+ await expect(binding.sendDirectClaim(claim,()=>true)).resolves.toBe(hash);
+ expect(mocks.sponsoredSend).toHaveBeenCalledWith({chainId:10143,from:address,to:campaign,data:claim.transaction.data,value:0n},{address,sponsor:true,uiOptions:{showWalletUIs:true}});
+ expect(provider.request.mock.calls.every(([arg])=>['eth_accounts','eth_chainId'].includes(arg.method))).toBe(true);
+ mocks.sponsoredSend.mockClear();await expect(binding.sendDirectClaim(claim,()=>false)).rejects.toThrow();expect(mocks.sponsoredSend).not.toHaveBeenCalled();
 });
