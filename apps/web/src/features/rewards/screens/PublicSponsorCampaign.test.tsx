@@ -1,3 +1,4 @@
+vi.mock('../model/usePublicCampaignRewards',()=>({usePublicCampaignRewards:()=>({page:null,busy:false,failed:false,retry:()=>{}})}));
 vi.mock('../data/publicDirectory',()=>({usePublicDirectory:()=>({data:{items:[]}})}));
 vi.mock('@/lib/auth',()=>({useAuth:()=>({account:{hasOrganizerAccess:access.organizer},user:access.user?{id:access.user}:null})}));
 const access=vi.hoisted(()=>({organizer:false,user:''}));
@@ -18,10 +19,10 @@ beforeEach(()=>{api.mockReset();access.organizer=false;access.user='';});
 it('shows a funded campaign to guests and lets them inspect each pot without claiming awards are paid',async()=>{
  api.mockResolvedValue(campaign);render(ui());await screen.findByRole('heading',{name:'Synthetic league'});
  expect(screen.getByText('Confirmed funding')).toBeVisible();expect(screen.getAllByText('Awaiting results review').length).toBeGreaterThan(0);
- expect(screen.getByRole('heading',{name:'Payment progress'})).toBeVisible();
- expect(screen.getByRole('img',{name:/Payment progress.*Paid: 0 test MON; Held in contract: 5 test MON; Returned: 0 test MON/})).toBeVisible();
+ expect(screen.getByRole('heading',{name:'Prize pool allocation'})).toBeVisible();
+ expect(screen.getByRole('group',{name:'Campaign pool: 10 test MON'})).toBeVisible();
  expect(screen.queryByRole('heading',{name:'Confirmed payments'})).not.toBeInTheDocument();
- fireEvent.click(screen.getByRole('button',{name:/Round 1/}));
+ fireEvent.click(within(screen.getByRole('group',{name:'Prize pots'})).getByRole('button',{name:/Round 1/}));
  expect(within(screen.getByRole('region',{name:'Selected prize pot'})).getByText('Round 1')).toBeVisible();
  expect(screen.queryByRole('button',{name:/deposit|wallet|claim/i})).not.toBeInTheDocument();
 });
@@ -39,7 +40,7 @@ it('keeps results review and controller signing links bound to the selected pot'
  access.organizer=true;api.mockResolvedValue(campaign);render(ui());await screen.findByText('Confirmed funding');
  fireEvent.click(screen.getByText('RacesOn team · confirm results'));
  expect(screen.getByRole('link',{name:/Review & sign in Rewards Control/})).toHaveAttribute('href','/rewards/control?campaign=campaign&pot=0');
- fireEvent.click(screen.getByRole('button',{name:/Round 1/}));
+ fireEvent.click(within(screen.getByRole('group',{name:'Prize pots'})).getByRole('button',{name:/Round 1/}));
  expect(screen.getByRole('link',{name:/Review & sign in Rewards Control/})).toHaveAttribute('href','/rewards/control?campaign=campaign&pot=1');
  expect(screen.getByRole('link',{name:'Review official results'})).toHaveAttribute('href','/rewards/manage/campaigns/campaign?pot=1');
  fireEvent.click(screen.getByText('Receipts & verification'));expect(screen.getByText(/Approval is separate from payment/)).toBeVisible();
@@ -76,7 +77,7 @@ it.each(['?pot=999','?pot=','?pot=01','?pot=bad','?pot=0&pot=1'])('does not subs
 });
 it('recovers an invalid link only after an explicit pot choice and preserves other query values',async()=>{
  access.organizer=true;api.mockResolvedValue(campaign);render(ui('?pot=999&from=campaigns'));await screen.findByRole('alert');
- fireEvent.click(screen.getByRole('button',{name:/Round 1/}));
+ fireEvent.click(within(screen.getByRole('group',{name:'Prize pots'})).getByRole('button',{name:/Round 1/}));
  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
  expect(screen.getByLabelText('Current URL')).toHaveTextContent('?pot=1&from=campaigns');
  expect(within(screen.getByRole('region',{name:'Selected prize pot'})).getByText('Round 1')).toBeVisible();
@@ -96,6 +97,15 @@ it('does not reload public accounting when the sponsor branding identity changes
  api.mockResolvedValue(campaign);const view=render(ui());await screen.findByText('Confirmed funding');
  access.user='synthetic-sponsor';view.rerender(ui());
  expect(screen.getByRole('heading',{name:'Synthetic league'})).toBeVisible();
- expect(screen.getByRole('img',{name:/Payment progress of the selected prize pool/})).toBeVisible();
+ expect(screen.getByRole('heading',{name:'Prize pool allocation'})).toBeVisible();
  expect(api).toHaveBeenCalledTimes(1);
+});
+
+it('keeps the ledger and selected accounting pot synchronized when a league circle is expanded',async()=>{
+ api.mockResolvedValue(campaign);render(ui());await screen.findByRole('heading',{name:'Synthetic league'});
+ fireEvent.click(screen.getByRole('button',{name:'Round 1, 5 test MON, Saved budget',exact:true}));
+ expect(screen.getByLabelText('Current URL')).toHaveTextContent('?pot=1');
+ expect(within(screen.getByRole('group',{name:'Prize pots'})).getByRole('button',{name:/Round 1/})).toHaveAttribute('aria-pressed','true');
+ expect(within(screen.getByRole('region',{name:'Selected prize pot'})).getByText('Round 1')).toBeVisible();
+ expect(screen.getByRole('navigation',{name:'Allocation path'})).toHaveTextContent('Round 1');
 });

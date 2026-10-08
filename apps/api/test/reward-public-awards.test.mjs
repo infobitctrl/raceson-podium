@@ -63,3 +63,12 @@ test('missing contract rows are planned only before staging; paused/expired clai
  assert.equal((await publicAwardPage(f.reader,f.observed,scope,f.raw,query)).availability,'paused');
  f.observed.pots[0].paused=false;f.observed.pots[0].claimDeadline='99';assert.equal((await publicAwardPage(f.reader,f.observed,scope,f.raw,query)).availability,'closed');
 });
+test('category contributions reconcile to each entitlement, retain place and expose no private fields',async()=>{
+ const f=fixture();f.raw.awards[0].breakdown=[{category:'Long · Female',amountWei:'1',place:1}];f.raw.awards[1].breakdown=[{category:'Short · Male',amountWei:'2',place:null}];
+ const scoped={...scope,groups:[{name:'Long · Female',amountWei:'1'},{name:'Short · Male',amountWei:'2'}]};
+ const page=await publicAwardPage(f.reader,f.observed,scoped,f.raw,query);
+ assert.deepEqual(page.rows[0].breakdown,f.raw.awards[0].breakdown);
+ for(const bad of [{category:'Unknown',amountWei:'1',place:1},{category:'Long · Female',amountWei:'2',place:1},{category:'Long · Female',amountWei:'1',place:1,name:'Private athlete'}]){
+  f.raw.awards[0].breakdown=[bad];await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scoped,f.raw,query));
+ }
+});

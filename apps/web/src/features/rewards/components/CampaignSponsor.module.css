@@ -11,3 +11,5 @@
 .website{display:inline-block;margin-top:12px;font-size:13px;font-weight:600;color:#a9400c;text-decoration:underline;text-underline-offset:3px}.promotion{margin-top:10px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.65;color:#62584f}
 
 .compact{display:inline-flex;align-items:center;gap:8px}.compact .logo{width:30px;height:30px;font-size:11px}.compact strong{font-size:12px;font-weight:500}
+
+.verified{display:inline-flex;align-items:center;gap:4px;color:#13764e;font-size:10px;font-weight:600;margin:3px 0}.featured:has(.verified){padding:14px 18px}.featured:has(.verified) .logo{width:48px;height:48px}.featured:has(.verified) .identity strong{font-size:18px}.featured:has(.verified) .backing{font-size:12px}.featured:has(.verified) .promotion{margin-top:8px;font-size:12px;line-height:1.5;max-width:75ch}

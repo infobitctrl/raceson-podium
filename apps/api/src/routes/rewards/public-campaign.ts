@@ -43,7 +43,7 @@ export async function dispatchPublicCampaign(req:IncomingMessage,res:ServerRespo
    const saved=await rewardPublicCampaign(config.chainId,id,undefined,deps.publicRpc??deps.rpc);
    if(!saved||!saved.campaign.pots.some(p=>p.slot===slot)){deps.sendError(res,404,'public_campaign_not_found','Prize pot not found.');return true;}
    const [raw,observed]=await Promise.all([rewardPublicAwards(config.chainId,id,slot,deps.publicRpc??deps.rpc),observeSponsorProgrammePot(deps.sponsorReader,saved.record.plan,saved.record.deploymentHash as Hex,saved.record.fundingHash as Hex,slot)]);
-   deps.sendSuccess(res,await publicAwardPage(deps.sponsorReader,observed,{id,chainId:config.chainId,slot},raw,query));
+   deps.sendSuccess(res,await publicAwardPage(deps.sponsorReader,observed,{id,chainId:config.chainId,slot,groups:saved.campaign.pots.find(p=>p.slot===slot)!.groups},raw,query));
   }catch(error){const invalid=error instanceof Error&&error.message==='invalid_public_awards';deps.sendError(res,invalid?400:503,invalid?'invalid_public_awards':'public_awards_unavailable',invalid?'Invalid reward request.':'Reward status is temporarily unavailable. Please retry.');}
   return true;
  }

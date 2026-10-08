@@ -6,22 +6,21 @@ import {useEffect, useState} from 'react';
 import {Link, useParams, useSearchParams} from 'react-router-dom';
 import {ArrowLeft, Copy, ArrowUpDown, ArrowRight, RefreshCw, ShieldCheck} from 'lucide-react';
 import type {PublicSponsorCampaign as Campaign} from '@raceson/domain/rewards/public-campaign';
-import {campaignStatus, campaignSum, type DirectoryCampaign} from '@raceson/domain/rewards/public-directory';
+import {campaignStatus, type DirectoryCampaign} from '@raceson/domain/rewards/public-directory';
 import {useI18n} from '@/shared/i18n/I18nContext';
 import {useAuth} from '@/lib/auth';
 import {ApiError} from '@/lib/api';
 import {readPublicCampaign} from '../data/publicCampaign';
 import {sponsorColors} from '../model/sponsorCatalogue';
-import {setupAmount} from '../model/setupAmount';
+import {publicAmount as setupAmount} from '../model/publicAmount';
 import {statusLabel} from '../model/podiumDirectory';
 import {resultsHandoffLink, rewardsControlLink} from '../model/controllerLinks';
-import PublicRewardTable from '../components/PublicRewardTable';
+import PublicDistribution from '../components/PublicDistribution';
 import RewardExplorerLink from '../components/RewardExplorerLink';
 import s from '../components/Podium.module.css';
 import detail from './PublicSponsorCampaign.module.css';
 
 const categoryColors = [...sponsorColors, '#6f8d9b'];
-import CampaignChart from '../components/CampaignChart';
 export default function PublicSponsorCampaign() {
   const {id = ''} = useParams(), {locale} = useI18n(), auth = useAuth(), hr = locale === 'hr';
   const t = (en: string, local: string) => hr ? local : en;
@@ -50,14 +49,14 @@ export default function PublicSponsorCampaign() {
     return (descending ? -n : n) || a.id - b.id;
   });
   const changeSort = (key: 'name' | 'amount') => {setSort(key); setDescending(sort === key ? !descending : key === 'amount');};
-  const potLabel = (slot: number) => campaign.pots.length === 1 ? campaign.pots[0].name : slot === 0 ? t('League', 'Liga') : `${t('Round', 'Kolo')} ${slot}`;
+  const potLabel = (slot: number) => campaign.pots.length === 1 ? officialSource(selection)?.name ?? campaign.name : slot === 0 ? t('League', 'Liga') : `${t('Round', 'Kolo')} ${slot}`;
   const select = (slot: string) => setParams(p => {const next = new URLSearchParams(p); next.set('pot', slot); return next;}, {replace: true});
   const metrics = [
-    {label: t('Total campaign budget', 'Ukupan proračun kampanje'), value: campaign.budgetWei, note: t('Saved rule', 'Spremljeno pravilo')},
-    {label: t('Selected prize pool', 'Odabrani fond nagrada'), value: pot?.amountWei, note: pot ? potLabel(pot.slot) : t('Choose a prize pot', 'Odaberite fond nagrada')},
-    {label: t('Confirmed funding', 'Potvrđene uplate'), value: pot?.amountWei, note: t('On-chain · selected pot', 'Na lancu · odabrani fond')},
-    {label: t('Funds still held', 'Preostala sredstva'), value: pot?.remainingWei, note: t('After payments & returns', 'Nakon isplata i povrata')},
-    {label: t('Confirmed payments', 'Potvrđene isplate'), value: pot?.paidWei, note: t('Claimed only', 'Samo preuzete nagrade')},
+    {label: t('Confirmed funding', 'Potvrđene uplate'), value: pot?.amountWei, note: t('Deposited prize pool', 'Uplaćeni fond nagrada')},
+    {label: t('Awarded', 'Dodijeljeno'), value: pot?.allocatedWei, note: t('Approved allocation', 'Odobrena raspodjela')},
+    {label: t('Claimed', 'Preuzeto'), value: pot?.paidWei, note: t('Confirmed payments', 'Potvrđene isplate')},
+    {label: t('Funds still held', 'Preostala sredstva'), value: pot?.remainingWei, note: t('In the reward contract', 'U ugovoru nagrada')},
+    {label: t('Returned', 'Vraćeno'), value: pot?.returnedWei, note: t('Confirmed returns', 'Potvrđeni povrati')},
   ];
   return <article className={`${s.page} ${detail.page}`}>
     <CampaignSponsorProvider><header className={detail.heading}>
@@ -65,15 +64,9 @@ export default function PublicSponsorCampaign() {
       <span className={s.badge} data-state={campaignStatus(item)}>{statusLabel(item, hr)}</span>
     </header>
     <section className={detail.sponsor} aria-label={t('Sponsor', 'Sponzor')}>
-      <CampaignSponsor id={id} hr={hr} backing={officialSource(selection)?.name??campaign.name}/>
+      <CampaignSponsor id={id} hr={hr} backing={officialSource(selection)?.name??campaign.name} fundingVerified/>
       <OfficialSourceLinks selection={selection} hr={hr}/>
-      <dl className={detail.sponsorMetrics}>{[
-        [t('Campaign budget', 'Proračun kampanje'), campaign.budgetWei],
-        [t('Prize pool', 'Fond nagrada'), pot?.amountWei],
-        [t('Deposited', 'Uplaćeno'), campaign.budgetWei],
-        [t('Returned funds', 'Vraćena sredstva'), campaignSum(campaign, 'returnedWei')],
-      ].map(([label, value]) => <div key={String(label)}><dt>{label}</dt><dd>{value === undefined ? '—' : <>{setupAmount(BigInt(value), hr)} <small>test MON</small></>}</dd></div>)}</dl>
-      <div className={detail.sponsorFooter}><p>{t('Sponsor-funded rewards on RacesOn.', 'Nagrade na RacesOnu koje financira sponzor.')}</p><div><Link className={detail.smallButton} to="/athlete/rewards">{t('My rewards', 'Moje nagrade')}<ArrowRight size={14}/></Link><button className={detail.smallButton} onClick={() => {void navigator.clipboard.writeText(location.href).then(() => {setCopied(true); setCopyFailed(false);}).catch(() => setCopyFailed(true));}}><Copy size={14}/>{copied ? t('Link copied', 'Poveznica kopirana') : t('Share', 'Podijeli')}</button></div></div>
+      <div className={detail.sponsorFooter}><p><span className={detail.fundingDot}/>{t('Sponsor-funded rewards', 'Nagrade financira sponzor')}</p><div><Link className={detail.smallButton} to="/athlete/rewards">{t('My rewards', 'Moje nagrade')}<ArrowRight size={14}/></Link><button className={detail.smallButton} onClick={() => {void navigator.clipboard.writeText(location.href).then(() => {setCopied(true); setCopyFailed(false);}).catch(() => setCopyFailed(true));}}><Copy size={14}/>{copied ? t('Link copied', 'Poveznica kopirana') : t('Share', 'Podijeli')}</button></div></div>
     </section></CampaignSponsorProvider>
     {copied ? <p role="status">{t('Campaign link copied.', 'Poveznica kampanje je kopirana.')}</p> : null}
     {copyFailed ? <p role="alert">{t('Copy the page address from your browser to share this campaign.', 'Kopirajte adresu stranice iz preglednika za dijeljenje kampanje.')}</p> : null}
@@ -83,23 +76,13 @@ export default function PublicSponsorCampaign() {
         <div className={detail.potButtons} role="group" aria-label={t('Prize pots', 'Fondovi nagrada')}>{campaign.pots.map(p => <button key={p.slot} aria-pressed={p.slot === pot?.slot} onClick={() => select(String(p.slot))} title={p.name} aria-label={`${potLabel(p.slot)} · ${amount(p.amountWei)}`}>{potLabel(p.slot)} <small>{setupAmount(BigInt(p.amountWei), hr)}</small></button>)}</div>
       </div> : null}
       {!pot ? <div className={s.notice} role="alert"><h3>{t('Prize pot not found', 'Fond nagrada nije pronađen')}</h3><p>{t('This link does not identify an available prize pot. Choose one above to view its allocation and payments.', 'Ova poveznica ne upućuje na dostupan fond nagrada. Odaberite fond iznad za pregled raspodjele i isplata.')}</p></div> : null}
-      {pot?<OfficialSourceLinks selection={selection} slot={pot.slot} hr={hr}/>:null}
+      {campaign.pots.length>1?<p className={detail.poolContext}>{t('Campaign budget','Proračun kampanje')}: <strong>{amount(campaign.budgetWei)}</strong> · {pot?potLabel(pot.slot):'—'}</p>:null}
       <dl className={detail.metrics}>{metrics.map(metric => <div key={metric.label}><dt>{metric.label}</dt><dd>{metric.value === undefined ? '—' : <>{setupAmount(BigInt(metric.value), hr)} <small>test MON</small></>}</dd><p>{metric.note}</p></div>)}</dl>
       <div className={detail.verification}><ShieldCheck size={16}/><span>{t('Last verified', 'Posljednja provjera')}: {new Date(Number(campaign.blockTimestamp) * 1000).toLocaleString(hr ? 'hr-HR' : 'en-GB')}</span><button className={detail.smallButton} disabled={busy} aria-label={t('Refresh status', 'Osvježi stanje')} onClick={() => setAttempt(n => n + 1)}><RefreshCw size={14}/>{busy ? t('Refreshing…', 'Osvježavanje…') : t('Refresh', 'Osvježi')}</button></div>
       {failure ? <p role="alert">{t('Refresh failed. Showing the last verified status below.', 'Osvježavanje nije uspjelo. Prikazano je posljednje provjereno stanje.')}</p> : null}
     </section>
     {pot ? <>
-      <div className={detail.charts}>
-        <CampaignChart title={t('Payment progress', 'Napredak isplata')} description={`${t('Payment progress of the selected prize pool', 'Napredak isplata odabranog fonda')} · ${potLabel(pot.slot)}`} hr={hr} total={pot.amountWei} rows={[
-          {label: t('Paid', 'Isplaćeno'), value: pot.paidWei, color: '#f56617'},
-          {label: t('Held in contract', 'U ugovoru'), value: pot.remainingWei, color: '#241f1b'},
-          {label: t('Returned', 'Vraćeno'), value: pot.returnedWei, color: '#d9b38c'},
-        ]}/>
-        <CampaignChart title={t('Prize pool allocation', 'Raspodjela fonda nagrada')} description={t('Allocation of the campaign prize budget', 'Raspodjela proračuna kampanje')} hr={hr} total={campaign.budgetWei} rows={campaign.pots.map((p, i) => ({label: potLabel(p.slot), value: p.amountWei, color: categoryColors[i % categoryColors.length]}))}/>
-      </div>
-      <section className={detail.awards} aria-label={t('Selected prize pot', 'Odabrani fond')}>
-        <PublicRewardTable key={`${id}:${pot.slot}`} id={id} slot={pot.slot} hr={hr} refresh={attempt} title={t('Reward ledger', 'Pregled nagrada')} subtitle={potLabel(pot.slot) === pot.name ? pot.name : `${potLabel(pot.slot)} · ${pot.name}`}/>
-      </section>
+      <PublicDistribution key={`${id}:${pot.slot}`} campaign={campaign} pot={pot} hr={hr} refresh={attempt} subtitle={potLabel(pot.slot)} onSelectPot={slot=>select(String(slot))} startAtPot={selected!==null}/>
       <details key={pot.slot} className={detail.budgets} open={pot.allocatedWei === '0'}><summary><span>{t('Saved category budgets', 'Spremljeni fondovi kategorija')}</span><span className={detail.summaryAmount}>{potLabel(pot.slot)} · {amount(pot.amountWei)}</span></summary><div className={detail.disclosureBody}>
         <div className={s.scroll}><table className={`${s.table} ${detail.categories}`}><caption className="sr-only">{t('Saved category budgets', 'Spremljeni fondovi kategorija')}</caption><thead><tr><th scope="col" aria-sort={sort === 'name' ? descending ? 'descending' : 'ascending' : 'none'}><button onClick={() => changeSort('name')}>{t('Category', 'Kategorija')}<ArrowUpDown size={14}/></button></th><th scope="col" aria-sort={sort === 'amount' ? descending ? 'descending' : 'ascending' : 'none'}><button onClick={() => changeSort('amount')}>{t('Budget', 'Fond')}<ArrowUpDown size={14}/></button></th></tr></thead><tbody>{groups.map(g => <tr key={g.id}><td><span className={detail.category}><i aria-hidden="true" style={{background: g.color}}/>{g.name}</span></td><td>{amount(g.amountWei)}</td></tr>)}</tbody></table></div><p className={s.muted}>{t('These are the saved budget splits. Individual awards depend on approved results.', 'Ovo su spremljeni udjeli proračuna. Pojedinačne nagrade ovise o odobrenim rezultatima.')}</p>
       </div></details>
