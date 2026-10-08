@@ -1,4 +1,4 @@
-import {act,fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {act,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedAwardReview from './HostedAwardReview';
 const mocks=vi.hoisted(()=>({read:vi.fn()}));
@@ -70,6 +70,6 @@ it('replaces the decision button while saving and never shows approval before th
  expect(screen.queryByText('Allocation approved')).not.toBeInTheDocument();
  await act(async()=>reject(Error('uncertain')));
  expect(screen.getByRole('group',{name:'Decision progress'})).toHaveAttribute('aria-busy','false');
- expect(screen.getAllByRole('listitem').some(x=>x.getAttribute('data-state')==='current')).toBe(false);
+ expect(within(screen.getByRole('group',{name:'Decision progress'})).getAllByRole('listitem').some(x=>x.getAttribute('data-state')==='current')).toBe(false);
  expect(screen.getByRole('button',{name:'Retry same decision'})).toBeEnabled();
 });

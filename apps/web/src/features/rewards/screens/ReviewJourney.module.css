@@ -1,0 +1,8 @@
+.journey{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;list-style:none!important;padding:0!important;margin:0 0 24px!important}
+.journey li{display:flex!important;flex-direction:column;align-items:center;gap:8px;min-width:0;padding:0!important;text-align:center;font-size:12px;font-weight:600;line-height:1.4;color:#756b62}
+.icon{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#f0ece6;border:1px solid #e8e2db}
+.journey li[data-state=complete]{color:#0f795c}
+.journey li[data-state=complete] .icon{background:#e4f2eb;border-color:#c3ded1}
+.journey li[data-state=current]{color:#241f1b}
+.journey li[data-state=current] .icon{background:#fff0e6;border-color:#ed6b2e;color:#b64515;box-shadow:0 0 0 3px #fff8f3}
+@media(max-width:420px){.journey li{font-size:11px}.icon{width:34px;height:34px}}

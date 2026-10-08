@@ -1,0 +1,24 @@
+.publication{padding:4px 0 18px;min-width:0;color:#241f1b}
+.heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}
+.heading h3{margin:0;font-size:20px;font-weight:650;letter-spacing:-.3px}
+.step{font-size:12px;color:#6b625b;white-space:nowrap;font-variant-numeric:tabular-nums}
+.receipt{display:flex;align-items:center;gap:14px;padding:18px;border:1px solid #c3ded1;border-radius:12px;background:#edf7f1;color:#0c634a}
+.receipt>svg{flex-shrink:0}
+.receipt h3{margin:0 0 4px;font-size:18px;font-weight:650}
+.receipt p{margin:0;font-size:14px;line-height:1.5}
+.steps{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;list-style:none!important;padding:0!important;margin:0 0 20px!important}
+.steps li{display:flex!important;flex-direction:column;align-items:flex-start;gap:10px;position:relative;min-width:0;font-size:12px;line-height:1.5;font-weight:600;padding:0!important;color:#756b62}
+.steps li::before{content:'';position:absolute;left:0;right:0;top:0;height:4px;border-radius:4px;background:#e8e2db}
+.steps li[data-state=complete]::before{background:#0f795c}
+.steps li[data-state=active]::before,.steps li[data-state=ready]::before{background:#ed6b2e}
+.steps li[data-state=complete]{color:#0f795c}
+.steps li[data-state=active],.steps li[data-state=ready]{color:#241f1b}
+.marker{display:grid;place-items:center;margin-top:17px;width:30px;height:30px;border-radius:50%;background:#f0ece6;flex-shrink:0}
+.steps li[data-state=complete] .marker{background:#e4f2eb}
+.steps li[data-state=active] .marker,.steps li[data-state=ready] .marker{background:#fff0e6}
+.status{font-size:14px;line-height:1.5;margin:0 0 8px}
+.hint{color:#756b62;font-size:12px;line-height:1.5;margin:0}
+.spinner{animation:publication-spin 1s linear infinite}
+@keyframes publication-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spinner{animation:none}}
+@media(max-width:420px){.heading h3{font-size:18px}.steps li{font-size:11px}.publication button{width:100%}}

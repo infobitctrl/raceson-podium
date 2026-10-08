@@ -4,6 +4,7 @@ import RewardActionProgress from '../components/RewardActionProgress';
 import {formatUnits} from 'viem';
 import {readHostedAwardReview,type HostedAwardDecision} from '../data/hostedAwardReview';
 import HostedAwardUpload from './HostedAwardUpload';
+import ReviewJourney from './ReviewJourney';
 import p from '../components/Podium.module.css';
 import s from './HostedReviewWorkspace.module.css';
 type View=Awaited<ReturnType<typeof readHostedAwardReview>>;
@@ -25,7 +26,8 @@ function SlotReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expe
   finally{if(epoch===generation.current)setBusy(false);}
  }
  return <section className={s.decision} aria-label={hr?'Odobrenje nagrada':'Award approval'}>
-  <h3>{hr?'1 · Odluka pregledavatelja':'1 · Reviewer decision'}</h3>
+  {!(view&&'contextHash' in view&&view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash)?<ReviewJourney stage={0} hr={hr}/>:null}
+  <h3>{hr?'Pregled nagrada':'Review awards'}</h3>
   {busy||error?<RewardActionProgress paused={error&&!busy} messageRole={error&&!busy?'alert':'status'} label={hr?'Napredak odluke':'Decision progress'} labels={hr?['Provjera','Spremanje','Potvrđeno']:['Checking','Saving','Confirmed']} stage={pending.current?1:0} message={error?pending.current?(hr?'Odluka nije potvrđena. Ponovite istu odluku ili učitajte trenutačno stanje.':'The decision could not be confirmed. Retry the same decision or reload the current state.'):(hr?'Podaci za pregled nisu učitani. Ponovno učitajte pregled kako biste provjerili trenutačne nagrade.':'Review details could not be loaded. Reload the review to check the current awards.'):pending.current?(hr?'Spremanje točne odluke. Pričekajte potvrdu prije nastavka.':'Saving the exact decision. Wait for confirmation before continuing.'):(hr?'Provjera službenog izvora i važeće raspodjele.':'Checking the official source and current allocation.')}/>:null}
   {error&&!busy?<>
    {pending.current?<button className={p.primary} disabled={busy} onClick={()=>void save(pending.current!.decision)}>{hr?'Ponovi istu odluku':'Retry same decision'}</button>:null}
@@ -43,7 +45,7 @@ function SlotReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expe
    {view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash?<HostedAwardUpload key={view.approval.id} id={id} slot={slot} approvalId={view.approval.id} contextHash={view.contextHash} documentHash={view.documentHash} hr={hr}/>:null}
    </>}
   </>:null}
-  {!(view&&'contextHash' in view&&view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash)?<div className={s.controllerStep}><h3>{hr?'2 · Predaja rezultata':'2 · Results handoff'}</h3><p>{hr?'Dostupno nakon odobrenja raspodjele i provjere uplate.':'Available after allocation approval and funding verification.'}</p></div>:null}
+  {!(view&&'contextHash' in view&&view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash)?<p>{hr?'Slijedi: priprema i objava nagrada za preuzimanje.':'Next: prepare and publish awards to open claims.'}</p>:null}
  </section>;
 }
 export default function HostedAwardReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expected?:{budgetWei:string;proposedWei:string}}){

@@ -14,11 +14,12 @@ beforeEach(()=>{mocks.upload.mockReset();mocks.handoff.mockReset();});
 it('completes results review before offering reviewer-owned publication',async()=>{
  mocks.upload.mockResolvedValueOnce(base).mockResolvedValue(prepared);mocks.handoff.mockResolvedValueOnce(handoff).mockResolvedValueOnce({...handoff,publication:{id:'publication'}});
  render(<HostedAwardUpload {...props}/>);fireEvent.click(await screen.findByRole('button',{name:'Verify funding and prepare package'}));
- await screen.findByText('Award package prepared.');expect(mocks.handoff).toHaveBeenCalledTimes(1);
+ await screen.findByText('Award package prepared.');expect(screen.getByLabelText('Publish: upcoming')).toBeVisible();expect(screen.getByLabelText('Claims open: upcoming')).toBeVisible();expect(mocks.handoff).toHaveBeenCalledTimes(1);
  expect(mocks.upload.mock.calls[1][1]).toEqual({requestId:expect.any(String),contextHash:props.contextHash,documentHash:props.documentHash});
  expect(screen.queryByRole('link',{name:'Controller tools'})).not.toBeInTheDocument();expect(screen.queryByText('Recipient queue approval')).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Confirm results handoff'}));await screen.findByText('Publication controls');expect(screen.queryByRole('link',{name:'Controller tools'})).not.toBeInTheDocument();
- expect(screen.getByText('Results review complete. Approved awards are ready for contract publication.')).toBeVisible();
+ expect(screen.queryByText('Results review complete. Approved awards are ready for contract publication.')).not.toBeInTheDocument();
+ expect(screen.getByText('Preparation details')).toBeVisible();
  expect(screen.queryByText('Separate contract operations')).not.toBeInTheDocument();
  expect(screen.queryByText(/Continue in the controller workspace/)).not.toBeInTheDocument();
  expect(screen.getByText('Recipient queue approval')).toBeVisible();expect(screen.getByText('Club queue approval')).toBeVisible();
