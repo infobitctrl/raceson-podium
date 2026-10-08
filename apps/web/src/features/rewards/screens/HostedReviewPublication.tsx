@@ -12,6 +12,7 @@ function publicationFailure(error:unknown,hr:boolean){
  if(error instanceof ApiError&&error.status===401)return hr?'Vaša je prijava istekla. Prijavite se ponovno kao pregledavatelj.':'Your session expired. Sign in as Reviewer again.';
  if(code==='controller_balance_required')return hr?'Novčaniku pregledavatelja treba test MON za mrežne naknade. Zatim nastavite spremljenu objavu.':'The reviewer wallet needs test MON for network fees. Then resume the saved publication.';
  if(code==='controller_source_not_ready')return hr?'Odobrene nagrade su promijenjene. Osvježite pregled prije objave.':'The approved awards changed. Refresh award review before publishing.';
+ if(code==='controller_transaction_pending')return hr?'Druga kampanja ima nedovršenu objavu u ovom novčaniku. Nastavite tu objavu prije objave ove kampanje.':'Another campaign has an unfinished publication in this wallet. Resume that publication before publishing this campaign.';
  if(code?.startsWith('review_publication_'))return hr?'Autorizacija novčanika nije dovršena. Nastavite objavu iz povezane prijave pregledavatelja.':'Wallet authorization was not completed. Resume publication from your connected reviewer session.';
  return hr?'Objava nije potvrđena. Osvježite stanje ili nastavite spremljenu objavu.':'Publication could not be confirmed. Refresh its status or resume the saved publication.';
 }

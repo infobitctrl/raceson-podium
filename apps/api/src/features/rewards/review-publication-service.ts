@@ -25,7 +25,7 @@ export async function reviewPublication(identity:RewardAccountIdentity,scope:Spo
  const rpc=reviewPublicationRpc(identity,scope,binding.plan.operator,d.rpc),actor={subject:'service:review-publication',wallet:binding.plan.operator};
  // Read the journal first: a receipt may be waiting even when activation is already visible.
  const stored=await rpc('service_reward_controller_transaction',{p_subject:actor.subject,p_sender:actor.wallet,p_action:'read',p_id:null,p_context:null,p_transaction:null,p_signed:null,p_hash:null});
- if(stored.error)throw Error('controller_transaction_unavailable');
+ if(stored.error)throw Error(typeof stored.error==='object'&&'message' in stored.error&&stored.error.message==='controller_transaction_pending'?'controller_transaction_pending':'controller_transaction_unavailable');
  const pending=z.object({id:z.string().uuid(),hash:z.string().nullable(),confirmed:z.boolean(),context:z.object({kind:z.literal('distribution'),action:z.enum(['upload','stage','activate'])})}).nullable().parse(stored.data);
  if(command===undefined)return view(pending); // GET never signs or broadcasts.
  const request=reviewPublicationCommand.parse(command);

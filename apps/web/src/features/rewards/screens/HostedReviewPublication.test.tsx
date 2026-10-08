@@ -37,6 +37,12 @@ it('failed read offers a status refresh without starting a transaction',async()=
  fireEvent.click(await screen.findByRole('button',{name:'Refresh publication status'}));await screen.findByRole('button',{name:'Publish awards and open claims'});
  expect(mocks.read.mock.calls.every(c=>c[2]!==true)).toBe(true);
 });
+it('explains another campaign reservation without starting or authorizing publication',async()=>{
+ mocks.read.mockRejectedValue(Error('controller_transaction_pending'));render(<HostedReviewPublication {...props}/>);
+ expect(await screen.findByRole('alert')).toHaveTextContent('Another campaign has an unfinished publication in this wallet.');
+ expect(screen.queryByRole('button',{name:'Publish awards and open claims'})).not.toBeInTheDocument();
+ expect(mocks.read).toHaveBeenCalledOnce();expect(mocks.authorize).not.toHaveBeenCalled();
+});
 
 it('authorizes only the prepared transaction in the reviewer browser before submission',async()=>{
  const authorization={transactionId:'saved',request:{headers:{'privy-request-expiry':'999'}}};

@@ -84,6 +84,15 @@ test('publication transport cannot fall through to native authority or other pri
  await assert.rejects(rpc('service_reward_controller_transaction',{p_subject:'did:privy:forged',p_sender:'0x'+'11'.repeat(20)}),/controller_scope_required/);
  await assert.rejects(rpc('service_reward_wallet_runtime',{}),/controller_scope_required/);
 });
+test('an unfinished publication in another campaign is reported without reserving or signing',async()=>{
+ const f=fixture(),rpc=f.deps.rpc;
+ f.deps.rpc=async(name,args)=>name==='service_reward_demo_copy_review_publication_transaction'?{data:null,error:{message:'controller_transaction_pending'}}:rpc(name,args);
+ await assert.rejects(f.run(),/^Error: controller_transaction_pending$/);
+ await assert.rejects(f.run(f.command),/^Error: controller_transaction_pending$/);
+ assert.equal(f.jobs.length,0);assert.equal(f.signCount(),0);
+ f.deps.rpc=async(name,args)=>name==='service_reward_demo_copy_review_publication_transaction'?{data:null,error:{message:'private database detail'}}:rpc(name,args);
+ await assert.rejects(f.run(),/^Error: controller_transaction_unavailable$/);
+});
 test('provider ownership belongs only to the exact custom-auth reviewer; app and native ownership are not reviewer permission',async()=>{
  const identity={userId:id(902),sessionId:id(904)},operator='0x'+'11'.repeat(20),registered={wallet:operator,walletId:'wallet',ownerId:'original',subject:'did:privy:original'};
  let ownerSubject=registered.subject,targetId='did:privy:reviewer',linkedId=identity.userId;
