@@ -47,5 +47,23 @@ export async function clubDirectClaimsV5Scenarios({harness,scenario}){
   assert.equal(award.protocolVersion,5);assert.deepEqual(award.directClaim,{paid:true});assert.deepEqual(award.claims,[]);
   for(const role of ['anon','authenticated'])assert.equal(await scalar(`select has_function_privilege('${role}','public.service_reward_demo_copy_club_direct_claim_v5(uuid,uuid,uuid,text,uuid,uuid,jsonb)','EXECUTE')`),false);
  });
+ await scenario('club member selection is scoped, immutable, current and private',async()=>{
+  for(const n of [11,21])await query(`insert into auth.users(id,email,aud,role,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values(${q(id(n))},${q('member'+n+'@example.invalid')},'authenticated','authenticated','{}','{}',now(),now());
+   insert into public.athlete_profiles(id,slug,first_name,last_name,display_name,birth_year,status,is_claimed,claimed_by_user_id) values(${q(id(n+1))},${q('member-'+n)},'Synthetic','Member',${q('Synthetic member '+n)},1990,'active',true,${q(id(n))});
+   insert into public.club_memberships(id,club_id,athlete_profile_id,status,club_role_id) select ${q(id(n+2))},${q(row.beneficiary_id)},${q(id(n+1))},'active',id from public.club_roles where club_id=${q(row.beneficiary_id)} and not is_owner order by id limit 1;`);
+  const ids=[id(4),id(13),id(23)],roster=()=>scalar(`select public.service_reward_club_creation_members(${q(id(1))},${q(id(2))},${q(row.beneficiary_id)},null,${q('{'+ids.join(',')+'}')}::uuid[])`);
+  const members=(await roster()).items.map((m,i)=>({...m,address:address(String(i+2))}));assert.equal(members.length,3);
+  const proof=await scalar(`select proof_id::text from app_private.reward_demo_copy_club_creations where id=${q(id(5))}`);
+  const body={requestId:id(99),clubId:row.beneficiary_id,proofId:proof,owners:members.map(m=>m.address).sort(),members};
+  const request=b=>scalar(`select public.service_reward_demo_copy_club_creation(${q(id(1))},${q(id(2))},'request',${q(JSON.stringify(b))}::jsonb)`);
+  const created=await request(body);assert.equal(created.members.length,3);assert.equal(created.current,true);assert(created.members.every(m=>!('userId'in m)));
+  assert.deepEqual(await request(body),created);
+  await assert.rejects(request({...body,members:[{...members[0],userId:id(11)},...members.slice(1)]}),/members_changed/);
+  await assert.rejects(scalar(`select public.service_reward_club_creation_members(${q(id(11))},${q(id(2))},${q(row.beneficiary_id)},null,null)`),/session_required/);
+  const held=JSON.parse(await query(`begin;update public.club_memberships set status='removed' where id=${q(id(13))};select app_private.reward_demo_copy_club_creation_document(${q(id(99))},${q(id(1))});rollback;`));assert.equal(held.current,false);
+  assert.equal((await request(body)).current,true);
+  for(const role of ['anon','authenticated'])assert.equal(await scalar(`select has_function_privilege('${role}','public.service_reward_club_creation_members(uuid,uuid,uuid,uuid,uuid[])','EXECUTE')`),false);
+  assert.equal(await scalar(`select has_table_privilege('service_role','app_private.reward_club_creation_members','SELECT')`),false);
+ });
  }finally{await query(source);}
 }

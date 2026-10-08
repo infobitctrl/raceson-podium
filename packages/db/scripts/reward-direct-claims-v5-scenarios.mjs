@@ -59,7 +59,7 @@ export async function directClaimsV5Scenarios({harness,scenario}){
   // API/chain suite; these deterministic bytes are intentionally not consent.
   const proof=await scalar(`select public.service_confirm_reward_wallet_proof(${q(r.user_id)},${q(r.session_id)},${q(c.challengeId)},'0x'||repeat('12',32),'0x'||repeat('34',65))`);
   assert.equal((await read(proof.proof.proofId)).challenge.address,'0x'+'56'.repeat(20));
-  await query(`begin;set local session_replication_role=replica;update app_private.reward_wallet_challenges set issued_at=clock_timestamp()-interval '20 minutes',expires_at=clock_timestamp()-interval '10 minutes' where id=${q(c.challengeId)};commit;`);
+  await query(`begin;set local session_replication_role=replica;update app_private.reward_wallet_challenges set issued_at=statement_timestamp()-interval '20 minutes',expires_at=statement_timestamp()-interval '10 minutes' where id=${q(c.challengeId)};commit;`);
   await assert.rejects(read(proof.proof.proofId),/reward_wallet_challenge_expired/);
  });
  await scenario('V5 canonical receipt journal is idempotent, amount-bound, immutable and private',async()=>{

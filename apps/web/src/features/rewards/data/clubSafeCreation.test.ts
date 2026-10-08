@@ -25,22 +25,24 @@ describe('explicit club Safe creation',()=>{
   const receipt={transactionHash:hash,safeAddress:address('f'),blockNumber:(2n**64n).toString(),blockHash:hash,initializerHash:hash};
   expect(()=>clubCreationRecord.parse({...f.record,transactions:[{transactionHash:hash}],verified:receipt})).toThrow();
  });
- it('sends only one exact zero-value creation after account, chain and balance checks, then removes listeners',async()=>{
-  const f=fixture(),p=provider();expect(await sendClubSafeCreation(p,f,()=>true)).toBe(hash);
-  const calls=p.request.mock.calls.map(([v])=>v);expect(calls.map(v=>v.method)).toEqual(['eth_accounts','eth_chainId','eth_getBalance','eth_accounts','eth_chainId','eth_sendTransaction']);
-  expect(calls.at(-1)).toEqual({method:'eth_sendTransaction',params:[{from:f.plan.transaction.from,to:f.plan.transaction.to,data:f.plan.transaction.data,value:'0x0',chainId:'0x279f',gas:'0x1d4c0',gasPrice:'0x64'}]});expect(p.callbacks.size).toBe(0);
+ it('sponsors one exact zero-value creation without checking the creator balance or self-funded fallback',async()=>{
+  const f=fixture(),p=provider(),send=vi.fn().mockResolvedValue({hash});f.prepared.balance='0';
+  expect(await sendClubSafeCreation(p,f,()=>true,send)).toBe(hash);
+  expect(send).toHaveBeenCalledExactlyOnceWith({...f.plan.transaction,chainId:10143},{address:f.plan.sender,sponsor:true,uiOptions:{showWalletUIs:true}});
+  expect(p.request.mock.calls.map(([v])=>v.method)).toEqual(['eth_accounts','eth_chainId','eth_accounts','eth_chainId']);expect(p.callbacks.size).toBe(0);
+  await expect(sendClubSafeCreation(p,f,()=>true)).rejects.toThrow('creation_sponsorship_unavailable');
  });
- it('freezes intent before async IO and retires account/session changes or insufficient funds before sending',async()=>{
-  const f=fixture(),p=provider(),original=p.request.getMockImplementation()!;
-  p.request.mockImplementation(async(v)=>{f.record.owners.reverse();return original(v);});await sendClubSafeCreation(p,f,()=>true);
-  for(const mutation of ['event','session','balance','chain']){const fresh=fixture(),q=provider(),base=q.request.getMockImplementation()!;let current=true;
-   q.request.mockImplementation(async(v)=>{if(v.method==='eth_getBalance'){if(mutation==='event')q.callbacks.get('accountsChanged')?.();if(mutation==='session')current=false;if(mutation==='balance')return '0x0';}if(mutation==='chain'&&v.method==='eth_chainId')return '0x1';return base(v);});
-   await expect(sendClubSafeCreation(q,fresh,()=>current)).rejects.toThrow();expect(q.request.mock.calls.some(([v])=>v.method==='eth_sendTransaction')).toBe(false);expect(q.callbacks.size).toBe(0);
+ it('freezes intent and retires account/session/chain changes before sponsored submission',async()=>{
+  const f=fixture(),p=provider(),original=p.request.getMockImplementation()!,send=vi.fn().mockResolvedValue({hash});
+  p.request.mockImplementation(async(v)=>{f.record.owners.reverse();return original(v);});await sendClubSafeCreation(p,f,()=>true,send);
+  for(const mutation of ['event','session','chain']){const fresh=fixture(),q=provider(),base=q.request.getMockImplementation()!;let current=true;const submit=vi.fn();
+   q.request.mockImplementation(async(v)=>{if(mutation==='event')q.callbacks.get('accountsChanged')?.();if(mutation==='session')current=false;if(mutation==='chain'&&v.method==='eth_chainId')return '0x1';return base(v);});
+   await expect(sendClubSafeCreation(q,fresh,()=>current,submit)).rejects.toThrow();expect(submit).not.toHaveBeenCalled();expect(q.callbacks.size).toBe(0);
   }
  });
- it('never retries an ambiguous wallet response or an event after broadcast',async()=>{
-  for(const changed of [false,true]){const f=fixture(),p=provider(),base=p.request.getMockImplementation()!;p.request.mockImplementation(async(v)=>{if(v.method==='eth_sendTransaction'){if(changed)p.callbacks.get('disconnect')?.();return changed?hash:null;}return base(v);});
-   await expect(sendClubSafeCreation(p,f,()=>true)).rejects.toThrow();expect(p.request.mock.calls.filter(([v])=>v.method==='eth_sendTransaction')).toHaveLength(1);expect(p.callbacks.size).toBe(0);}
+ it('never retries an ambiguous sponsorship response or falls back to wallet-funded gas',async()=>{
+  const f=fixture(),p=provider(),send=vi.fn().mockRejectedValue(Error('unknown'));
+  await expect(sendClubSafeCreation(p,f,()=>true,send)).rejects.toThrow();expect(send).toHaveBeenCalledTimes(1);expect(p.request.mock.calls.some(([v])=>v.method==='eth_sendTransaction')).toBe(false);expect(p.callbacks.size).toBe(0);
  });
  it('accepts only bounded stable creation history and uses no-store transport',async()=>{
   const f=fixture();mock.api.mockResolvedValue({items:[f.record],nextCursor:null});await clubSafeCreationHistory();expect(mock.api).toHaveBeenCalledWith({path:'/v1/rewards/demo-copy/club-creations',cache:'no-store'});

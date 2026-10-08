@@ -36,3 +36,15 @@ test('finalized receipt must prove this exact sender, salt and initializer; crea
  await assert.rejects(verifyRewardClubSafeCreation(f.reader,{...input,saltNonce:2n},f.input.deploymentTransactionHash));
  f.receipt.status='reverted';await assert.rejects(verifyRewardClubSafeCreation(f.reader,input,f.input.deploymentTransactionHash),e=>e.code==='reward_club_deployment_not_mined');
 });
+test('sponsored quote accepts a zero-balance creator while preserving code and fee bounds',async()=>{
+ const {f,input}=fixture();input.saltNonce=2n;const reader={...f.reader,async estimateGas(p){assert.equal(p.gasPrice,0n);return 100000n;},async getGasPrice(){return 100n;},async getBalance(){return 0n;}};
+ assert.equal((await prepareRewardClubSafeCreation(reader,input,{sponsored:true})).balance,0n);
+ await assert.rejects(prepareRewardClubSafeCreation({...reader,async getGasPrice(){return 10n**20n;}},input,{sponsored:true}),e=>e.code==='reward_club_creation_gas_limit');
+});
+test('sponsored creation verifies exact CREATE2 salt/setup and canonical receipt without trusting outer wallet input',async()=>{
+ const {f,input}=fixture();f.tx.from='0x'+'f'.repeat(40);f.receipt.from=f.tx.from;f.tx.to=input.sender;f.receipt.to=input.sender;f.tx.input='0x1234';
+ assert.equal((await verifyRewardClubSafeCreation(f.reader,input,f.input.deploymentTransactionHash,{sponsored:true})).initializerHash,rewardClubSafeCreationPlan(input,creation).initializerHash);
+ await assert.rejects(verifyRewardClubSafeCreation(f.reader,input,f.input.deploymentTransactionHash));
+ for(const patch of [{saltNonce:2n},{owners:[input.owners[0],input.owners[1],'0x'+'e'.repeat(40)]}])await assert.rejects(verifyRewardClubSafeCreation(f.reader,{...input,...patch},f.input.deploymentTransactionHash,{sponsored:true}));
+ f.receipt.logs[0].data='0x';await assert.rejects(verifyRewardClubSafeCreation(f.reader,input,f.input.deploymentTransactionHash,{sponsored:true}));
+});

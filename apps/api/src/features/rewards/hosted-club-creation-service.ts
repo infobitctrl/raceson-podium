@@ -4,7 +4,7 @@ import {prepareRewardClubSafeCreation,verifyRewardClubSafeCreation,rewardClubSaf
 import type {Address,Hex} from 'viem';
 type Store=ReturnType<typeof hostedCopyClubCreationStore>;
 type Reader=RewardClubSafeCreationReader&RewardClubSafeDeploymentReader;
-export type HostedClubCreationCommand={action:'request';requestId:string;clubId:string;proofId:string;owners:string[]}
+export type HostedClubCreationCommand={action:'request';requestId:string;clubId:string;proofId:string;owners:string[];memberIds?:string[]}
  |{action:'prepare';proofId:string}|{action:'submitted'|'verify';transactionHash:Hex};
 function input(record:HostedClubCreation):RewardClubSafeCreationInput{
  return{environment:'monad-testnet',chainId:10143,sender:record.sender as Address,owners:record.owners as Address[],saltNonce:BigInt(record.saltNonce),dependencies:{...rewardClubSafeTestnetDependencies}};
@@ -12,14 +12,17 @@ function input(record:HostedClubCreation):RewardClubSafeCreationInput{
 const publicValue=(value:unknown)=>JSON.parse(JSON.stringify(value,(_,v)=>typeof v==='bigint'?v.toString():v));
 /** Session-bound intent and chain proof only. No provider signer, transaction
  * broadcast, nomination, owner attestation, prize consent or review activation. */
-export async function hostedClubCreation(requestId:string,command:HostedClubCreationCommand|undefined,deps:{store:Store;reader:Reader}){
+export async function hostedClubCreation(requestId:string,command:HostedClubCreationCommand|undefined,deps:{store:Store;reader:Reader;members?:{resolve:(clubId:string,ids:string[],expected:string[])=>Promise<{memberId:string;userId:string;name:string;address:string}[]>}}){
  const {store,reader}=deps;
  if(command?.action==='request'&&command.requestId!==requestId)throw Error('invalid_reward_club_creation');
- let record=command?.action==='request'?await store.request(command):await store.read(requestId);
+ const selected=command?.action==='request'&&command.memberIds?await deps.members?.resolve(command.clubId,command.memberIds,command.owners):undefined;
+ if(command?.action==='request'&&command.memberIds&&!selected)throw Error('reward_club_members_changed');
+ let record=command?.action==='request'?await store.request({...command,...(selected?{members:selected}:{})}):await store.read(requestId);
  if(command?.action==='prepare'){
   record=await store.authorize(requestId,command.proofId);
   if(!record.current||record.verified||record.transactions.length)throw Error('reward_club_creation_recovery_required');
-  const quote=await prepareRewardClubSafeCreation(reader,input(record));
+  if(record.members?.length){if(!deps.members)throw Error('reward_club_members_changed');await deps.members.resolve(record.clubId,record.members.map(m=>m.memberId),record.owners);}
+  const quote=await prepareRewardClubSafeCreation(reader,input(record),{sponsored:true});
   const current=await store.authorize(requestId,command.proofId);
   if(JSON.stringify(current)!==JSON.stringify(record)||!current.current)throw Error('reward_club_owner_required');
   return{schema:'podium-club-safe-creation-v1',record,prepared:publicValue(quote)};
@@ -30,13 +33,17 @@ export async function hostedClubCreation(requestId:string,command:HostedClubCrea
   const at=await reader.getBlock({blockTag:'finalized'});if(at.number===null||!at.hash)throw Error('reward_finalized_block_missing');
   const proxyCreation=await reader.readContract({address:rewardClubSafeTestnetDependencies.factoryAddress,abi:rewardClubSafeDeploymentAbi,functionName:'proxyCreationCode',blockNumber:at.number});
   const plan=rewardClubSafeCreationPlan(input(record),proxyCreation),tx=await reader.getTransaction({hash});
-  if(tx.hash.toLowerCase()!==hash||tx.chainId!==10143||tx.from.toLowerCase()!==record.sender||tx.to?.toLowerCase()!==plan.factoryAddress.toLowerCase()||tx.value!==0n||tx.input.toLowerCase()!==plan.transaction.data)throw Error('reward_club_creation_intent_mismatch');
+  const wrapped=tx.to?.toLowerCase()!==plan.factoryAddress.toLowerCase();
+  // A sponsored transaction is accepted only after complete finalized factory,
+  // CREATE2, initialization and current Safe configuration verification.
+  const sponsoredReceipt=wrapped?await verifyRewardClubSafeCreation(reader,input(record),hash,{sponsored:true}):null;
+  if(!wrapped&&(tx.hash.toLowerCase()!==hash||tx.chainId!==10143||tx.from.toLowerCase()!==record.sender||tx.value!==0n||tx.input.toLowerCase()!==plan.transaction.data))throw Error('reward_club_creation_intent_mismatch');
   if(await reader.getChainId()!==10143)throw Error('reward_observed_chain_mismatch');
   // A transaction hash supplied by the browser is recorded only after the
   // server sees this exact call. It still is not a deployment receipt.
   record=await store.submitted(requestId,hash);
-  if(command.action==='verify'){
-   const verified=await verifyRewardClubSafeCreation(reader,input(record),hash);
+  if(command.action==='verify'||sponsoredReceipt){
+   const verified=sponsoredReceipt??await verifyRewardClubSafeCreation(reader,input(record),hash);
    record=await store.verified(requestId,{transactionHash:hash,safeAddress:verified.safe.context.verifyingContract.toLowerCase(),blockNumber:verified.deploymentBlock.number.toString(),blockHash:verified.deploymentBlock.hash,initializerHash:verified.initializerHash});
   }
  }

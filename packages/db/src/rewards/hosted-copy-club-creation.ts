@@ -2,12 +2,13 @@ import type {RewardAccountIdentity} from './athlete-wallets.js';
 import {RewardLedgerStoreError,type RewardLedgerRpc,copyRewardLedgerDocument as copy} from './programme-ledger.js';
 import {rewardDocumentObject as object,rewardDocumentUuid as uuid} from './stored-documents.js';
 export type HostedClubCreation={requestId:string;clubId:string;chainId:10143;sender:string;owners:string[];saltNonce:string;createdAt:string;current:boolean;
- transactions:{transactionHash:string}[];verified:{transactionHash:string;safeAddress:string;blockNumber:string;blockHash:string;initializerHash:string}|null};
+ members?:{memberId:string;name:string;address:string}[];transactions:{transactionHash:string}[];verified:{transactionHash:string;safeAddress:string;blockNumber:string;blockHash:string;initializerHash:string}|null};
 const address=(v:unknown):v is string=>typeof v==='string'&&/^0x[0-9a-f]{40}$/.test(v)&&BigInt(v)>1n;
 const hash=(v:unknown):v is string=>typeof v==='string'&&/^0x[0-9a-f]{64}$/.test(v)&&BigInt(v)>0n;
 export function decodeHostedClubCreation(value:unknown,expectedId?:string):HostedClubCreation{
- const v=object(copy(value),['requestId','clubId','chainId','sender','owners','saltNonce','createdAt','current','transactions','verified']);
+ const raw=copy(value) as Record<string,unknown>;const v=object(raw,[...(Object.hasOwn(raw,'members')?['members']:[]),'requestId','clubId','chainId','sender','owners','saltNonce','createdAt','current','transactions','verified']);
  uuid(v.requestId);uuid(v.clubId);
+ if(v.members!==undefined){if(!Array.isArray(v.members)||![0,3].includes(v.members.length))throw Error('invalid_reward_club_creation');for(const m of v.members){const row=object(m,['memberId','name','address']);uuid(row.memberId);if(typeof row.name!=='string'||!address(row.address)||!Array.isArray(v.owners)||!v.owners.includes(row.address))throw Error('invalid_reward_club_creation');}}
  if(expectedId!==undefined&&v.requestId!==expectedId||v.chainId!==10143||!address(v.sender)||!Array.isArray(v.owners)||v.owners.length!==3
   ||!v.owners.every(address)||new Set(v.owners).size!==3||v.owners.some((o,i,owners)=>i>0&&o<=owners[i-1])
   ||typeof v.saltNonce!=='string'||!/^[1-9][0-9]{0,38}$/.test(v.saltNonce)||BigInt(v.saltNonce)>=2n**128n
@@ -29,7 +30,7 @@ export function hostedCopyClubCreationStore(identity:RewardAccountIdentity,rpc:R
   ].includes(code)?code:'reward_ledger_unavailable');}return copy(r.data);
  }
  return{
-  request:async(input:{requestId:string;clubId:string;proofId:string;owners:string[]})=>{uuid(input.clubId);uuid(input.proofId);const id=uuid(input.requestId);return decodeHostedClubCreation(await call('request',{requestId:id,clubId:input.clubId,proofId:input.proofId,owners:[...input.owners]}),id);},
+  request:async(input:{requestId:string;clubId:string;proofId:string;owners:string[];members?:{memberId:string;userId:string;name:string;address:string}[]})=>{uuid(input.clubId);uuid(input.proofId);const id=uuid(input.requestId);return decodeHostedClubCreation(await call('request',{requestId:id,clubId:input.clubId,proofId:input.proofId,owners:[...input.owners],...(input.members?{members:copy(input.members)}:{})}),id);},
   read:async(requestId:string)=>{const id=uuid(requestId);return decodeHostedClubCreation(await call('read',{requestId:id}),id);},
   authorize:async(requestId:string,proofId:string)=>{const id=uuid(requestId);return decodeHostedClubCreation(await call('authorize',{requestId:id,proofId:uuid(proofId)}),id);},
   submitted:async(requestId:string,transactionHash:string)=>{const id=uuid(requestId);if(!hash(transactionHash))throw Error('invalid_reward_club_creation');return decodeHostedClubCreation(await call('submitted',{requestId:id,body:{transactionHash}}),id);},

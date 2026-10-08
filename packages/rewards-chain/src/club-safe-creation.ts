@@ -36,7 +36,7 @@ export function rewardClubSafeCreationPlan(input:RewardClubSafeCreationInput,pro
 }
 /** Read-only finalized dependencies and exact gas quote. No deployment/signing
  * occurs; already deployed addresses cannot be quoted as a new creation. */
-export async function prepareRewardClubSafeCreation(reader:RewardClubSafeCreationReader,input:RewardClubSafeCreationInput){
+export async function prepareRewardClubSafeCreation(reader:RewardClubSafeCreationReader,input:RewardClubSafeCreationInput,options:{sponsored?:boolean}={}){
  const copied={...input,owners:[...input.owners],dependencies:{...input.dependencies}};
  try{
   demand(await reader.getChainId()===copied.chainId,'reward_observed_chain_mismatch');
@@ -48,10 +48,10 @@ export async function prepareRewardClubSafeCreation(reader:RewardClubSafeCreatio
   const creation=await reader.readContract({address:deps.factoryAddress,abi,functionName:'proxyCreationCode',blockNumber:at.number});
   const plan=rewardClubSafeCreationPlan(copied,creation),address=plan.safe.context.verifyingContract;
   const existing=await reader.getCode({address,blockTag:'pending'});demand(!existing||existing==='0x','reward_club_creation_already_deployed');
-  const [estimated,price,balance]=await Promise.all([reader.estimateGas({account:plan.sender,to:plan.factoryAddress,data:plan.transaction.data,value:0n}),reader.getGasPrice(),reader.getBalance({address:plan.sender,blockTag:'pending'})]);
+  const [estimated,price,balance]=await Promise.all([reader.estimateGas({account:plan.sender,to:plan.factoryAddress,data:plan.transaction.data,value:0n,...(options.sponsored?{gasPrice:0n}:{})}),reader.getGasPrice(),reader.getBalance({address:plan.sender,blockTag:'pending'})]);
   const gas=(uint(estimated)*12n+9n)/10n,gasPrice=uint(price),maximumFee=gas*gasPrice;
   demand(gas>0n&&gas<=30_000_000n&&gasPrice>0n&&maximumFee<=500_000_000_000_000_000n,'reward_club_creation_gas_limit');
-  demand(uint(balance)>=maximumFee,'reward_club_creation_gas_required');
+  if(!options.sponsored)demand(uint(balance)>=maximumFee,'reward_club_creation_gas_required');
   const [chain,canonical,head]=await Promise.all([reader.getChainId(),reader.getBlock({blockNumber:at.number}),reader.getBlock({blockTag:'finalized'})]);
   demand(chain===copied.chainId&&canonical.number===at.number&&canonical.hash===at.hash&&canonical.timestamp===at.timestamp&&head.number!==null&&head.number>=at.number&&head.timestamp>=at.timestamp,'reward_chain_changed_during_observation');
   return{plan,observedAt:at,gas,gasPrice,maximumFee,balance};
@@ -59,14 +59,14 @@ export async function prepareRewardClubSafeCreation(reader:RewardClubSafeCreatio
 }
 /** Finalized receipt/provenance verifies this exact creation intent. It is not
  * a treasury readiness review, key-control attestation or prize receipt. */
-export async function verifyRewardClubSafeCreation(reader:RewardClubSafeDeploymentReader,input:RewardClubSafeCreationInput,hash:Hex){
+export async function verifyRewardClubSafeCreation(reader:RewardClubSafeDeploymentReader,input:RewardClubSafeCreationInput,hash:Hex,options:{sponsored?:boolean}={}){
  const copied={...input,owners:[...input.owners],dependencies:{...input.dependencies}};
  try{
   const block=await reader.getBlock({blockTag:'finalized'});demand(block.number!==null&&block.hash!==null,'reward_finalized_block_missing');
   const creation=await reader.readContract({address:copied.dependencies.factoryAddress,abi,functionName:'proxyCreationCode',blockNumber:block.number});
   const plan=rewardClubSafeCreationPlan(copied,creation);
-  const verified=await readVerifiedRewardClubSafeDeployment(reader,{safe:plan.safe,factoryAddress:plan.factoryAddress,deploymentTransactionHash:hash});
-  demand(verified.deployer===plan.sender&&verified.saltNonce===plan.saltNonce&&verified.initializerHash===plan.initializerHash,'reward_club_creation_intent_mismatch');
+  const verified=await readVerifiedRewardClubSafeDeployment(reader,{safe:plan.safe,factoryAddress:plan.factoryAddress,deploymentTransactionHash:hash,...(options.sponsored?{initializationSaltNonce:plan.saltNonce}:{})});
+  demand((options.sponsored||verified.deployer===plan.sender)&&verified.saltNonce===plan.saltNonce&&verified.initializerHash===plan.initializerHash,'reward_club_creation_intent_mismatch');
   return verified;
  }catch(error){if(error instanceof RewardProtocolError)throw error;throw new RewardProtocolError('reward_club_creation_unavailable');}
 }

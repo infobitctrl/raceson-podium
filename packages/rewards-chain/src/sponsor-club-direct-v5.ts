@@ -9,7 +9,7 @@ export const directSafeAbiV5=parseAbi([
  'event ExecutionFailure(bytes32 indexed txHash,uint256 payment)',
 ]);
 const zero='0x0000000000000000000000000000000000000000' as Address;
-export type DirectClubTreasuryV5={safe:RewardClubSafeExpectation;factoryAddress:Address;deploymentTransactionHash:Hex};
+export type DirectClubTreasuryV5={safe:RewardClubSafeExpectation;factoryAddress:Address;deploymentTransactionHash:Hex;initializationSaltNonce?:bigint};
 export type DirectSafeCallV5={chainId:10143|31337;safe:Address;to:Address;data:Hex;nonce:bigint};
 export function directSafeMessageV5(call:DirectSafeCallV5){
  demand((call.chainId===10143||call.chainId===31337)&&call.nonce>=0n&&call.nonce<2n**256n&&/^0x[0-9a-fA-F]+$/.test(call.data),'invalid_direct_safe_call');

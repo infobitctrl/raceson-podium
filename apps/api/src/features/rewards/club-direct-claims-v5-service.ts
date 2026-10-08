@@ -18,7 +18,7 @@ export async function clubDirectClaimV5(actor:RewardAccountIdentity,approvalId:s
  let facts=await read();
  const treasury={safe:{context:{environment:'monad-testnet' as const,chainId:10143 as const,verifyingContract:facts.treasury.safeAddress as Address},
   singletonAddress:rewardClubSafeTestnetDependencies.singletonAddress,fallbackHandlerAddress:rewardClubSafeTestnetDependencies.fallbackHandlerAddress,owners:facts.treasury.owners as Address[]},
-  factoryAddress:rewardClubSafeTestnetDependencies.factoryAddress,deploymentTransactionHash:facts.treasury.deploymentTransactionHash as Hex};
+  factoryAddress:rewardClubSafeTestnetDependencies.factoryAddress,deploymentTransactionHash:facts.treasury.deploymentTransactionHash as Hex,initializationSaltNonce:BigInt('0x'+facts.treasury.creationId.replaceAll('-',''))+1n};
  const safe=await observeDirectClubTreasuryV5(deps.reader,treasury);
  let observed=await observeSponsorDirectClaimV5(deps.reader,facts.scope);
  let transaction:null|{chainId:10143;from:string;to:string;data:Hex;value:'0';binding:Record<string,unknown>|null;identityProof:Hex|null}=null;

@@ -100,3 +100,21 @@ test("initialization evidence stays explicitly incomplete even after a quorum ac
   assert.equal(result.executionHistoryReviewRequired, true); assert.equal(result.scope, "initialization_only");
   assert.equal(result.safe.threshold, 2);
 });
+test('a zero-balance creator can deploy an exact Safe through an app-paid EIP7702 wrapper',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const {rewardClubSafeCreationPlan,verifyRewardClubSafeCreation}=await import('../dist/index.js');
+ const delegate=JSON.parse(readFileSync(new URL('../../../contracts/out/SponsoredClaimFixture.sol/SponsoredClaimFixture.json',import.meta.url),'utf8'));
+ const implementation=await deploy({abi:delegate.abi,bytecode:delegate.bytecode.object},[chain.operator.address]);
+ const creator=fixtureSigner(0x7702),input={environment:'local-simulation',chainId:31337,sender:creator.address,owners:expected.owners,saltNonce:702n,
+  dependencies:{factoryAddress:provenance.factoryAddress,singletonAddress:expected.singletonAddress,fallbackHandlerAddress:expected.fallbackHandlerAddress}};
+ const plan=rewardClubSafeCreationPlan(input,artifacts.proxy.bytecode);await chain.testClient.setBalance({address:creator.address,value:0n});
+ const authorization=await chain.operatorClient.signAuthorization({account:creator,contractAddress:implementation});
+ const result=await receipt(await chain.operatorClient.sendTransaction({to:creator.address,data:encodeFunctionData({abi:delegate.abi,functionName:'execute',args:[plan.factoryAddress,plan.transaction.data]}),authorizationList:[authorization]}));
+ await finalize();assert.equal(await chain.publicClient.getBalance({address:creator.address}),0n);
+ const verified=await verifyRewardClubSafeCreation(chain.publicClient,input,result.transactionHash,{sponsored:true});
+ assert.equal(verified.safe.context.verifyingContract,plan.safe.context.verifyingContract);assert.equal(verified.safe.threshold,2);
+ assert.equal(verified.deployer.toLowerCase(),chain.operator.address.toLowerCase());
+ const {observeDirectClubTreasuryV5}=await import('../dist/sponsor-club-direct-v5.js');
+ assert.equal((await observeDirectClubTreasuryV5(chain.publicClient,{safe:plan.safe,factoryAddress:plan.factoryAddress,deploymentTransactionHash:result.transactionHash,initializationSaltNonce:input.saltNonce})).nonce,0n);
+ await assert.rejects(verifyRewardClubSafeCreation(chain.publicClient,{...input,saltNonce:703n},result.transactionHash,{sponsored:true}));
+});

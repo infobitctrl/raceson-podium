@@ -137,7 +137,7 @@ function AuthenticatedWallet({ configuration, sessionKey, walletUserId, onState 
           },
           sendClubSafeCreation: (view, ownerCurrent) => {
             if (view.record.sender !== wallet.address.toLowerCase() || view.record.chainId !== 10143 || !isCurrent()) return Promise.reject(new Error("wallet_changed"));
-            return sendClubSafeCreation(provider, view, () => isCurrent() && ownerCurrent());
+            return sendClubSafeCreation(provider, view, () => isCurrent() && ownerCurrent(), (tx,options)=>sponsoredSendRef.current(tx,options));
           },
           sendSponsorTransaction: (input, sponsorCurrent) => {
             if (sponsorTransactionSender(input) !== wallet.address.toLowerCase() || input.plan.chainId !== 10143 || !isCurrent()) return Promise.reject(new Error("sponsor_wallet_changed"));
