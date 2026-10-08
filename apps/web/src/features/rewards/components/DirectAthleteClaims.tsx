@@ -50,7 +50,7 @@ export function DirectAthleteClaim({award,hr,onBusy,onAccessError}:{award:Sponso
   }finally{proof.dispose();controller.abort();}
  }
  return <section className={s.review}><strong>{setupAmount(BigInt(award.amountWei),hr)} test MON</strong>
-  <p>{t('Monad testnet · Your wallet receives the full award. RacesOn covers the network fee with app-paid sponsorship.','Monad testnet · Novčanik prima cijelu nagradu. RacesOn pokriva mrežnu naknadu kroz sponzorstvo aplikacije.')}</p>
+  <p>{view?.status==='paid'?t('Monad testnet · Payment confirmed to your wallet.','Monad testnet · Isplata na vaš novčanik je potvrđena.'):pending?t('Monad testnet · Confirming payment to your wallet.','Monad testnet · Provjera isplate na vaš novčanik.'):t('Monad testnet · Your wallet receives the full award. RacesOn covers the network fee with app-paid sponsorship.','Monad testnet · Novčanik prima cijelu nagradu. RacesOn pokriva mrežnu naknadu kroz sponzorstvo aplikacije.')}</p>
   {view?.status==='paid'?<><p role="status">{t('Reward paid','Nagrada je isplaćena')}</p>{view.recipient?<RewardExplorerLink chainId={10143} kind="address" value={view.recipient}/>:null}{view.receipt?<RewardExplorerLink chainId={10143} kind="tx" value={view.receipt.transactionHash}/>:null}</>
    :pending?<><p role="status">{t('Claim submitted. Check payment to confirm the receipt.','Preuzimanje je poslano. Provjerite isplatu za potvrdu.')}</p><RewardExplorerLink chainId={10143} kind="tx" value={pending}/></>
    :view?.status==='claimable'?<><SponsorWallet purpose="recipient" chainId={10143} hr={hr} onWallet={choose}/>

@@ -30,6 +30,7 @@ it('requires explicit wallet choice and consent, then sends without requesting r
  expect(m.read.mock.calls.every(call=>!call[1]||['prepare','receipt'].includes(call[1].action))).toBe(true);
  m.read.mockResolvedValue({...view,status:'paid',recipient:address,receipt:{transactionHash:hash,amountWei:award.amountWei}});
  fireEvent.click(screen.getByRole('button',{name:'Check payment'}));await screen.findByText('Reward paid');
+ expect(screen.queryByText(/RacesOn covers the network fee/)).not.toBeInTheDocument();
  expect(m.send).toHaveBeenCalledOnce();
 });
 it('recovers a submitted hash after reopening without another signature or transaction',async()=>{
