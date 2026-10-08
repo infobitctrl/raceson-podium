@@ -25,12 +25,22 @@ export default function HostedReviewPublication({id,slot,approvalId,documentHash
  const embedded=useRewardEmbeddedWallet(),auth=useAuth(),session=useRewardSessionEpoch(auth.session);
  const [reload,setReload]=useState(0);
  const [view,setView]=useState<ReviewPublication|null>(null),[busy,setBusy]=useState(false),[failed,setFailed]=useState<string|null>(null);
- const epoch=useRef(0),locked=useRef(false);
+ const epoch=useRef(0),locked=useRef(false),connectionAttempt=useRef<string|null>(null);
+ const connectionKey=`${session}:${id}:${slot}:${approvalId}`;
+ const connectWallet=embedded.enable,connectionStatus=embedded.status;
+ const canAuthorize=embedded.reviewerConnected===true&&!!embedded.authorizePublication;
  useEffect(()=>{const generation=++epoch.current;setView(null);setFailed(null);setBusy(false);locked.current=false;
   void readReviewPublication({id,slot,approvalId},documentHash).then(v=>{if(epoch.current===generation)setView(v);}).catch(error=>{if(epoch.current===generation)setFailed(publicationFailure(error,hr));});
   return()=>{epoch.current=generation+1;};},[id,slot,approvalId,documentHash,embedded.reviewerConnected,session,reload,hr]);
+ useEffect(()=>{
+  // Reconnect only the existing reviewer's verified wallet. SDK login has
+  // createOnLogin disabled; this neither creates wallets nor authorizes a tx.
+  if(view?.ownership!=='owned'||canAuthorize||connectionStatus!=='off'||!connectWallet||connectionAttempt.current===connectionKey)return;
+  connectionAttempt.current=connectionKey;
+  connectWallet();
+ },[view?.ownership,canAuthorize,connectionStatus,connectWallet,connectionKey]);
  async function publish(){
-  if(locked.current)return;locked.current=true;const generation=epoch.current;setBusy(true);setFailed(null);
+  if(locked.current||!canAuthorize)return;locked.current=true;const generation=epoch.current;setBusy(true);setFailed(null);
   try{for(let attempts=0;attempts<120;attempts++){
    if(epoch.current!==generation)return;
    let v=await readReviewPublication({id,slot,approvalId},documentHash,true);if(epoch.current!==generation)return;setView(v);
@@ -55,7 +65,11 @@ export default function HostedReviewPublication({id,slot,approvalId,documentHash
    {busy?<RewardActionProgress label={hr?'Objava nagrada':'Award publication'} labels={hr?['Učitavanje','Potvrda raspodjele','Otvaranje']:['Uploading','Confirming allocation','Opening claims']} stage={stage==='activate'?2:stage==='stage'?1:0} message={hr?'Objavljujemo odobrene nagrade s vašeg računa. Čekamo potvrdu mreže.':'Publishing the approved awards with your account. Waiting for network confirmation.'}/>:null}
    {view?.ownership==='connect_required'||view?.ownership==='transfer_required'?<><p role="status">{hr?'Ovu kampanju može objaviti samo pregledavatelj koji je vlasnik dodijeljenog novčanika. Provjerite svoj račun i pristup novčaniku.':'Only the reviewer who owns the assigned wallet can publish this campaign. Check your account and wallet access.'}</p><a className={p.secondary} href="/rewards/review">{hr?'Provjeri pristup novčaniku':'Check wallet access'}</a></>:null}
    {failed?<><p role="alert">{failed}</p><button className={p.secondary} disabled={busy} onClick={()=>setReload(n=>n+1)}>{hr?'Osvježi stanje objave':'Refresh publication status'}</button></>:null}
-   {!busy&&view?.ownership==='owned'?<button className={p.primary} onClick={()=>void publish()}>{failed||view?.pending?hr?'Nastavi objavu':'Resume publication':hr?'Objavi nagrade i otvori preuzimanje':'Publish awards and open claims'}</button>:null}
+   {!busy&&view?.ownership==='owned'&&!canAuthorize?<>
+    <p role={embedded.status==='error'||embedded.status==='unconfigured'?'alert':'status'}>{embedded.status==='error'||embedded.status==='unconfigured'?(hr?'Novčanik pregledavatelja nije povezan. Ponovno povežite postojeći račun.':'The reviewer wallet could not connect. Reconnect your existing account.'):(hr?'Povezujemo vaš postojeći novčanik pregledavatelja…':'Connecting your existing reviewer wallet…')}</p>
+    {embedded.status==='error'&&embedded.enable?<button className={p.secondary} onClick={()=>embedded.enable?.()}>{hr?'Ponovno poveži novčanik pregledavatelja':'Reconnect reviewer wallet'}</button>:null}
+   </>:null}
+   {!busy&&view?.ownership==='owned'?<button className={p.primary} disabled={!canAuthorize} onClick={()=>void publish()}>{failed||view?.pending?hr?'Nastavi objavu':'Resume publication':hr?'Objavi nagrade i otvori preuzimanje':'Publish awards and open claims'}</button>:null}
   </>}
  </section>;
 }

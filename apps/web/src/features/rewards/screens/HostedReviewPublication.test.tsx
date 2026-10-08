@@ -1,14 +1,31 @@
 import {act,fireEvent,render,screen} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedReviewPublication from './HostedReviewPublication';
-const mocks=vi.hoisted(()=>({read:vi.fn(),authorize:vi.fn(),enable:vi.fn(),connected:false,session:'one'}));
+const mocks=vi.hoisted(()=>({read:vi.fn(),authorize:vi.fn(),enable:vi.fn(),connected:true,status:'ready',session:'one'}));
 vi.mock('../data/reviewPublication',()=>({readReviewPublication:mocks.read}));
-vi.mock('../components/RewardEmbeddedWalletContext',()=>({useRewardEmbeddedWallet:()=>({status:'off',wallet:null,enable:mocks.enable,reviewerConnected:mocks.connected,authorizePublication:mocks.authorize})}));
+vi.mock('../components/RewardEmbeddedWalletContext',()=>({useRewardEmbeddedWallet:()=>({status:mocks.status,wallet:null,enable:mocks.enable,reviewerConnected:mocks.connected,...(mocks.connected?{authorizePublication:mocks.authorize}:{})})}));
 vi.mock('@/lib/auth',()=>({useAuth:()=>({session:{}})}));
 vi.mock('../model/useRewardSessionEpoch',()=>({useRewardSessionEpoch:()=>mocks.session}));
 const props={id:'setup',slot:0,approvalId:'approval',documentHash:'d'.repeat(64),hr:false};
 const base={state:1,claimsOpen:false,next:'upload',ownership:'owned',pending:null};
-beforeEach(()=>{vi.clearAllMocks();mocks.connected=false;mocks.session='one';mocks.read.mockResolvedValue(base);});
+beforeEach(()=>{vi.clearAllMocks();mocks.connected=true;mocks.status='ready';mocks.session='one';mocks.read.mockResolvedValue(base);});
+it('reconnects the owned reviewer after a reload before allowing any publication reservation',async()=>{
+ mocks.connected=false;mocks.status='off';const {rerender}=render(<HostedReviewPublication {...props}/>);
+ const publish=await screen.findByRole('button',{name:'Publish awards and open claims'});
+ expect(mocks.enable).toHaveBeenCalledOnce();expect(publish).toBeDisabled();fireEvent.click(publish);
+ expect(mocks.read).toHaveBeenCalledOnce();expect(mocks.authorize).not.toHaveBeenCalled();
+ mocks.status='loading';rerender(<HostedReviewPublication {...props}/>);
+ expect(screen.getByRole('status')).toHaveTextContent('Connecting your existing reviewer wallet');
+ mocks.status='ready';mocks.connected=true;rerender(<HostedReviewPublication {...props}/>);
+ expect(await screen.findByRole('button',{name:'Publish awards and open claims'})).toBeEnabled();
+ expect(mocks.enable).toHaveBeenCalledOnce();expect(mocks.read.mock.calls.every(c=>c[2]!==true)).toBe(true);expect(mocks.authorize).not.toHaveBeenCalled();
+});
+it('retries a failed wallet connection without creating a transaction',async()=>{
+ mocks.connected=false;mocks.status='error';render(<HostedReviewPublication {...props}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Reconnect reviewer wallet'}));
+ expect(mocks.enable).toHaveBeenCalledOnce();expect(mocks.read).toHaveBeenCalledOnce();expect(mocks.authorize).not.toHaveBeenCalled();
+ expect(screen.getByRole('button',{name:'Publish awards and open claims'})).toBeDisabled();
+});
 it('reads without publication and requires the reviewer to explicitly start',async()=>{
  render(<HostedReviewPublication {...props}/>);const button=await screen.findByRole('button',{name:'Publish awards and open claims'});
  expect(mocks.read).toHaveBeenCalledExactlyOnceWith({id:'setup',slot:0,approvalId:'approval'},props.documentHash);
