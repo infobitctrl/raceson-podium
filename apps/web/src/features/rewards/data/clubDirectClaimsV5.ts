@@ -47,14 +47,18 @@ export async function sendDirectClubClaimV5(provider:RewardWalletProvider,view:C
  if(!view.owners.includes(address))throw Error('reward_club_owner_required');
  let changed=false;const change=()=>{changed=true;},events=['accountsChanged','chainChanged','disconnect'];events.forEach(e=>provider.on(e,change));
  const check=()=>walletCurrent(provider,address,()=>!changed&&current());
- const quantity=(v:unknown)=>{if(typeof v!=='string'||!/^0x[0-9a-f]+$/i.test(v))throw Error('invalid_wallet_response');return BigInt(v);};
+ const quantity=(v:unknown)=>{if(typeof v==='bigint')return v;if(typeof v!=='string'||!/^0x[0-9a-f]+$/i.test(v))throw Error('invalid_wallet_response');return BigInt(v);};
  try{
   await check();const tx={from:address,to:call.safe,data:encodeDirectSafeCallV5(call,consent.signature),value:'0x0',chainId:'0x279f'};
   const nonce=quantity(await provider.request({method:'eth_call',params:[{to:call.safe,data:encodeFunctionData({abi:directSafeAbiV5,functionName:'nonce'})},'pending']}));
   if(nonce!==call.nonce)throw Error('reward_sponsor_claim_conflict');
+  const initialBalance=quantity(await provider.request({method:'eth_getBalance',params:[address,'pending']}));
+  await check();if(initialBalance===0n)throw Error('claim_insufficient_balance');
   const gas=(quantity(await provider.request({method:'eth_estimateGas',params:[tx]}))*12n+9n)/10n,price=quantity(await provider.request({method:'eth_gasPrice'}));
   if(gas<=0n||gas>2_000_000n||price<=0n||gas*price>500_000_000_000_000_000n)throw Error('claim_gas_limit');
-  await check();const hash=await provider.request({method:'eth_sendTransaction',params:[{...tx,gas:`0x${gas.toString(16)}`,gasPrice:`0x${price.toString(16)}`}]});
+  const balance=quantity(await provider.request({method:'eth_getBalance',params:[address,'pending']}));
+  await check();if(balance<gas*price)throw Error('claim_insufficient_balance');
+  const hash=await provider.request({method:'eth_sendTransaction',params:[{...tx,gas:`0x${gas.toString(16)}`,gasPrice:`0x${price.toString(16)}`}]});
   if(typeof hash!=='string'||!/^0x[0-9a-f]{64}$/i.test(hash))throw Error('transaction_unknown');return hash.toLowerCase();
  }finally{events.forEach(e=>provider.removeListener(e,change));}
 }

@@ -1,3 +1,4 @@
+import RewardErrorNotice from "./RewardErrorNotice";
 import {useCallback,useEffect,useRef,useState} from 'react';
 import type {Hex} from 'viem';
 import type {SponsorClubAward} from '../data/sponsorClubClaims';
@@ -21,13 +22,13 @@ export default function DirectClubClaims({awards,hr,onRefresh,onAccessError}:{aw
 export function DirectClubClaim({award,hr,onBusy,onAccessError}:{award:SponsorClubAward;hr:boolean;onBusy?:(busy:boolean)=>void;onAccessError?:(e:unknown)=>void}){
  const [treasuries,setTreasuries]=useState<ClubCreationRecord[]>([]),[creationId,setCreationId]=useState(''),[view,setView]=useState<ClubDirectClaimV5|null>(null);
  const [wallet,setWallet]=useState<{wallet:DetectedRewardWallet;address:string}|null>(null),[proofs,setProofs]=useState<{address:string;signature:Hex}[]>([]);
- const [busy,setBusy]=useState(false),[error,setError]=useState(false),[ack,setAck]=useState(false),[pending,setPending]=useState<string|null>(null);
+ const [busy,setBusy]=useState(false),[error,setError]=useState<'balance'|'gas'|'unknown'|null>(null),[ack,setAck]=useState(false),[pending,setPending]=useState<string|null>(null);
  const active=useRef(true),flight=useRef(false),currentWallet=useRef(wallet),accessError=useRef(onAccessError);currentWallet.current=wallet;accessError.current=onAccessError;
  const t=(en:string,local:string)=>hr?local:en,storage=`podium:club-direct:${award.approvalId}:${award.entitlementId}`;
  const choose=useCallback((w:typeof wallet)=>{setWallet(w);setAck(false);},[]);
  useEffect(()=>{onBusy?.(busy);},[busy,onBusy]);
- const run=useCallback(async(work:()=>Promise<void>)=>{if(flight.current)return;flight.current=true;setBusy(true);setError(false);
-  try{await work();}catch(e){if(active.current){setError(true);setAck(false);if(e&&typeof e==='object'&&'status'in e&&[401,403].includes(Number(e.status)))accessError.current?.(e);}}
+ const run=useCallback(async(work:()=>Promise<void>)=>{if(flight.current)return;flight.current=true;setBusy(true);setError(null);
+  try{await work();}catch(e){if(active.current){setError(e instanceof Error&&e.message==='claim_insufficient_balance'?'balance':e instanceof Error&&e.message==='claim_gas_limit'?'gas':'unknown');setAck(false);if(e&&typeof e==='object'&&'status'in e&&[401,403].includes(Number(e.status)))accessError.current?.(e);}}
   finally{flight.current=false;if(active.current)setBusy(false);}},[]);
  const load=useCallback(async(id:string,hash?:string|null)=>{
   const v=await readClubDirectClaimV5({approvalId:award.approvalId!,entitlementId:award.entitlementId!},id,hash?{action:'receipt',hash}:undefined);
@@ -77,7 +78,9 @@ export function DirectClubClaim({award,hr,onBusy,onAccessError}:{award:SponsorCl
     </>:<p role="status">{view.status==='not_open'?t('Claims have not opened yet.','Preuzimanja još nisu otvorena.'):view.status==='paused'?t('Claims are temporarily paused.','Preuzimanja su privremeno zaustavljena.'):t('The claim deadline has passed.','Rok preuzimanja je istekao.')}</p>}
   </>:null}
   {busy?<p role="status">{t('Checking club reward…','Provjera klupske nagrade…')}</p>:null}
-  {error?<p role="alert">{t('The claim could not be confirmed. Check wallet activity, then refresh. Preparing again requires both owners to sign again.','Preuzimanje nije potvrđeno. Provjerite aktivnost novčanika i osvježite. Nova priprema zahtijeva nove potpise oba vlasnika.')}</p>:null}
+  {error?<RewardErrorNotice title={error==='balance'?t('Not enough test MON for gas','Nema dovoljno test MON za plin'):error==='gas'?t('Claim blocked by network fee','Mrežna naknada blokira preuzimanje'):t('Claim needs attention','Potrebna je provjera preuzimanja')}>
+   {error==='balance'?t('Add test MON to the connected owner’s wallet for the network fee, then submit again. The full award goes to the club treasury. Nothing was sent.','Dodajte test MON u novčanik povezanog vlasnika za mrežnu naknadu pa ponovno pošaljite preuzimanje. Cijela nagrada ide u klupsku riznicu. Ništa nije poslano.'):error==='gas'?t('The claim fee estimate could not pass the allowed limit check. Wait for lower network fees and try again. Nothing was sent.','Procjena naknade nije prošla provjeru dopuštenog ograničenja. Pričekajte niže naknade i pokušajte ponovno. Ništa nije poslano.'):t('The claim could not be confirmed. Check wallet activity, then refresh. Preparing again requires both owners to sign again.','Preuzimanje nije potvrđeno. Provjerite aktivnost novčanika i osvježite. Nova priprema zahtijeva nove potpise oba vlasnika.')}
+  </RewardErrorNotice>:null}
   <button className={s.secondary} disabled={busy||!creationId} onClick={()=>void run(()=>load(creationId,pending))}>{pending?t('Check payment','Provjeri isplatu'):t('Refresh status','Osvježi stanje')}</button>
  </section>;
 }

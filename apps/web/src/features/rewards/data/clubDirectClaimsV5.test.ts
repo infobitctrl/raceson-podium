@@ -15,7 +15,7 @@ function provider(account=owners[0]){
  const listeners=new Map<string,()=>void>();
  const request=vi.fn(async({method,params}:{method:string;params?:unknown[]})=>{
   if(method==='eth_signTypedData_v4')return account.signTypedData(JSON.parse(params![1] as string));
-  return {eth_accounts:[account.address],eth_chainId:'0x279f',eth_call:'0x0',eth_estimateGas:'0x30d40',eth_gasPrice:'0x1',eth_sendTransaction:id}[method];
+  return {eth_accounts:[account.address],eth_chainId:'0x279f',eth_call:'0x0',eth_estimateGas:'0x30d40',eth_gasPrice:'0x1',eth_getBalance:'0x100000000',eth_sendTransaction:id}[method];
  });return{request,on:vi.fn((e,cb)=>listeners.set(e,cb)),removeListener:vi.fn(e=>listeners.delete(e)),listeners};
 }
 it('reconstructs only an exact club binding and rejects destination, award, issuer and value substitutions',async()=>{
@@ -43,4 +43,18 @@ it('changed wallet, chain, pending Safe nonce, revoked session or excessive fee 
   await expect(sendDirectClubClaimV5(p,v,signatures,owners[0].address.toLowerCase(),()=>mode!=='session')).rejects.toThrow();
   expect(p.request.mock.calls.some(([x])=>x.method==='eth_sendTransaction')).toBe(false);expect(p.listeners.size).toBe(0);
  }
+});
+
+it.each(['0x0','0x1'])('insufficient submitting owner gas balance %s stops before sending',async balance=>{
+ const v=await fixture(),call=await directClubCallV5(v),signatures=await Promise.all(owners.slice(0,2).map(o=>o.signTypedData(directSafeMessageV5(call))));
+ const p=provider(),base=p.request.getMockImplementation()!;
+ p.request.mockImplementation(async args=>args.method==='eth_getBalance'?balance:base(args));
+ await expect(sendDirectClubClaimV5(p,v,signatures,owners[0].address.toLowerCase(),()=>true)).rejects.toThrow('claim_insufficient_balance');
+ expect(p.request.mock.calls.some(([x])=>x.method==='eth_sendTransaction')).toBe(false);expect(p.listeners.size).toBe(0);
+});
+it('supports the Privy bigint gas estimate without changing the approved claim',async()=>{
+ const v=await fixture(),call=await directClubCallV5(v),signatures=await Promise.all(owners.slice(0,2).map(o=>o.signTypedData(directSafeMessageV5(call))));
+ const p=provider(),base=p.request.getMockImplementation()!;
+ p.request.mockImplementation(async args=>args.method==='eth_estimateGas'?200000n:base(args));
+ await expect(sendDirectClubClaimV5(p,v,signatures,owners[0].address.toLowerCase(),()=>true)).resolves.toBe(id);
 });

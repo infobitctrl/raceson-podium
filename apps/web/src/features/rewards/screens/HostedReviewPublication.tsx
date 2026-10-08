@@ -1,3 +1,4 @@
+import RewardErrorNotice from "../components/RewardErrorNotice";
 import {useAuth} from '@/lib/auth';
 import {useRewardSessionEpoch} from '../model/useRewardSessionEpoch';
 import {useEffect,useRef,useState} from 'react';
@@ -11,6 +12,7 @@ function publicationFailure(error:unknown,hr:boolean){
  const code=error instanceof ApiError?error.code:error instanceof Error?error.message:'';
  if(error instanceof ApiError&&error.status===401)return hr?'Vaša je prijava istekla. Prijavite se ponovno kao pregledavatelj.':'Your session expired. Sign in as Reviewer again.';
  if(code==='controller_balance_required')return hr?'Novčaniku pregledavatelja treba test MON za mrežne naknade. Zatim nastavite spremljenu objavu.':'The reviewer wallet needs test MON for network fees. Then resume the saved publication.';
+ if(code==='controller_gas_limit')return hr?'Mrežna naknada za objavu prelazi dopušteno ograničenje. Pričekajte niže naknade pa nastavite spremljenu objavu.':'The publication network fee exceeds the allowed limit. Wait for lower fees, then resume the saved publication.';
  if(code==='controller_source_not_ready')return hr?'Odobrene nagrade su promijenjene. Osvježite pregled prije objave.':'The approved awards changed. Refresh award review before publishing.';
  if(code==='controller_transaction_pending')return hr?'Druga kampanja ima nedovršenu objavu u ovom novčaniku. Nastavite tu objavu prije objave ove kampanje.':'Another campaign has an unfinished publication in this wallet. Resume that publication before publishing this campaign.';
  if(code==='review_publication_authorization_failed')return hr?'Pružatelj novčanika odbio je autorizaciju pregledavatelja. Nagrade još nisu objavljene.':'The wallet provider rejected the reviewer authorization. Awards have not been published yet.';
@@ -64,7 +66,7 @@ export default function HostedReviewPublication({id,slot,approvalId,documentHash
   {view?.claimsOpen&&(!view.pending||view.pending.confirmed)?<p role="status">{hr?'Nagrade su objavljene. Preuzimanje je otvoreno.':'Awards published. Claims are open.'}</p>:<>
    {busy?<RewardActionProgress label={hr?'Objava nagrada':'Award publication'} labels={hr?['Učitavanje','Potvrda raspodjele','Otvaranje']:['Uploading','Confirming allocation','Opening claims']} stage={stage==='activate'?2:stage==='stage'?1:0} message={hr?'Objavljujemo odobrene nagrade s vašeg računa. Čekamo potvrdu mreže.':'Publishing the approved awards with your account. Waiting for network confirmation.'}/>:null}
    {view?.ownership==='connect_required'||view?.ownership==='transfer_required'?<><p role="status">{hr?'Ovu kampanju može objaviti samo pregledavatelj koji je vlasnik dodijeljenog novčanika. Provjerite svoj račun i pristup novčaniku.':'Only the reviewer who owns the assigned wallet can publish this campaign. Check your account and wallet access.'}</p><a className={p.secondary} href="/rewards/review">{hr?'Provjeri pristup novčaniku':'Check wallet access'}</a></>:null}
-   {failed?<><p role="alert">{failed}</p><button className={p.secondary} disabled={busy} onClick={()=>setReload(n=>n+1)}>{hr?'Osvježi stanje objave':'Refresh publication status'}</button></>:null}
+   {failed?<><RewardErrorNotice title={hr?'Objava je zaustavljena':'Publication stopped'}>{failed}</RewardErrorNotice><button className={p.secondary} disabled={busy} onClick={()=>setReload(n=>n+1)}>{hr?'Osvježi stanje objave':'Refresh publication status'}</button></>:null}
    {!busy&&view?.ownership==='owned'&&!canAuthorize?<>
     <p role={embedded.status==='error'||embedded.status==='unconfigured'?'alert':'status'}>{embedded.status==='error'||embedded.status==='unconfigured'?(hr?'Novčanik pregledavatelja nije povezan. Ponovno povežite postojeći račun.':'The reviewer wallet could not connect. Reconnect your existing account.'):(hr?'Povezujemo vaš postojeći novčanik pregledavatelja…':'Connecting your existing reviewer wallet…')}</p>
     {embedded.status==='error'&&embedded.enable?<button className={p.secondary} onClick={()=>embedded.enable?.()}>{hr?'Ponovno poveži novčanik pregledavatelja':'Reconnect reviewer wallet'}</button>:null}

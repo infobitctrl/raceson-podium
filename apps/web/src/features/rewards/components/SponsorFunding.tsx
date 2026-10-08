@@ -1,3 +1,4 @@
+import RewardErrorNotice from "./RewardErrorNotice";
 import {walletActionLabel} from "../model/walletActionLabel";
 import SponsorCompleteSetup from "./SponsorCompleteSetup";
 import RewardExplorerLink from "./RewardExplorerLink";
@@ -12,7 +13,7 @@ import {checkSponsorTransaction, sendSponsorTransaction, sponsorTransactionGasLi
 import type {DetectedRewardWallet} from "../data/browserWallet";
 import SponsorWallet from "./SponsorWallet";
 import SponsorDistribution from "./SponsorDistribution";
-import {setupAmount} from "../model/setupAmount";
+import {setupAmount,walletBalanceAmount} from "../model/setupAmount";
 import {clearSponsorReceipt, readSponsorReceipt, saveSponsorReceipt, sponsorReceiptConfirmed, sponsorReceiptKey, type SponsorPendingReceipt as Pending} from "../model/sponsorPendingReceipt";
 import s from "./SponsorLaunch.module.css";
 import d from "./SponsorDashboard.module.css";
@@ -281,10 +282,13 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
                 <p>{creationQueued ? t("RacesOn has an earlier controller request to resolve before it can create your account. No creation transaction has been sent for this campaign. Your prize funds have not moved.", "RacesOn mora riješiti raniji zahtjev kontrolera prije izrade računa. Transakcija izrade ove kampanje nije poslana. Fond nagrada nije prenesen.") : creationSubmitted ? t("Your reward account is not confirmed yet. This page checks automatically and will show the deposit button when it is ready.", "Račun za nagrade još nije potvrđen. Ova stranica automatski provjerava stanje i prikazat će gumb za uplatu kada račun bude spreman.") : t("RacesOn is preparing the creation transaction. Network confirmation has not started. The deposit step will unlock after account creation is verified.", "RacesOn priprema transakciju izrade. Mrežna potvrda još nije započela. Uplata će biti dostupna nakon potvrde izrade računa.")}</p>
                 <small>{checkFailed ? t("The last check failed. Refresh status to try again.", "Posljednja provjera nije uspjela. Osvježite stanje.") : checking ? t("Checking creation status…", "Provjera stanja izrade…") : t("We’ll check again automatically. You can return through My campaigns.", "Automatski ćemo ponovno provjeriti. Možete se vratiti putem Mojih kampanja.")}</small>
               </div><div className={s.transactionActions}><button className={s.secondary} disabled={busy||checking} onClick={()=>void run(refreshStatus)}><RefreshCw size={15} aria-hidden="true"/>{busy||checking?t("Checking status…","Provjera stanja…"):t("Refresh status","Osvježi stanje")}</button>{view?.creation?.hash?<RewardExplorerLink chainId={launch.setup.chainId} kind="tx" value={view.creation.hash}>{t("View transaction","Pogledaj transakciju")}</RewardExplorerLink>:null}</div></TransactionProgress> : null}
-              {view?.creation?.status === "failed" ? <p role="status" className={s.notice}>{view?.creation.reason === "balance" ? t("Creation fees are temporarily unavailable. Your reward funds have not moved. Try again later.", "Sredstva za izradu trenutno nisu dostupna. Fond nagrada nije prenesen. Pokušajte kasnije.")
-                : view?.creation.reason === "capacity" ? t("Today's account creation limit has been reached. Try again tomorrow.", "Dosegnuto je dnevno ograničenje izrade računa. Pokušajte sutra.")
-                : view?.creation.reason === "reverted" ? t("Account creation failed. RacesOn needs to resolve it before you can deposit.", "Izrada računa nije uspjela. RacesOn mora riješiti problem prije uplate.")
-                : t("Account creation is not confirmed. Retry to check and resume the same request.", "Izrada računa nije potvrđena. Pokušajte ponovno za nastavak istog zahtjeva.")}</p> : null}
+              {view?.creation?.status === "failed" ? <RewardErrorNotice title={view.creation.reason === "balance" ? t("RacesOn gas wallet needs funds", "RacesOn novčanik nema dovoljno sredstava za plin") : view.creation.reason === "gas" ? t("Creation blocked by network fee", "Mrežna naknada blokira izradu") : t("Reward account creation failed", "Izrada računa za nagrade nije uspjela")}>
+                {view.creation.reason === "balance" ? t("RacesOn’s creation wallet does not have enough test MON for the network fee. RacesOn must top it up before you retry. Your prize funds have not moved.", "RacesOn novčanik za izradu nema dovoljno test MON za mrežnu naknadu. RacesOn mora dopuniti taj novčanik prije ponovnog pokušaja. Fond nagrada nije prenesen.")
+                : view.creation.reason === "gas" ? t("The network fee estimate could not pass the allowed limit check. RacesOn must check network fees before you retry. No creation transaction was sent.", "Procjena mrežne naknade nije prošla provjeru dopuštenog ograničenja. RacesOn mora provjeriti naknade prije ponovnog pokušaja. Transakcija izrade nije poslana.")
+                : view.creation.reason === "capacity" ? t("Today's account creation limit has been reached. Try again tomorrow.", "Dosegnuto je dnevno ograničenje izrade računa. Pokušajte sutra.")
+                : view.creation.reason === "reverted" ? t("Account creation failed. RacesOn needs to resolve it before you can deposit.", "Izrada računa nije uspjela. RacesOn mora riješiti problem prije uplate.")
+                : t("Account creation is not confirmed. Retry to check and resume the same request.", "Izrada računa nije potvrđena. Pokušajte ponovno za nastavak istog zahtjeva.")}
+              </RewardErrorNotice> : null}
               {sourcesReady && view?.enabled && !record && !unavailable && !requestingCreation ? <button className={s.primary} disabled={!wallet || busy || view?.creation?.status !== "ready"} onClick={() => void run(()=>requestCreation(true))}>{t("Create reward account", "Izradi račun za nagrade")}<ArrowRight size={17} aria-hidden="true"/></button> : null}
               {sourcesReady && record && !unavailable && !requestingCreation && view?.creation && ["ready", "failed"].includes(view?.creation.status) && view?.creation.reason !== "reverted" ? <button className={s.primary} disabled={busy} onClick={()=>void run(()=>requestCreation(false))}>{view?.creation.status === "failed" ? t("Retry creation", "Pokušaj ponovno") : t("Create reward account", "Izradi račun za nagrade")}<ArrowRight size={17} aria-hidden="true"/></button> : null}
               </div>
@@ -303,14 +307,15 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
               : !accountReady ? <p>{t("Available after account creation.", "Dostupno nakon izrade računa.")}</p>
               : !pending ? <p>{t("Your account is ready. Deposit from the funding wallet above; the network fee is shown before you approve.", "Račun je spreman. Uplatite iz novčanika iznad; mrežna naknada prikazuje se prije potvrde.")}</p> : null}
             {plan && sourcesReady && accountReady && !pending && !funded && !observation?.cancelled ? <>
-          {!deployment && readiness ? <div role="status">
-            <p>{t("Your wallet balance", "Stanje novčanika za uplatu")}: {setupAmount(BigInt(readiness.balanceWei), hr)} test MON</p>
+          {!deployment && readiness ? <div role={readiness.blocker ? undefined : "status"}>
+            <p>{t("Your wallet balance", "Stanje novčanika za uplatu")}: {walletBalanceAmount(BigInt(readiness.balanceWei), hr)} test MON</p>
             {readiness.gasCostWei !== null ? <p>{t("Estimated network fee", "Procjena plina s rezervom")}: {setupAmount(BigInt(readiness.gasCostWei), hr)} test MON</p> : null}
-            <p>{readiness.blocker === "gas_limit" ? t(`Above the ${gasLimit} test MON gas limit. Nothing was sent.`, `Iznad ograničenja plina od ${gasLimit} test MON. Ništa nije poslano.`)
+            {readiness.blocker ? <RewardErrorNotice title={readiness.blocker === "gas_limit" ? t("Network fee exceeds the limit", "Mrežna naknada prelazi ograničenje") : t("Funding wallet needs more test MON", "Novčanik za uplatu treba još test MON")}>
+            {readiness.blocker === "gas_limit" ? t(`Above the ${gasLimit} test MON gas limit. Wait for lower fees, then check balance again. Nothing was sent.`, `Iznad ograničenja plina od ${gasLimit} test MON. Pričekajte niže naknade pa ponovno provjerite stanje. Ništa nije poslano.`)
               : readiness.blocker === "balance" ? BigInt(readiness.balanceWei) >= BigInt(plan.budgetWei)
                 ? t("Your reward budget has arrived. Add extra test MON for the deposit’s network fee, then check balance again. The full budget stays reserved for prizes.", "Fond nagrada je stigao. Dodajte još test MON za mrežnu naknadu uplate pa ponovno provjerite stanje. Cijeli fond ostaje namijenjen nagradama.")
                 : t("Add test MON to the funding wallet for the prize deposit and network fee. Nothing was sent.", "Dodajte test MON u novčanik za fond nagrada i mrežnu naknadu. Ništa nije poslano.")
-                : t("Ready for wallet confirmation. Fees will be checked again before sending.", "Spremno za potvrdu u novčaniku. Naknade će se ponovno provjeriti prije slanja.")}</p>
+                : null}</RewardErrorNotice> : <p>{t("Ready for wallet confirmation. Fees will be checked again before sending.", "Spremno za potvrdu u novčaniku. Naknade će se ponovno provjeriti prije slanja.")}</p>}
           </div> : null}
           {requestingDeposit ? <TransactionProgress phase={0} hr={hr}><p role="status" className={s.transactionStatus}>{t("Checking your deposit request. Confirm in your wallet when prompted; nothing is sent until you approve.","Provjeravamo zahtjev za uplatu. Potvrdite u novčaniku kada se zatraži; ništa se ne šalje bez potvrde.")}</p></TransactionProgress>:null}
           {!deployment && !requestingDeposit ? <div className={s.actions}>
@@ -327,12 +332,12 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
         </li>
       </ol> : null}
 
-      {error&&!receiptIssue ? <p role="alert">{!view && !pending ? t("Could not load contract status. Refresh to try again.", "Stanje ugovora nije učitano. Osvježite za ponovni pokušaj.") : error === "sponsor_gas_limit" ? t(`The gas estimate exceeds ${gasLimit} test MON. Nothing was sent.`, `Procjena plina prelazi ${gasLimit} test MON. Ništa nije poslano.`)
+      {error&&!receiptIssue ? <RewardErrorNotice title={error === "sponsor_insufficient_balance" ? t("Funding wallet needs more test MON", "Novčanik za uplatu treba još test MON") : error === "sponsor_gas_limit" ? t("Network fee exceeds the limit", "Mrežna naknada prelazi ograničenje") : t("Transaction needs attention", "Potrebna je provjera transakcije")}>{!view && !pending ? t("Could not load contract status. Refresh to try again.", "Stanje ugovora nije učitano. Osvježite za ponovni pokušaj.") : error === "sponsor_gas_limit" ? t(`The gas estimate exceeds ${gasLimit} test MON. Nothing was sent.`, `Procjena plina prelazi ${gasLimit} test MON. Ništa nije poslano.`)
         : error === "sponsor_wallet_changed" ? t("Your wallet or network changed. Reconnect the required wallet on the campaign network. Nothing was sent.", "Novčanik ili mreža su promijenjeni. Ponovno povežite novčanik na mreži kampanje. Ništa nije poslano.")
         : error === "sponsor_wallet_rejected" ? t("Wallet request declined. You can try again when ready.", "Zahtjev u novčaniku je odbijen. Pokušajte ponovno kada budete spremni.")
-        : error === "sponsor_insufficient_balance" ? t("Not enough test MON in the selected wallet for this transaction and gas. Nothing was sent.", "Novčanik nema dovoljno test MON za transakciju i plin. Ništa nije poslano.")
+        : error === "sponsor_insufficient_balance" ? t("Add test MON to the funding wallet for the prize deposit and its network fee, then check balance again. Nothing was sent.", "Dodajte test MON u novčanik za fond nagrada i mrežnu naknadu pa ponovno provjerite stanje. Ništa nije poslano.")
         : error === "sponsor_preflight_failed" ? t("Could not estimate this transaction through your wallet. No transaction was requested. Check the network connection and try Check balance.", "Transakcija nije procijenjena putem novčanika. Slanje nije zatraženo. Provjerite mrežu i pokušajte Provjeri stanje.")
-        : t("Could not confirm this step. If your wallet sent a transaction, recover its hash below instead of sending again.", "Ovaj korak nije potvrđen. Ako je novčanik poslao transakciju, unesite njezin hash ispod umjesto ponovnog slanja.")}</p> : null}
+        : t("Could not confirm this step. If your wallet sent a transaction, recover its hash below instead of sending again.", "Ovaj korak nije potvrđen. Ako je novčanik poslao transakciju, unesite njezin hash ispod umjesto ponovnog slanja.")}</RewardErrorNotice> : null}
 
       </div>
       <details className={`${s.details} ${s.fundingHelp}`}><summary>{t("Details & help", "Detalji i pomoć")}</summary>

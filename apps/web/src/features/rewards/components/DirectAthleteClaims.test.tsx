@@ -45,3 +45,13 @@ it('wallet proof failure prevents preparing or sending a claim',async()=>{
  fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Claim reward'}));
  await screen.findByRole('alert');expect(m.send).not.toHaveBeenCalled();expect(m.read).toHaveBeenCalledTimes(1);expect(m.dispose).toHaveBeenCalledOnce();
 });
+
+it('explains insufficient gas and permits explicit retry after a top-up without losing the award',async()=>{
+ m.send.mockRejectedValueOnce(Error('claim_insufficient_balance')).mockResolvedValue(hash);
+ render(<DirectAthleteClaim award={award} hr={false}/>);fireEvent.click(await screen.findByRole('button',{name:'Create or connect my wallet'}));
+ m.read.mockResolvedValue({...view,transaction:{from:address}});fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Claim reward'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('Not enough test MON for gas');expect(screen.getByRole('alert')).toHaveTextContent('connected wallet');
+ expect(screen.queryByRole('button',{name:'Check payment'})).not.toBeInTheDocument();expect(sessionStorage.length).toBe(0);expect(screen.getByRole('checkbox')).not.toBeChecked();
+ fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Claim reward'}));await screen.findByRole('button',{name:'Check payment'});
+ expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});

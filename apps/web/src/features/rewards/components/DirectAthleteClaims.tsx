@@ -1,3 +1,4 @@
+import RewardErrorNotice from "./RewardErrorNotice";
 import {useCallback,useEffect,useRef,useState} from 'react';
 import type {SponsorAward} from '../data/sponsorProgramme';
 import {prepareBrowserWalletProof,type DetectedRewardWallet} from '../data/browserWallet';
@@ -19,7 +20,7 @@ export default function DirectAthleteClaims({awards,hr,onRefresh,onAccessError}:
 }
 export function DirectAthleteClaim({award,hr,onBusy,onAccessError}:{award:SponsorAward;hr:boolean;onBusy?:(busy:boolean)=>void;onAccessError?:(error:unknown)=>void}){
  const [view,setView]=useState<DirectClaimV5|null>(null),[wallet,setWallet]=useState<{wallet:DetectedRewardWallet;address:string}|null>(null);
- const [busy,setBusy]=useState(false),[error,setError]=useState(false),[ack,setAck]=useState(false),[pending,setPending]=useState<string|null>(null);
+ const [busy,setBusy]=useState(false),[error,setError]=useState<'balance'|'gas'|'unknown'|null>(null),[ack,setAck]=useState(false),[pending,setPending]=useState<string|null>(null);
  const active=useRef(true),flight=useRef(false),currentWallet=useRef(wallet),abort=useRef<AbortController|null>(null),accessError=useRef(onAccessError);currentWallet.current=wallet;accessError.current=onAccessError;
  const t=(en:string,local:string)=>hr?local:en,storage=`podium:direct-claim:${award.approvalId}:${award.entitlementId}`;
  const choose=useCallback((value:{wallet:DetectedRewardWallet;address:string}|null)=>{setWallet(value);setAck(false);},[]);
@@ -29,8 +30,8 @@ export function DirectAthleteClaim({award,hr,onBusy,onAccessError}:{award:Sponso
   if(v.amountWei!==award.amountWei)throw Error('award_changed');
   if(active.current){setView(v);if(v.status==='paid'){setPending(null);try{sessionStorage.removeItem(storage);}catch{/* Optional recovery only. */}}}
  },[award.approvalId,award.entitlementId,award.amountWei,storage]);
- const run=useCallback(async(work:()=>Promise<void>)=>{if(flight.current)return;flight.current=true;setBusy(true);setError(false);
-  try{await work();}catch(e){if(active.current){setError(true);setAck(false);if(e&&typeof e==='object'&&'status'in e&&[401,403].includes(Number(e.status)))accessError.current?.(e);}}
+ const run=useCallback(async(work:()=>Promise<void>)=>{if(flight.current)return;flight.current=true;setBusy(true);setError(null);
+  try{await work();}catch(e){if(active.current){setError(e instanceof Error&&e.message==='claim_insufficient_balance'?'balance':e instanceof Error&&e.message==='claim_gas_limit'?'gas':'unknown');setAck(false);if(e&&typeof e==='object'&&'status'in e&&[401,403].includes(Number(e.status)))accessError.current?.(e);}}
   finally{flight.current=false;if(active.current)setBusy(false);}},[]);
  useEffect(()=>{active.current=true;let hash:string|null=null;try{const saved=sessionStorage.getItem(storage);if(saved&&/^0x[0-9a-f]{64}$/.test(saved))hash=saved;}catch{/* Optional recovery only. */}
   setPending(hash);void run(()=>load(hash));return()=>{active.current=false;abort.current?.abort();};},[load,run,storage]);
@@ -56,7 +57,9 @@ export function DirectAthleteClaim({award,hr,onBusy,onAccessError}:{award:Sponso
     <button className={s.primary} disabled={busy||!wallet||!ack} onClick={()=>void run(claim)}>{busy?t('Confirm in your wallet…','Potvrdite u novčaniku…'):t('Claim reward','Preuzmi nagradu')}</button></>
    :view?<p role="status">{view.status==='not_open'?t('Claims have not opened yet.','Preuzimanja još nisu otvorena.'):view.status==='paused'?t('Claims are temporarily paused.','Preuzimanja su privremeno zaustavljena.'):t('The claim deadline has passed.','Rok preuzimanja je istekao.')}</p>:null}
   {busy?<p role="status">{t('Checking your reward…','Provjera nagrade…')}</p>:null}
-  {error?<p role="alert">{t('The claim could not be confirmed. Check your wallet activity and refresh the payment status before trying again.','Preuzimanje nije potvrđeno. Provjerite aktivnost novčanika i osvježite stanje isplate prije ponovnog pokušaja.')}</p>:null}
+  {error?<RewardErrorNotice title={error==='balance'?t('Not enough test MON for gas','Nema dovoljno test MON za plin'):error==='gas'?t('Claim blocked by network fee','Mrežna naknada blokira preuzimanje'):t('Claim needs attention','Potrebna je provjera preuzimanja')}>
+   {error==='balance'?t('Add test MON to your connected wallet for the claim’s network fee, then claim again. Your award remains reserved until the claim deadline. Nothing was sent.','Dodajte test MON u povezani novčanik za mrežnu naknadu pa ponovno preuzmite nagradu. Nagrada ostaje rezervirana do roka preuzimanja. Ništa nije poslano.'):error==='gas'?t('The claim fee estimate could not pass the allowed limit check. Wait for lower network fees and try again. Nothing was sent.','Procjena naknade nije prošla provjeru dopuštenog ograničenja. Pričekajte niže naknade i pokušajte ponovno. Ništa nije poslano.'):t('The claim could not be confirmed. Check your wallet activity and refresh the payment status before trying again.','Preuzimanje nije potvrđeno. Provjerite aktivnost novčanika i osvježite stanje isplate prije ponovnog pokušaja.')}
+  </RewardErrorNotice>:null}
   <button className={s.secondary} disabled={busy} onClick={()=>void run(()=>load(pending))}>{pending?t('Check payment','Provjeri isplatu'):t('Refresh status','Osvježi stanje')}</button>
   <p className={s.note}>{t('Demo account · Wallet proof confirms control of this wallet. It does not verify a real athlete’s identity or age.','Demo račun · Dokaz potvrđuje kontrolu novčanika, ne identitet ili dob stvarnog sportaša.')}</p>
  </section>;

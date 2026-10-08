@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {RefreshCw} from "lucide-react";
 import type {RewardWalletProvider} from "../data/browserWallet";
 import {readSponsorWalletBalance} from "../data/sponsorWalletBalance";
-import {setupAmount} from "../model/setupAmount";
+import {walletBalanceAmount} from "../model/setupAmount";
 import s from "./SponsorLaunch.module.css";
 import ReceiveTestMon from './ReceiveTestMon';
 
@@ -21,7 +21,7 @@ export default function SponsorWalletBalance({provider, address, chainId, hr}: {
   }, [provider, address, chainId, attempt]);
   return <div className={s.walletFunds} aria-label={t("Funding wallet funds", "Sredstva novčanika za uplatu")}>
     <div className={s.walletFundsRow}>
-      <div role="status"><span>{t("Wallet balance", "Stanje novčanika")}</span><strong>{current?.balance !== null && current?.balance !== undefined ? setupAmount(BigInt(current.balance), hr) : "—"} <small>test MON</small></strong></div>
+      <div role="status"><span>{t("Wallet balance", "Stanje novčanika")}</span><strong>{current?.balance !== null && current?.balance !== undefined ? walletBalanceAmount(BigInt(current.balance), hr) : "—"} <small>test MON</small></strong></div>
       <button className={s.textButton} disabled={checking} onClick={() => setAttempt(value => value + 1)}><RefreshCw size={14} aria-hidden="true"/>{checking ? t("Checking…", "Provjera…") : t("Refresh balance", "Osvježi stanje")}</button>
     </div>
     {current?.balance !== null && current?.balance !== undefined ? <small role="status">{checking ? t("Refreshing…", "Osvježavanje…") : `${t("Updated", "Ažurirano")} ${new Date(current.checkedAt).toLocaleTimeString(hr ? "hr-HR" : "en-GB")}`}</small> : null}

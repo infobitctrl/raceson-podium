@@ -15,7 +15,7 @@ async function fixture():Promise<DirectClaimV5>{
 }
 function provider(){
  const listeners=new Map<string,()=>void>();
- const request=vi.fn(async({method}:{method:string})=>({eth_accounts:[athlete.address],eth_chainId:'0x279f',eth_estimateGas:'0x30d40',eth_gasPrice:'0x1',eth_sendTransaction:id}[method]));
+ const request=vi.fn(async({method}:{method:string})=>({eth_accounts:[athlete.address],eth_chainId:'0x279f',eth_estimateGas:'0x30d40',eth_gasPrice:'0x1',eth_getBalance:'0x100000000',eth_sendTransaction:id}[method]));
  return {request,on:vi.fn((name:string,cb:()=>void)=>listeners.set(name,cb)),removeListener:vi.fn((name:string)=>listeners.delete(name)),listeners};
 }
 describe('athlete direct claim transaction boundary',()=>{
@@ -27,7 +27,7 @@ describe('athlete direct claim transaction boundary',()=>{
   const v=await fixture();v.recipient=v.transaction!.from;v.transaction={...v.transaction!,to:campaign,data:encodeSponsorDirectClaimV5(id),binding:null,identityProof:null};
   await expect(validateDirectClaimTransactionV5(v)).resolves.toEqual(v.transaction);
   const p=provider();await expect(sendDirectClaimV5(p,v,()=>true)).resolves.toBe(id);
-  expect(p.request.mock.calls.map(([x])=>x.method)).toEqual(['eth_accounts','eth_chainId','eth_estimateGas','eth_gasPrice','eth_accounts','eth_chainId','eth_sendTransaction']);
+  expect(p.request.mock.calls.map(([x])=>x.method)).toEqual(['eth_accounts','eth_chainId','eth_getBalance','eth_accounts','eth_chainId','eth_estimateGas','eth_gasPrice','eth_getBalance','eth_accounts','eth_chainId','eth_sendTransaction']);
   expect(p.listeners.size).toBe(0);
  });
  it('wallet/network/session changes and excessive fees stop submission',async()=>{
@@ -51,4 +51,11 @@ describe('athlete direct claim transaction boundary',()=>{
   expect(sponsorAwardSchema.safeParse({...a,protocolVersion:5,directClaim:{paid:false}}).success).toBe(true);
   for(const patch of [{protocolVersion:5},{directClaim:{paid:false}},{protocolVersion:5,directClaim:{paid:false},claims:[{id:a.approvalId,prepared:true,consented:false,approved:false,paid:false}]}])expect(sponsorAwardSchema.safeParse({...a,...patch}).success).toBe(false);
  });
+});
+
+it.each(['0x0','0x1'])('insufficient athlete gas balance %s stops before sending',async balance=>{
+ const p=provider(),base=p.request.getMockImplementation()!;
+ p.request.mockImplementation(async args=>args.method==='eth_getBalance'?balance:base(args));
+ await expect(sendDirectClaimV5(p,await fixture(),()=>true)).rejects.toThrow('claim_insufficient_balance');
+ expect(p.request.mock.calls.some(([x])=>x.method==='eth_sendTransaction')).toBe(false);expect(p.listeners.size).toBe(0);
 });

@@ -6,7 +6,7 @@ import {previewRewardSetup} from '@raceson/domain/rewards/distribution-setup';
 import {hostedSponsorLaunch} from '../data/hostedSponsorLaunch';
 import SponsorFunding,{type SponsorFundingSummary} from '../components/SponsorFunding';
 import HostedAllocationPreview from './HostedAllocationPreview';
-import {setupAmount} from '../model/setupAmount';
+import {setupAmount,walletBalanceAmount} from '../model/setupAmount';
 import d from '../components/SponsorDashboard.module.css';
 import s from '../components/SponsorLaunch.module.css';
 /** This freezes a source-bound rules revision only. GET/mount cannot create a
@@ -40,7 +40,7 @@ export default function HostedSponsorExecution({id,hr}:{id:string;hr:boolean}){
     <div><dt>{t('Total campaign budget','Ukupni proračun kampanje')}</dt><dd><strong>{setupAmount(plan?BigInt(plan.budgetWei):preview.budgetWei,hr)}</strong> <small className={d.unit}>test MON</small></dd></div>
     <div><dt>{t('Selected prize pool','Odabrani nagradni fond')}</dt><dd><strong>{setupAmount(plan?BigInt(plan.budgetWei):preview.budgetWei,hr)}</strong> <small className={d.unit}>test MON</small></dd></div>
     <div><dt>{t('Deposited prize funds','Uplaćene nagrade')}</dt><dd><strong>{setupAmount(deposited,hr)}</strong> <small className={d.unit}>test MON</small></dd></div>
-    <div><dt>{t('Your wallet balance','Stanje vašeg novčanika')}</dt><dd>{fresh?.balanceWei!==null&&fresh?.balanceWei!==undefined?`${setupAmount(BigInt(fresh.balanceWei),hr)} test MON`:fresh?.walletConnected?t('Connected','Povezan'):t('Not connected','Nije povezan')}</dd></div>
+    <div><dt>{t('Your wallet balance','Stanje vašeg novčanika')}</dt><dd>{fresh?.balanceWei!==null&&fresh?.balanceWei!==undefined?`${walletBalanceAmount(BigInt(fresh.balanceWei),hr)} test MON`:fresh?.walletConnected?t('Connected','Povezan'):t('Not connected','Nije povezan')}</dd></div>
     <div><dt>{t('Platform gas reserve','Rezerva za plin platforme')}</dt><dd className={d.gas}>{t('RacesOn pays creation gas','RacesOn plaća plin za izradu')}<br/>{t('not part of your budget','nije dio vašeg proračuna')}</dd></div>
    </dl></section><section className={`${d.card} ${d.terms}`}><h2>{t('Terms','Uvjeti')}</h2><p>{t('Claim window','Rok preuzimanja')}: <strong>{c.policy?.claimWindowDays} {t('days','dana')}</strong></p><p>{t('Unused funds','Neiskorištena sredstva')}: <strong>{c.policy?.treasuryReturn==='original_sender'?t('Back to the sponsor wallet','Povrat u novčanik sponzora'):t('RacesOn treasury','RacesOn riznica')}</strong></p></section></aside>
   </div>

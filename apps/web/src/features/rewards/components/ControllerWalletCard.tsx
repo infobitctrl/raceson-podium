@@ -4,7 +4,7 @@ import {useEffect,useRef,useState} from "react";
 import {RefreshCw,Wallet} from "lucide-react";
 import type {ControllerConnection} from "../screens/RewardsControl";
 import ReceiveTestMon from './ReceiveTestMon';
-import {setupAmount} from "../model/setupAmount";
+import {walletBalanceAmount} from "../model/setupAmount";
 import s from "../screens/RewardsControl.module.css";
 
 /** A read-only balance and receive address for the verified controller. */
@@ -32,7 +32,7 @@ export default function ControllerWalletCard({connection,address}:{connection:Co
  useEffect(()=>{mounted.current=true;void refresh();return()=>{mounted.current=false;generation.current++;};},[connection,address]); // eslint-disable-line react-hooks/exhaustive-deps
  return <section className={`${s.card} ${s.walletCard}`} aria-label={tr("Controller wallet balance")}>
   <div className={s.row}><div><span className={s.eyebrow}>{tr("Operations wallet")}</span><h2><Wallet size={21}/> {tr("Controller funds")}</h2></div><button className={s.secondary} disabled={busy} onClick={()=>void refresh()}><RefreshCw size={15}/>{busy?tr("Checking…"):tr("Refresh balance")}</button></div>
-  <strong className={s.walletBalance}>{balance===null?"—":setupAmount(BigInt(balance),hr)} <small>{tr("test MON")}</small></strong>
+  <strong className={s.walletBalance}>{balance===null?"—":walletBalanceAmount(BigInt(balance),hr)} <small>{tr("test MON")}</small></strong>
   <details className={s.walletExplanation}><summary>{hr?"Namjena sredstava":"What these funds cover"}</summary><p>{tr("Pays explicitly approved distribution fees. Campaign creation uses its configured deployment wallet. These costs never come from sponsor reward pots.")}</p></details>
   {error?<p role="status">{tr("Balance unavailable. Refresh to try again.")}</p>:balance==="0"?<p role="status">{tr("Add test MON to cover campaign fees.")}</p>:null}
   <ReceiveTestMon key={address} address={address} chainId={10143} hr={hr}/>

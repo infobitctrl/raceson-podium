@@ -41,10 +41,14 @@ export async function sendDirectClaimV5(provider:RewardWalletProvider,view:Direc
  events.forEach(event=>provider.on(event,change));
  try{
   await check();const transaction={from:tx.from,to:tx.to,data:tx.data,value:'0x0',chainId:'0x279f'};
+  const initialBalance=quantity(await provider.request({method:'eth_getBalance',params:[tx.from,'pending']}));
+  await check();if(initialBalance===0n)throw Error('claim_insufficient_balance');
   const gas=(quantity(await provider.request({method:'eth_estimateGas',params:[transaction]}))*12n+9n)/10n;
   const price=quantity(await provider.request({method:'eth_gasPrice'}));
   if(gas<=0n||gas>2_000_000n||price<=0n||gas*price>500_000_000_000_000_000n)throw Error('claim_gas_limit');
-  await check();const result=await provider.request({method:'eth_sendTransaction',params:[{...transaction,gas:`0x${gas.toString(16)}`,gasPrice:`0x${price.toString(16)}`}]});
+  const balance=quantity(await provider.request({method:'eth_getBalance',params:[tx.from,'pending']}));
+  await check();if(balance<gas*price)throw Error('claim_insufficient_balance');
+  const result=await provider.request({method:'eth_sendTransaction',params:[{...transaction,gas:`0x${gas.toString(16)}`,gasPrice:`0x${price.toString(16)}`}]});
   if(typeof result!=='string'||!/^0x[0-9a-f]{64}$/i.test(result))throw Error('transaction_unknown');
   return result.toLowerCase();
  }finally{events.forEach(event=>provider.removeListener(event,change));}

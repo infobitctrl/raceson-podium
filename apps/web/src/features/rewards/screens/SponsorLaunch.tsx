@@ -13,7 +13,7 @@ import {readPublicDirectory} from "../data/publicDirectory";
 import SponsorFunding, {type SponsorFundingSummary} from "../components/SponsorFunding";
 import SponsorRecoveryCopy from "../components/SponsorRecoveryCopy";
 import {sponsorDiscoveryLink} from "../model/sponsorOpportunities";
-import {setupAmount} from "../model/setupAmount";
+import {setupAmount,walletBalanceAmount} from "../model/setupAmount";
 import s from "../components/SponsorLaunch.module.css";
 import d from "../components/SponsorDashboard.module.css";
 import RewardExplorerLink from "../components/RewardExplorerLink";
@@ -125,7 +125,7 @@ function LaunchWorkspace({id, hr}: {id: string; hr: boolean}) {
         <div><dt>{t("Total campaign budget", "Ukupni proračun kampanje")}</dt><dd><strong>{amount(plan.budgetWei)}</strong> <small className={d.unit}>test MON</small></dd></div>
         <div><dt>{t("Selected prize pool", "Odabrani nagradni fond")}</dt><dd><strong>{amount(contractPlan?.budgetWei ?? plan.budgetWei)}</strong> <small className={d.unit}>test MON</small></dd></div>
         <div><dt>{t("Deposited prize funds", "Uplaćene nagrade")}</dt><dd>{observation ? <><strong>{amount(observation.funded ? contractPlan?.budgetWei ?? null : '0')}</strong> <small className={d.unit}>test MON</small></> : t("Not yet verified", "Još nije provjereno")}</dd></div>
-        <div><dt>{t("Your wallet balance", "Stanje vašeg novčanika")}</dt><dd>{execution?.walletConnected ? execution.balanceWei !== null ? <><strong>{amount(execution.balanceWei)}</strong> <small className={d.unit}>test MON</small></> : t("Connected · check balance", "Povezan · provjerite stanje") : t("Not connected", "Nije povezan")}</dd></div>
+        <div><dt>{t("Your wallet balance", "Stanje vašeg novčanika")}</dt><dd>{execution?.walletConnected ? execution.balanceWei !== null ? <><strong>{walletBalanceAmount(BigInt(execution.balanceWei),hr)}</strong> <small className={d.unit}>test MON</small></> : t("Connected · check balance", "Povezan · provjerite stanje") : t("Not connected", "Nije povezan")}</dd></div>
         <div><dt>{t("Platform gas reserve", "Rezerva za plin platforme")}</dt><dd className={d.gas}>{t("RacesOn pays creation gas", "RacesOn plaća plin za izradu")}<br/>{t("not part of your budget", "nije dio vašeg proračuna")}</dd></div>
       </dl></section>
       <section className={`${d.card} ${d.terms}`}><h2>{t("Terms", "Uvjeti")}</h2>

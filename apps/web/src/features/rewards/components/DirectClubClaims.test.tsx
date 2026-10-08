@@ -26,3 +26,13 @@ it('recovers a submitted hash after reopening without new consent or broadcast',
  sessionStorage.setItem(`podium:club-direct:${id}:${hash}`,JSON.stringify({creationId,hash}));m.read.mockResolvedValue({...view,status:'paid',recipient:safe,receipt:{transactionHash:hash}});
  render(<DirectClubClaim award={award} hr={false}/>);await screen.findByText('Reward paid');expect(m.read).toHaveBeenCalledWith({approvalId:id,entitlementId:hash},creationId,{action:'receipt',hash});expect(m.sign).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
 });
+
+it('names the submitting owner wallet when gas is insufficient and preserves both consents',async()=>{
+ m.send.mockRejectedValueOnce(Error('claim_insufficient_balance')).mockResolvedValue(hash);
+ render(<DirectClubClaim award={award} hr={false}/>);fireEvent.click(await screen.findByRole('button',{name:'Connect owner one'}));fireEvent.click(screen.getByRole('button',{name:'Prepare club claim'}));
+ await screen.findByRole('button',{name:'Sign as treasury owner'});fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Sign as treasury owner'}));
+ await screen.findByText(/1\/2 owner signatures/);fireEvent.click(screen.getByRole('button',{name:'Connect owner two'}));fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Sign as treasury owner'}));
+ await screen.findByRole('button',{name:'Submit club claim'});fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Submit club claim'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('connected owner’s wallet');expect(sessionStorage.length).toBe(0);expect(screen.getByText(/2\/2 owner signatures/)).toBeVisible();
+ fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Submit club claim'}));await screen.findByRole('button',{name:'Check payment'});expect(m.sign).toHaveBeenCalledTimes(2);
+});

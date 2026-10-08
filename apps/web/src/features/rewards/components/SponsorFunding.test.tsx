@@ -126,7 +126,7 @@ it("shows the gas blocker without a wallet transaction and allows a fresh readin
   .mockResolvedValueOnce({gasCostWei:"100000000000000000",balanceWei:"3354506153846153846",blocker:null});
  render(<SponsorFunding launch={launch} hr={false}/>);await screen.findByRole("button",{name:"Deposit reward funds"});
  fireEvent.click(screen.getByRole("button",{name:"Connect fixture wallet"}));fireEvent.click(screen.getByRole("button",{name:"Check balance"}));
- await screen.findByText(/Above the 0.5 test MON gas limit/);
+ await screen.findByText(/Above the 0.5 test MON gas limit/);expect(screen.getByRole("alert")).toHaveTextContent("Network fee exceeds the limit");
  expect(screen.getByRole("button",{name:"Deposit reward funds"})).toBeDisabled();expect(mocks.send).not.toHaveBeenCalled();
  fireEvent.click(screen.getByRole("button",{name:"Check balance"}));await screen.findByText(/Ready for wallet confirmation/);
  expect(screen.getByRole("button",{name:"Deposit reward funds"})).toBeEnabled();expect(mocks.send).not.toHaveBeenCalled();
@@ -144,7 +144,7 @@ it("recognizes an arrived budget, explains missing gas and recovers after a top-
   .mockResolvedValueOnce({balanceWei:"1000101",gasCostWei:"1000",blocker:null});
  render(<SponsorFunding launch={launch} hr={false}/>);await screen.findByRole("button",{name:"Deposit reward funds"});
  fireEvent.click(screen.getByRole("button",{name:"Connect fixture wallet"}));fireEvent.click(screen.getByRole("button",{name:"Check balance"}));
- await screen.findByText(/Your reward budget has arrived/);
+ await screen.findByText(/Your reward budget has arrived/);expect(screen.getByRole("alert")).toHaveTextContent("Funding wallet needs more test MON");
  expect(screen.queryByText(/Estimated network fee/)).not.toBeInTheDocument();
  expect(screen.getByRole("button",{name:"Deposit reward funds"})).toBeDisabled();
  fireEvent.click(screen.getByRole("button",{name:"Check balance"}));await screen.findByText(/Ready for wallet confirmation/);
@@ -163,7 +163,7 @@ it("explains missing automatic creation configuration without implying human app
 });
 it("retries the saved campaign after a recoverable creation failure",async()=>{
  mocks.api.mockResolvedValueOnce({enabled:true,record:{plan,deploymentHash:null,fundingHash:null},observation:null,creation:{status:"failed",reason:"balance",hash:null}}).mockResolvedValue({enabled:true,record:{plan,deploymentHash:null,fundingHash:null},observation:null,creation:{status:"submitted",reason:null,hash:deployment}});
- render(<SponsorFunding launch={launch} hr={false}/>);fireEvent.click(await screen.findByRole("button",{name:"Retry creation"}));await screen.findByText(/Creation requested · confirmation pending/);expect(mocks.api).toHaveBeenCalledWith(launch.setup.id,{action:"launch"});expect(mocks.send).not.toHaveBeenCalled();
+ render(<SponsorFunding launch={launch} hr={false}/>);expect(await screen.findByRole("alert")).toHaveTextContent("RacesOn gas wallet needs funds");expect(screen.getByRole("alert")).toHaveTextContent("RacesOn must top it up before you retry");fireEvent.click(await screen.findByRole("button",{name:"Retry creation"}));await screen.findByText(/Creation requested · confirmation pending/);expect(mocks.api).toHaveBeenCalledWith(launch.setup.id,{action:"launch"});expect(mocks.send).not.toHaveBeenCalled();
 });
 
 it("does not offer a disabled launch button for an unconfigured new campaign",async()=>{
