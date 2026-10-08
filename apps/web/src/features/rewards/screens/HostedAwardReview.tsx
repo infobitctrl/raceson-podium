@@ -10,10 +10,10 @@ import s from './HostedReviewWorkspace.module.css';
 type View=Awaited<ReturnType<typeof readHostedAwardReview>>;
 function SlotReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expected?:{budgetWei:string;proposedWei:string}}){
  const expectedBudget=expected?.budgetWei,expectedProposed=expected?.proposedWei;
- const [acknowledged,setAcknowledged]=useState(false);
+ const [acknowledged,setAcknowledged]=useState(false),[continuePublication,setContinuePublication]=useState(false);
  const [view,setView]=useState<View|null>(null),[busy,setBusy]=useState(true),[error,setError]=useState(false),[reload,setReload]=useState(0);
  const pending=useRef<HostedAwardDecision|null>(null),generation=useRef(0);
- useEffect(()=>{const epoch=++generation.current;setBusy(true);setError(false);setView(null);pending.current=null;setAcknowledged(false);
+ useEffect(()=>{const epoch=++generation.current;setBusy(true);setError(false);setView(null);pending.current=null;setAcknowledged(false);setContinuePublication(false);
   void readHostedAwardReview(id,slot).then(v=>{if(expectedBudget!==undefined&&'contextHash' in v&&(v.budgetWei!==expectedBudget||v.proposedWei!==expectedProposed))throw Error('review_changed');if(epoch===generation.current)setView(v);}).catch(()=>{if(epoch===generation.current)setError(true);}).finally(()=>{if(epoch===generation.current)setBusy(false);});
   return()=>{generation.current=epoch+1;};},[id,slot,reload,expectedBudget,expectedProposed]);
  async function save(decision:'approved'|'held'){
@@ -21,7 +21,7 @@ function SlotReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expe
   if(!pending.current){if(!view||!('contextHash' in view)||decision==='approved'&&!acknowledged)return;pending.current={requestId:crypto.randomUUID(),expectedApprovalId:view.approval?.id??null,
    contextHash:view.contextHash,documentHash:view.documentHash,decision};}
   const command=pending.current;setBusy(true);setError(false);
-  try{const next=await readHostedAwardReview(id,slot,command);if(epoch!==generation.current)return;pending.current=null;setView(next);}
+  try{const next=await readHostedAwardReview(id,slot,command);if(epoch!==generation.current)return;pending.current=null;setView(next);setContinuePublication(command.decision==='approved'&&!next.historicalAcknowledgement&&next.approval?.current===true&&next.approval.documentHash===command.documentHash);}
   catch{if(epoch===generation.current){setError(true);setView(null);}}
   finally{if(epoch===generation.current)setBusy(false);}
  }
@@ -40,12 +40,12 @@ function SlotReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expe
     {view.reasons.length?<p>{hr?'Razlozi zadržavanja':'Hold reasons'}: {view.reasons.join(', ')}</p>:null}
     <details><summary>{hr?'Dokaz verzije':'Version evidence'}</summary><p style={{overflowWrap:'anywhere'}}>{view.documentHash}</p></details>
     {!(view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash)?<><label className={s.acknowledgement}><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} disabled={busy}/>{hr?'Iznosi odgovaraju službenim rezultatima.':'Totals match the official results.'}</label>
-    <button className={p.primary} disabled={busy||!acknowledged||view.reasons.length>0||view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash} onClick={()=>void save('approved')}>{hr?'Odobri točne nagrade':'Approve exact awards'}</button></>:null}{' '}
+    <button className={p.primary} disabled={busy||!acknowledged||view.reasons.length>0||view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash} onClick={()=>void save('approved')}>{hr?'Odobri i otvori preuzimanje':'Approve and open claims'}</button></>:null}{' '}
     <button className={p.secondary} disabled={busy||view.approval?.current&&view.approval.decision==='held'&&view.approval.documentHash===view.documentHash} onClick={()=>void save('held')}>{hr?'Zadrži nagrade':'Hold awards'}</button>
-   {view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash?<HostedAwardUpload key={view.approval.id} id={id} slot={slot} approvalId={view.approval.id} contextHash={view.contextHash} documentHash={view.documentHash} hr={hr}/>:null}
+   {view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash?<HostedAwardUpload key={view.approval.id} id={id} slot={slot} approvalId={view.approval.id} contextHash={view.contextHash} documentHash={view.documentHash} hr={hr} autoStart={continuePublication}/>:null}
    </>}
   </>:null}
-  {!(view&&'contextHash' in view&&view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash)?<p>{hr?'Slijedi: priprema i objava nagrada za preuzimanje.':'Next: prepare and publish awards to open claims.'}</p>:null}
+  {!(view&&'contextHash' in view&&view.approval?.current&&view.approval.decision==='approved'&&view.approval.documentHash===view.documentHash)?<p>{hr?'Odobrenje se nastavlja objavom. Ostavite stranicu otvorenu i potvrdite zahtjeve novčanika. Preuzimanje se otvara nakon potvrđene objave.':'Approval continues through publication. Keep this page open and confirm the wallet requests. Claims open when publication is confirmed.'}</p>:null}
  </section>;
 }
 export default function HostedAwardReview({id,slot,hr,expected}:{id:string;slot:number;hr:boolean;expected?:{budgetWei:string;proposedWei:string}}){
