@@ -17,6 +17,17 @@ function prepared(){return{...view(),prepared:{plan:{safe:{context:{verifyingCon
 const memberRows=owners.map((address,i)=>({memberId:`7d100000-0000-4000-8000-00000000050${i}`,name:`Member ${i+1}`,address,status:'ready'}));
 beforeEach(()=>{vi.clearAllMocks();m.members.mockResolvedValue({clubId,items:memberRows,nextCursor:null});sessionStorage.clear();m.wallet={provider:{},sendClubSafeCreation:m.send};m.history.mockResolvedValue({items:[],nextCursor:null});m.proof.mockResolvedValue(m.step);m.step.confirm.mockResolvedValue({proofId:'7d100000-0000-4000-8000-000000000401',address:address('a')});m.step.assertCurrent.mockResolvedValue(undefined);m.nominate.mockResolvedValue({});});
 afterEach(cleanup);
+it.each([1,2])('keeps a %i-member club blocked even after wallet proof, then requires a fresh selection when the third member joins',async count=>{
+ m.members.mockResolvedValue({clubId,items:memberRows.slice(0,count),nextCursor:null});m.api.mockResolvedValue(view());render(<ClubTreasuryCreation {...props}/>);
+ for(const member of memberRows.slice(0,count))fireEvent.click(await screen.findByLabelText(`Select ${member.name}`));
+ fireEvent.click(screen.getByLabelText(/Use these three members/));await checkProof();
+ expect(screen.getByRole('button',{name:'Save selected members'})).toBeDisabled();expect(m.api).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
+ m.members.mockResolvedValue({clubId,items:memberRows,nextCursor:null});fireEvent.click(screen.getByRole('button',{name:'Refresh wallets'}));await screen.findByLabelText('Select Member 3');
+ expect(screen.getByLabelText('Select Member 1')).not.toBeChecked();expect(screen.getByLabelText(/Use these three members/)).not.toBeChecked();
+ for(const member of memberRows)fireEvent.click(screen.getByLabelText(`Select ${member.name}`));
+ fireEvent.click(screen.getByLabelText(/Use these three members/));fireEvent.click(screen.getByRole('button',{name:'Save selected members'}));await screen.findByText(/Saved creation request/);
+ expect(m.api).toHaveBeenCalledTimes(1);expect(m.api.mock.calls[0][1].memberIds).toEqual(memberRows.map(m=>m.memberId));expect(m.send).not.toHaveBeenCalled();expect(m.nominate).not.toHaveBeenCalled();
+});
 async function resume(){const v=view();m.history.mockResolvedValue({items:[v.record],nextCursor:null});m.api.mockImplementation(async(_id,body)=>body?.action==='prepare'?prepared():v);render(<ClubTreasuryCreation {...props}/>);fireEvent.click(await screen.findByRole('button',{name:/Resume creation request/}));await screen.findByText(/Saved creation request/);}
 async function checkProof(){fireEvent.click(screen.getByRole('button',{name:'Verify my wallet'}));fireEvent.click(await screen.findByRole('button',{name:'Confirm wallet · Privy'}));await screen.findByText(/Wallet control checked/);}
 it('requires three explicit distinct owners and wallet proof before saving, and never creates or nominates automatically',async()=>{

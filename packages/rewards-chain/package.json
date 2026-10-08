@@ -6,6 +6,7 @@
   "description": "Shared test-MON protocol encoding; no signer keys, provider credentials or database access",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./club-signatures-v6": "./dist/club-signatures-v6.js",
     "./programme-lifecycle-v3": "./dist/programme-lifecycle-v3.js",
     "./programme-v3": "./dist/programme-v3.js",
     ".": "./dist/index.js",

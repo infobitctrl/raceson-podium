@@ -4,7 +4,7 @@ import {apiRequest} from "@/lib/api";
 import {publicEnv} from "@/lib/public-env";
 import {setupId} from "@raceson/domain/rewards/distribution-setup";
 
-export type SponsorExecutionAction = {action:"launch"} | {action: "prepare"; launchId: string; funder: string} | {action: "deployment" | "funding"; hash: string};
+export type SponsorExecutionAction = {action:"launch"} | {action: "prepare"; launchId: string; funder: string} | {action: "deployment" | "funding" | "retry_creation"; hash: string};
 export async function sponsorExecution(id: string, action?: SponsorExecutionAction) {
   const demo = publicEnv.rewardDemo;
   if (!setupId(id) || !demo || !publicEnv.rewardPortalEnabled) throw Error("invalid_sponsor_execution");

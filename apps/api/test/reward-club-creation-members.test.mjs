@@ -3,6 +3,17 @@ import {test} from 'node:test';
 import {clubCreationMembers,clubMemberWalletLookup} from '../dist/features/rewards/club-creation-members.js';
 const id=n=>`7d100000-0000-4000-8000-${String(n).padStart(12,'0')}`,address=n=>'0x'+n.repeat(40),clubId=id(9),actor={userId:id(1),sessionId:id(2)};
 const items=[1,2,3].map(n=>({memberId:id(100+n),name:`Member ${n}`,userId:id(200+n)}));
+for(const count of [1,2])test(`${count}-member club cannot submit fewer, duplicate or fabricated owners; three current members can proceed`,async()=>{
+ let roster=items.slice(0,count),lookups=0;
+ const rpc=async(_name,args)=>({data:{clubId,items:args.p_ids?roster.filter(m=>args.p_ids.includes(m.memberId)):roster,nextCursor:null},error:null});
+ const service=clubCreationMembers(actor,rpc,async userId=>{lookups++;return address(String(items.findIndex(m=>m.userId===userId)+1));});
+ const listed=await service.list(clubId,null);assert.equal(listed.items.length,count);assert(listed.items.every(m=>m.status==='ready'));
+ const before=lookups,ids=roster.map(m=>m.memberId),wallets=roster.map((_,i)=>address(String(i+1)));
+ await assert.rejects(service.resolve(clubId,ids,wallets),/members_changed/);assert.equal(lookups,before);
+ await assert.rejects(service.resolve(clubId,[ids[0],ids[0],ids[0]],Array(3).fill(wallets[0])),/members_changed/);
+ await assert.rejects(service.resolve(clubId,items.map(m=>m.memberId),['1','2','3'].map(address)),/members_changed/);
+ roster=items;assert.equal((await service.resolve(clubId,items.map(m=>m.memberId),['1','2','3'].map(address))).length,3);
+});
 function fixture(){const calls=[],rpc=async(name,args)=>{calls.push({name,args});return{data:{clubId,items,nextCursor:null},error:null};};return{calls,rpc};}
 test('member list is private, strips user IDs, distinguishes missing wallets from lookup outages and rechecks membership',async()=>{
  const f=fixture(),lookup=async userId=>userId===items[0].userId?address('a'):userId===items[1].userId?null:Promise.reject(Error('provider'));

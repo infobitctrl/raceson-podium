@@ -11,6 +11,7 @@ const uuid = z.string().uuid();
 const hash = z.string().regex(/^0x[0-9a-f]{64}$/).refine(v => BigInt(v) !== 0n);
 const command = z.discriminatedUnion("action", [
   z.object({action:z.literal("launch")}).strict(),
+  z.object({action:z.literal("retry_creation"),hash}).strict(),
   z.object({action: z.literal("prepare"), launchId: uuid, funder: z.string().regex(/^0x[0-9a-fA-F]{40}$/)}).strict(),
   z.object({action: z.literal("deployment"), hash}).strict(), z.object({action: z.literal("funding"), hash}).strict(),
 ]);
@@ -47,15 +48,16 @@ export async function dispatchSponsorExecution(req: IncomingMessage, res: Server
     let observation: SponsorChainObservation | null = null;
     let deploymentHash = action?.action === "deployment" ? action.hash : record?.deploymentHash;
     const fundingHash = action?.action === "funding" ? action.hash : record?.fundingHash;
-    if(action?.action==="launch"&&!record)throw Error("invalid_sponsor_execution");
+    if((action?.action==="launch"||action?.action==="retry_creation")&&!record)throw Error("invalid_sponsor_execution");
     // A confirmed account is observed from its immutable plan and chain receipt.
     // Creation-provider outages must not block its status or prize deposit.
     if(!record?.deploymentHash&&deps.resolveCreation)deps={...deps,creation:await deps.resolveCreation(identity,id,deps.rpc,record?.plan.version)};
     let creationReady=false;try{if(!record?.deploymentHash&&deps.creation?.signer){await deps.creation.signer.verifyReady?.();creationReady=true;}}catch{/* Fail closed until the actual provider grant and factory are verified. */}
     let creation=(deps.creation||record?.deploymentHash)&&config.chainId===10143?await sponsorCreationStatus(identity,id,record,creationReady,deps.rpc,deps.creation?.signer?.address):undefined;
-    if(action?.action==="launch"&&!record?.deploymentHash){
+    const verifyCreation=action?.action==="deployment"&&creation?.hash===action.hash;
+    if((action?.action==="launch"||action?.action==="retry_creation"||verifyCreation)&&!record?.deploymentHash){
       if(deps.creation&&config.chainId===10143){
-        const advanced=await advanceSponsorCreation(identity,id,record!,{...deps.creation,rpc:deps.rpc});
+        const advanced=await advanceSponsorCreation(identity,id,record!,{...deps.creation,rpc:deps.rpc},action?.action==="retry_creation"?action.hash:undefined,verifyCreation);
         const {observation:verified,...creationState}=advanced;
         creation=creationState;
         observation=verified??null;
@@ -63,7 +65,7 @@ export async function dispatchSponsorExecution(req: IncomingMessage, res: Server
         deploymentHash=record?.deploymentHash;
       }else creation={status:"unavailable",reason:"configuration",hash:null};
     }
-    if (action && !["prepare","launch"].includes(action.action) && (!record || !deploymentHash)) throw Error("invalid_sponsor_execution");
+    if (action && !verifyCreation && !["prepare","launch","retry_creation"].includes(action.action) && (!record || !deploymentHash)) throw Error("invalid_sponsor_execution");
     if (record && deploymentHash) {
       if (!deps.sponsorReader) throw Error("sponsor_observation_unavailable");
       // Confirmation already verified this exact programme in this request.

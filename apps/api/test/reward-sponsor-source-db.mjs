@@ -8,8 +8,8 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {tmpdir} from 'node:os';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../..');
 const args=process.argv.slice(2);
-assert.ok(args.length===0 || args.length===1&&['--all-rewards','--operations'].includes(args[0]),'Usage: reward-sponsor-source-db.mjs [--all-rewards|--operations]');
-const allRewards=args[0]==='--all-rewards', operations=args[0]==='--operations';
+assert.ok(args.length===0 || args.length===1&&['--all-rewards','--operations','--creation'].includes(args[0]),'Usage: reward-sponsor-source-db.mjs [--all-rewards|--operations|--creation]');
+const allRewards=args[0]==='--all-rewards', operations=args[0]==='--operations', creation=args[0]==='--creation';
 const directory=mkdtempSync(join(tmpdir(),'podium-source-validation-'));
 try {
  const original=readFileSync(join(root,'packages/db/scripts/validate-migrations.sh'),'utf8');
@@ -26,7 +26,7 @@ try {
  writeFileSync(runner,allRewards
   ? `await import(${moduleUrl('packages/db/scripts/reward-db-integration.mjs')});\n`
   : `import {openRewardTestDatabase} from ${moduleUrl('packages/db/scripts/reward-test-database.mjs')};
-import {${operations?'sponsorAllocationV4Scenarios':'sponsorSourceV4Scenarios'} as selectedScenarios} from ${moduleUrl(operations?'packages/db/scripts/reward-sponsor-allocation-v4-scenarios.mjs':'packages/db/scripts/reward-sponsor-source-v4-scenarios.mjs')};
+import {${creation?'sponsorCreationRecoveryScenarios':operations?'sponsorAllocationV4Scenarios':'sponsorSourceV4Scenarios'} as selectedScenarios} from ${moduleUrl(creation?'packages/db/scripts/reward-sponsor-creation-recovery-scenarios.mjs':operations?'packages/db/scripts/reward-sponsor-allocation-v4-scenarios.mjs':'packages/db/scripts/reward-sponsor-source-v4-scenarios.mjs')};
 import {clubDirectClaimsV5Scenarios} from ${moduleUrl('packages/db/scripts/reward-club-direct-claims-v5-scenarios.mjs')};
 import {directClaimsV5Scenarios} from ${moduleUrl('packages/db/scripts/reward-direct-claims-v5-scenarios.mjs')};
 const harness=openRewardTestDatabase(process.argv.slice(2));let passed=0;

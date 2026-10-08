@@ -1,5 +1,5 @@
 import {useEffect} from "react";
-import {act,fireEvent, render, screen, within} from "@testing-library/react";
+import {act,fireEvent, render, screen, within, waitFor} from "@testing-library/react";
 import {afterEach,beforeEach, expect, it, vi} from "vitest";
 import {addGuidedGroup, createGuidedSetup} from "@raceson/domain/rewards/guided-setup-editor";
 import type {SponsorLaunch} from "@raceson/domain/rewards/sponsor-launch";
@@ -505,6 +505,18 @@ it('shows a blocked service on reload without auto-creating, then refreshes avai
  available=true;fireEvent.click(screen.getByRole('button',{name:'Refresh funding status'}));await act(async()=>{});
  expect(screen.getByRole('button',{name:'Create reward account'})).toBeEnabled();
  expect(mocks.api.mock.calls.every((call)=>!call[1])).toBe(true);
+ expect(mocks.send).not.toHaveBeenCalled();
+});
+
+it('requires an explicit hash-bound retry for finalized creation failure',async()=>{
+ const failed:SponsorExecutionView={enabled:true,record:{plan,deploymentHash:null,fundingHash:null},observation:null,creation:{status:'failed',reason:'reverted',hash:deployment}};
+ mocks.api.mockImplementation(async(_id,action)=>action?.action==='retry_creation'?{...failed,creation:{status:'processing',reason:null,hash:null}}:failed);
+ render(<SponsorFunding launch={launch} hr={false}/>);
+ const retry=await screen.findByRole('button',{name:'Retry creation'});
+ expect(mocks.api.mock.calls.every(call=>call[1]===undefined)).toBe(true);
+ expect(screen.getByText(/creation transaction failed and is finalized/)).toBeVisible();
+ fireEvent.click(retry);
+ await waitFor(()=>expect(mocks.api).toHaveBeenCalledWith(launch.setup.id,{action:'retry_creation',hash:deployment}));
  expect(mocks.send).not.toHaveBeenCalled();
 });
 

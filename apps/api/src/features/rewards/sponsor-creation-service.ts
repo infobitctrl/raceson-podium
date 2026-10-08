@@ -16,6 +16,21 @@ export type SponsorCreationDeps={reader:SponsorChainReader & Pick<PublicClient,"
 const cap=3_000_000_000_000_000_000n;
 const decode=(v:unknown)=>v===null?null:jobSchema.parse(v);
 const status=(status:SponsorCreationState["status"],reason:SponsorCreationState["reason"]=null,hash:string|null=null):SponsorCreationState=>({status,reason,hash});
+/** A receipt is insufficient: require canonical finalized inclusion and a consumed
+ * sender nonce. Failure/unknown reads never authorize replacing signed bytes. */
+async function finalizedCreationFailure(reader:SponsorCreationDeps["reader"],job:Job){
+ const receipt=await reader.getTransactionReceipt({hash:job.hash as Hex});
+ const finalized=await reader.getBlock({blockTag:"finalized"});
+ if(receipt.status!=="reverted"||receipt.transactionHash.toLowerCase()!==job.hash||receipt.blockNumber===null
+  ||!receipt.blockHash||finalized.number===null||!finalized.hash||receipt.blockNumber>finalized.number)throw Error("sponsor_creation_pending");
+ const block=await reader.getBlock({blockNumber:receipt.blockNumber});
+ const nonce=await reader.getTransactionCount({address:job.sender as Hex,blockNumber:finalized.number});
+ if(block.hash!==receipt.blockHash||nonce<=Number(job.transaction.nonce))throw Error("sponsor_creation_pending");
+ // Recheck both boundaries after the nonce read; never trust a reorged snapshot.
+ const [canonical,tip,chain]=await Promise.all([reader.getBlock({blockNumber:receipt.blockNumber}),reader.getBlock({blockNumber:finalized.number}),reader.getChainId()]);
+ if(chain!==10143||canonical.hash!==receipt.blockHash||tip.hash!==finalized.hash)throw Error("sponsor_creation_pending");
+ return {blockNumber:receipt.blockNumber.toString(),blockHash:receipt.blockHash,finalizedBlockNumber:finalized.number.toString(),finalizedBlockHash:finalized.hash,nonceAfter:String(nonce)};
+}
 export async function sponsorCreationStatus(identity:RewardAccountIdentity,id:string,record:SponsorExecutionRecord|null,configured:boolean,rpc?:RewardLedgerRpc,sender?:string):Promise<SponsorCreationState>{
  if(record?.deploymentHash)return status("confirmed",null,record.deploymentHash);
  if(!configured)return status("unavailable","configuration");
@@ -25,8 +40,8 @@ export async function sponsorCreationStatus(identity:RewardAccountIdentity,id:st
  return !job?status("ready"):status(job.confirmed?"confirmed":job.hash?"submitted":"processing",null,job.hash);
 }
 /** Only exact server-built deployment transactions; no method/calldata supplied by a
- * caller, no oracle signature or deposit, and no new nonce on retry. */
-export async function advanceSponsorCreation(identity:RewardAccountIdentity,id:string,record:SponsorExecutionRecord,deps:SponsorCreationDeps):Promise<SponsorCreationState & {observation?:SponsorChainObservation}>{
+ * caller, no oracle signature or deposit, and no new nonce on ambiguous retries. */
+export async function advanceSponsorCreation(identity:RewardAccountIdentity,id:string,record:SponsorExecutionRecord,deps:SponsorCreationDeps,retryHash?:string,observeOnly=false):Promise<SponsorCreationState & {observation?:SponsorChainObservation}>{
  if(record.deploymentHash)return status("confirmed",null,record.deploymentHash);
  const {reader,signer,rpc}=deps,plan=record.plan;
  if(!signer||plan.chainId!==10143)return status("unavailable","configuration");
@@ -39,18 +54,21 @@ export async function advanceSponsorCreation(identity:RewardAccountIdentity,id:s
   await signer.verifyReady?.();
   job=decode(await rewardSponsorCreation(identity,id,{},rpc));
   if(job&&job.sender!==sender)return status("unavailable","configuration",job.hash);
+  if(observeOnly&&!job?.signedTransaction)return status("processing");
+  if(retryHash&&(!job?.hash||job.hash!==retryHash))return status(job?.hash?"submitted":"processing",null,job?.hash??null);
   let transaction=job?.transaction;
-  if(!transaction){
+  const prepareTransaction=async():Promise<CreationTransaction>=>{
    if(signer.factoryAddress)await verifySponsorFactory(reader,signer.factoryAddress,10143,undefined,plan.version);
    const [estimate,price,balance,nonce]=await Promise.all([
     reader.estimateGas({account:sender as Hex,...(signer.factoryAddress?{to:signer.factoryAddress}:{}),data,value:0n}),reader.getGasPrice(),
     reader.getBalance({address:sender as Hex,blockTag:"pending"}),reader.getTransactionCount({address:sender as Hex,blockTag:"pending"}),
    ]);
    const gas=(estimate*12n+9n)/10n;
-   if(gas<=0n||gas>30_000_000n||price<=0n||gas*price>cap)return status("failed","gas");
-   if(balance<gas*price)return status("failed","balance");
-   transaction={chainId:10143,...(signer.factoryAddress?{to:signer.factoryAddress}:{}),data,value:"0",nonce:String(nonce),gas:String(gas),gasPrice:String(price)};
-  }
+   if(gas<=0n||gas>30_000_000n||price<=0n||gas*price>cap)throw Error("sponsor_creation_gas");
+   if(balance<gas*price)throw Error("sponsor_creation_balance");
+   return {chainId:10143,...(signer.factoryAddress?{to:signer.factoryAddress}:{}),data,value:"0",nonce:String(nonce),gas:String(gas),gasPrice:String(price)};
+  };
+  if(!transaction)transaction=await prepareTransaction();
   // Recheck current ownership before reserving/signing. SQL repeats under locks.
   const fresh=await rewardSponsorExecution(identity,10143,id,undefined,rpc);
   if(fresh?.deploymentHash)return status("confirmed",null,fresh.deploymentHash);
@@ -58,6 +76,9 @@ export async function advanceSponsorCreation(identity:RewardAccountIdentity,id:s
   job=decode(await rewardSponsorCreation(identity,id,{action:"reserve",leaseId,sender,transaction},rpc));
   if(!job)return status("processing");
   if(job.leaseId!==leaseId)return status(job.hash?"submitted":"processing",null,job.hash);
+  // Another request may have replaced the attempt between read and reservation.
+  // A receipt-only poll or stale retry must never sign that unsigned attempt.
+  if(observeOnly&&!job.signedTransaction||retryHash&&job.hash!==retryHash)return status(job.hash?"submitted":"processing",null,job.hash);
   const tx=job.transaction;
   if(tx.data!==data||tx.to!==signer.factoryAddress||tx.value!=="0"||tx.chainId!==10143||BigInt(tx.gas)<=0n||BigInt(tx.gas)>30_000_000n||BigInt(tx.gasPrice)<=0n||BigInt(tx.gas)*BigInt(tx.gasPrice)>cap||!Number.isSafeInteger(Number(tx.nonce)))throw Error("invalid_sponsor_creation");
   const live=async()=>{
@@ -83,7 +104,22 @@ export async function advanceSponsorCreation(identity:RewardAccountIdentity,id:s
    if(observed.deploymentHash===job.hash){await live();await rewardSponsorCreation(identity,id,{action:"confirm",leaseId,hash:job.hash},rpc);return {...status("confirmed",null,job.hash),observation:observed};}
   }catch{/* Pending/finality errors are not permission to change transaction bytes. */}
   let receipt;try{receipt=await reader.getTransactionReceipt({hash:job.hash as Hex});}catch{/* May not have broadcast. */}
-  if(receipt)return receipt.status==="reverted"?status("failed","reverted",job.hash):status("submitted",null,job.hash);
+  if(receipt){
+   if(receipt.status!=="reverted")return status("submitted",null,job.hash);
+   try{await finalizedCreationFailure(reader,job);}catch{return status("submitted",null,job.hash);}
+   if(!retryHash){
+    await live();
+    await rewardSponsorCreation(identity,id,{action:"release",leaseId,hash:job.hash},rpc);
+    return status("failed","reverted",job.hash);
+   }
+   const replacement=await prepareTransaction();
+   const failure=await finalizedCreationFailure(reader,job);
+   await live();
+   job=decode(await rewardSponsorCreation(identity,id,{action:"retry",leaseId,sender,hash:retryHash,transaction:{replacement,failure}},rpc));
+   // Durable replacement reservation first. Ordinary continuation signs it once.
+   return status(job?.hash?"submitted":"processing",null,job?.hash??null);
+  }
+  if(retryHash||observeOnly)return status("submitted",null,job.hash);
   if(await reader.getBalance({address:sender as Hex,blockTag:"pending"})<BigInt(tx.gas)*BigInt(tx.gasPrice))return status("failed","balance",job.hash);
   await live();
   try{await reader.sendRawTransaction({serializedTransaction:job.signedTransaction as Hex});}catch{/* Retry only these exact journaled bytes, including after timeout. */}
@@ -92,6 +128,6 @@ export async function advanceSponsorCreation(identity:RewardAccountIdentity,id:s
   const code=error instanceof Error?error.message:"";
   if(["reward_account_session_required","reward_setup_not_found"].includes(code))throw error;
   if(code==="sponsor_creation_busy")return status("processing","controller_busy");
-  return status("failed",code==="sponsor_creation_capacity"?"capacity":"connection",job?.hash??null);
+  return status("failed",code==="sponsor_creation_capacity"?"capacity":code==="sponsor_creation_gas"?"gas":code==="sponsor_creation_balance"?"balance":"connection",job?.hash??null);
  }
 }

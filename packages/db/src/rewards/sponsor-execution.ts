@@ -26,8 +26,8 @@ export async function rewardSponsorExecution(identity: RewardAccountIdentity, ch
 
 /** Private fixed-transaction journal; signed bytes must never enter browser views. */
 export async function rewardSponsorCreation(identity: RewardAccountIdentity, id: string,
- change: {action?: "read"|"reserve"|"signed"|"confirm"; leaseId?: string; sender?: string;
- transaction?: Record<string,string|number>; signedTransaction?: string; hash?: string} = {}, rpc?: RewardLedgerRpc): Promise<unknown> {
+ change: {action?: "read"|"reserve"|"signed"|"confirm"|"retry"|"release"; leaseId?: string; sender?: string;
+ transaction?: Record<string,unknown>; signedTransaction?: string; hash?: string} = {}, rpc?: RewardLedgerRpc): Promise<unknown> {
  if (![identity.userId,identity.sessionId,id].every(setupId)) throw Error("invalid_sponsor_creation");
  const result=await (rpc??((name,args)=>createAdminSupabaseClient().rpc(name,args)))("service_reward_sponsor_auto_deployment",{
   p_actor_user_id:identity.userId,p_actor_session_id:identity.sessionId,p_setup_id:id,p_action:change.action??"read",

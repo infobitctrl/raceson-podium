@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {privateKeyToAccount} from 'viem/accounts';
+import {decodeSponsorExecutionPlan} from '@raceson/domain/rewards/sponsor-execution';
 import {advanceSponsorCreation,sponsorCreationStatus} from '../dist/features/rewards/sponsor-creation-service.js';
 import {sponsorCreationSignerFromEnv} from '../dist/features/rewards/sponsor-creation-privy.js';
 const id=n=>`74000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
@@ -25,6 +26,105 @@ function fixture(){
  const signer={address:account.address.toLowerCase(),sign:async tx=>{signs++;return account.signTransaction({type:'legacy',chainId:tx.chainId,nonce:Number(tx.nonce),gas:BigInt(tx.gas),gasPrice:BigInt(tx.gasPrice),data:tx.data,value:BigInt(tx.value)});}};
  return{record,deps:{reader,signer,rpc},get job(){return job;},get signs(){return signs;},sends,expire(){job.leaseUntil=new Date(Date.now()-1000).toISOString();},revoke(){deny=true;}};
 }
+
+function revertedFixture(){
+ const f=fixture(),rpc=f.deps.rpc;
+ f.record.plan=decodeSponsorExecutionPlan({...plan,version:5,walletRegistry:'0x'+'55'.repeat(20),identityIssuer:'0x'+'66'.repeat(20)});
+ let receipt=null;
+ const blockHash='0x'+'ab'.repeat(32),finalizedHash='0x'+'cd'.repeat(32);
+ f.deps.reader.getTransactionReceipt=async()=>{if(!receipt)throw Error('not found');return receipt;};
+ f.deps.reader.getBlock=async({blockTag,blockNumber})=>blockTag==='finalized'||blockNumber===100n?{number:100n,hash:finalizedHash}:{number:90n,hash:blockHash};
+ f.deps.reader.getTransactionCount=async()=>receipt?8:7;
+ const failed=[];
+ let replacement=null;
+ f.deps.rpc=async(name,a)=>{
+  if(a.p_action==='retry'){
+   assert.equal(a.p_transaction_hash,f.job.hash);assert.equal(a.p_lease_id,f.job.leaseId);
+   failed.push({...f.job});
+   replacement={...f.job,transaction:a.p_transaction.replacement,hash:null,signedTransaction:null};
+   return{data:replacement,error:null};
+  }
+  return rpc(name,a);
+ };
+ return {...f,original:f,failed,get replacement(){return replacement;},revert(){receipt={status:'reverted',transactionHash:f.job.hash,blockNumber:90n,blockHash};f.expire();},setReceipt(r){receipt=r;}};
+}
+
+test('finalized revert stays failed until explicit hash-bound retry; replacement is journaled unsigned with history',async()=>{
+ const f=revertedFixture(),first=await advanceSponsorCreation(identity,setup,f.original.record,f.deps);
+ f.revert();
+ assert.equal((await advanceSponsorCreation(identity,setup,f.original.record,f.deps)).reason,'reverted');
+ assert.equal(f.failed.length,0);f.original.expire();
+ const retry=await advanceSponsorCreation(identity,setup,f.original.record,f.deps,first.hash);
+ assert.equal(retry.status,'processing');assert.equal(retry.hash,null);
+ assert.equal(f.failed.length,1);assert.equal(f.failed[0].hash,first.hash);
+ assert.equal(f.replacement.signedTransaction,null);assert.equal(f.replacement.transaction.nonce,'8');
+ assert.equal(f.original.signs,1);assert.equal(f.original.sends.length,1);
+});
+
+test('unfinalized, reorged, wrong-hash, unconsumed-nonce and wrong-chain receipts never authorize replacement',async()=>{
+ for(const kind of ['unfinalized','reorg','hash','nonce','chain','unavailable']){
+  const f=revertedFixture(),first=await advanceSponsorCreation(identity,setup,f.original.record,f.deps);f.revert();
+  if(kind==='unfinalized')f.setReceipt({status:'reverted',transactionHash:first.hash,blockNumber:101n,blockHash:'0x'+'ab'.repeat(32)});
+  if(kind==='reorg')f.deps.reader.getBlock=async()=>({number:100n,hash:'0x'+'ee'.repeat(32)});
+  if(kind==='hash')f.setReceipt({status:'reverted',transactionHash:'0x'+'ef'.repeat(32),blockNumber:90n,blockHash:'0x'+'ab'.repeat(32)});
+  if(kind==='nonce')f.deps.reader.getTransactionCount=async()=>Number(f.original.job.transaction.nonce);
+  if(kind==='chain')f.deps.reader.getChainId=async()=>1;
+  if(kind==='unavailable')f.deps.reader.getBlock=async()=>{throw Error('offline');};
+  await advanceSponsorCreation(identity,setup,f.original.record,f.deps,first.hash);
+  assert.equal(f.failed.length,0,kind);assert.equal(f.original.signs,1,kind);
+ }
+});
+
+test('stale retry hash, successful receipt and missing receipt never create replacement transactions',async()=>{
+ for(const kind of ['stale','success','missing']){
+  const f=revertedFixture(),first=await advanceSponsorCreation(identity,setup,f.original.record,f.deps);f.revert();
+  if(kind==='success')f.setReceipt({status:'success',transactionHash:first.hash,blockNumber:90n,blockHash:'0x'+'ab'.repeat(32)});
+  if(kind==='missing')f.setReceipt(null);
+  await advanceSponsorCreation(identity,setup,f.original.record,f.deps,kind==='stale'?'0x'+'ef'.repeat(32):first.hash);
+  assert.equal(f.failed.length,0);assert.equal(f.original.signs,1);assert.equal(f.original.sends.length,1);
+ }
+});
+
+test('automatic-job receipt polling exposes finalized failure without signing or broadcasting',async()=>{
+ const {dispatchSponsorExecution}=await import('../dist/routes/rewards/sponsor-execution.js');
+ const f=revertedFixture(),first=await advanceSponsorCreation(identity,setup,f.original.record,f.deps);
+ f.revert();let output;
+ const deps={config:()=>({chainId:10143}),requireIdentity:async()=>identity,sponsorPolicy:()=>null,rpc:f.deps.rpc,
+  creation:f.deps,sponsorReader:f.deps.reader,readJsonBody:async()=>({action:'deployment',hash:first.hash}),applyPrivateSessionHeaders(){},
+  sendSuccess:(_r,data)=>output={status:200,data},sendError:(_r,status,code)=>output={status,code}};
+ await dispatchSponsorExecution({method:'POST'},{setHeader(){}},new URL(`https://local.invalid/api/v1/rewards/distribution-setups/${setup}/execution`),deps);
+ assert.equal(output.status,200);assert.equal(output.data.creation.reason,'reverted');assert.equal(output.data.record.deploymentHash,null);
+ assert.equal(f.failed.length,0);assert.equal(f.original.signs,1);assert.equal(f.original.sends.length,1);
+ f.setReceipt(null);f.original.expire();
+ await dispatchSponsorExecution({method:'POST'},{setHeader(){}},new URL(`https://local.invalid/api/v1/rewards/distribution-setups/${setup}/execution`),deps);
+ assert.equal(output.data.creation.status,'submitted');assert.equal(f.original.sends.length,1);
+});
+
+test('hosted retry stays inside the existing identity/setup-bound private creation transport',async()=>{
+ const {hostedCopySponsorExecutionRpc}=await import('../../../packages/db/dist/rewards/hosted-copy-execution.js');
+ const calls=[],rpc=hostedCopySponsorExecutionRpc(identity,setup,async(name,args)=>{calls.push({name,args});return{data:null,error:null};});
+ const args={p_actor_user_id:identity.userId,p_actor_session_id:identity.sessionId,p_setup_id:setup,p_action:'retry',p_lease_id:id(9),p_sender:account.address,
+  p_transaction:{replacement:{chainId:10143},failure:{blockNumber:'90'}},p_signed_transaction:null,p_transaction_hash:'0x'+'aa'.repeat(32)};
+ await rpc('service_reward_sponsor_auto_deployment',args);
+ assert.equal(calls[0].name,'service_reward_demo_copy_sponsor_operation');
+ assert.equal(calls[0].args.p_operation,'creation');assert.equal(calls[0].args.p_payload.action,'retry');
+ assert.deepEqual(calls[0].args.p_payload.transaction,args.p_transaction);
+ for(const patch of [{p_actor_user_id:id(8)},{p_actor_session_id:id(8)},{p_setup_id:id(8)}])await assert.rejects(rpc('service_reward_sponsor_auto_deployment',{...args,...patch}),/invalid_sponsor_execution/);
+ assert.equal(calls.length,1);
+});
+
+test('receipt-only polls and stale retries cannot sign an attempt replaced during reservation',async()=>{
+ for(const observeOnly of [true,false]){
+  const f=fixture(),first=await advanceSponsorCreation(identity,setup,f.record,f.deps);f.expire();
+  const rpc=f.deps.rpc;
+  f.deps.rpc=async(name,args)=>{
+   const result=await rpc(name,args);
+   return args.p_action==='reserve'?{data:{...result.data,transaction:{...result.data.transaction,nonce:'8'},hash:null,signedTransaction:null},error:null}:result;
+  };
+  const result=await advanceSponsorCreation(identity,setup,f.record,f.deps,observeOnly?undefined:first.hash,observeOnly);
+  assert.equal(result.status,'processing');assert.equal(result.hash,null);assert.equal(f.signs,1);assert.equal(f.sends.length,1);
+ }
+});
 test('automatic creation journals before broadcast and resumes the identical transaction after a lost response',async()=>{
  const f=fixture();const first=await advanceSponsorCreation(identity,setup,f.record,f.deps);
  assert.equal(first.status,'submitted');assert.equal(f.signs,1);assert.equal(f.sends.length,1);assert.equal(f.job.transaction.value,'0');

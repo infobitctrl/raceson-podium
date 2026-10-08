@@ -150,6 +150,12 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
     const next=await sponsorExecution(launch.setup.id,view?creationCheckAction(view):undefined);
     if(live.current){setView(next);setCheckFailed(false);}
   }
+  async function retryFailedCreation(){
+    const hash=view?.creation?.hash;
+    if(!sourcesReady||view?.creation?.reason!=="reverted"||!hash)return;
+    const next=await sponsorExecution(launch.setup.id,{action:"retry_creation",hash});
+    if(live.current)setView(next);
+  }
   async function verify(p: Pending) {
     let next:SponsorExecutionView;
     try {next=await sponsorExecution(launch.setup.id,p);}
@@ -286,11 +292,12 @@ function FundingWorkspace({launch, hr, onFunded, onSummary, allocation, publishe
                 {view.creation.reason === "balance" ? t("RacesOn’s creation wallet does not have enough test MON for the network fee. RacesOn must top it up before you retry. Your prize funds have not moved.", "RacesOn novčanik za izradu nema dovoljno test MON za mrežnu naknadu. RacesOn mora dopuniti taj novčanik prije ponovnog pokušaja. Fond nagrada nije prenesen.")
                 : view.creation.reason === "gas" ? t("The network fee estimate could not pass the allowed limit check. RacesOn must check network fees before you retry. No creation transaction was sent.", "Procjena mrežne naknade nije prošla provjeru dopuštenog ograničenja. RacesOn mora provjeriti naknade prije ponovnog pokušaja. Transakcija izrade nije poslana.")
                 : view.creation.reason === "capacity" ? t("Today's account creation limit has been reached. Try again tomorrow.", "Dosegnuto je dnevno ograničenje izrade računa. Pokušajte sutra.")
-                : view.creation.reason === "reverted" ? t("Account creation failed. RacesOn needs to resolve it before you can deposit.", "Izrada računa nije uspjela. RacesOn mora riješiti problem prije uplate.")
+                : view.creation.reason === "reverted" ? t("The creation transaction failed and is finalized. Your prize funds have not moved. You can retry using RacesOn-funded gas.", "Transakcija izrade nije uspjela i konačno je potvrđena. Fond nagrada nije prenesen. Možete pokušati ponovno uz plin koji plaća RacesOn.")
                 : t("Account creation is not confirmed. Retry to check and resume the same request.", "Izrada računa nije potvrđena. Pokušajte ponovno za nastavak istog zahtjeva.")}
               </RewardErrorNotice> : null}
               {sourcesReady && view?.enabled && !record && !unavailable && !requestingCreation ? <button className={s.primary} disabled={!wallet || busy || view?.creation?.status !== "ready"} onClick={() => void run(()=>requestCreation(true))}>{t("Create reward account", "Izradi račun za nagrade")}<ArrowRight size={17} aria-hidden="true"/></button> : null}
               {sourcesReady && record && !unavailable && !requestingCreation && view?.creation && ["ready", "failed"].includes(view?.creation.status) && view?.creation.reason !== "reverted" ? <button className={s.primary} disabled={busy} onClick={()=>void run(()=>requestCreation(false))}>{view?.creation.status === "failed" ? t("Retry creation", "Pokušaj ponovno") : t("Create reward account", "Izradi račun za nagrade")}<ArrowRight size={17} aria-hidden="true"/></button> : null}
+              {sourcesReady&&record&&!unavailable&&view?.creation?.status==="failed"&&view.creation.reason==="reverted"&&view.creation.hash?<button className={s.primary} disabled={busy} onClick={()=>void run(retryFailedCreation)}>{t("Retry creation","Pokušaj ponovno")}<ArrowRight size={17} aria-hidden="true"/></button>:null}
               </div>
             </>}
             {pending?.action === "deployment" ? pendingStatus : null}
