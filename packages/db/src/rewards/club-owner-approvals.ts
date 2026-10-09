@@ -27,3 +27,8 @@ export async function clubOwnerAwards(actor:RewardAccountIdentity,rpc:RewardLedg
  return z.object({items:z.array(z.object({cursor,creationId:uuid,clubName:z.string().min(1),safeAddress:address,award}).strict()).max(25),nextCursor:cursor.nullable()}).strict()
   .parse(await call(actor,rpc,'service_reward_club_owner_awards',{p_after:after===null?null:cursor.parse(after)}));
 }
+
+export async function clubMemberships(actor:RewardAccountIdentity,rpc:RewardLedgerRpc,after:string|null){
+ return z.object({items:z.array(z.object({clubId:uuid,name:z.string().min(1),role:z.enum(['manager','member']),canSign:z.boolean()}).strict()).max(25),nextCursor:uuid.nullable()}).strict()
+  .parse(await call(actor,rpc,'service_reward_club_memberships',{p_after:after===null?null:uuid.parse(after)}));
+}

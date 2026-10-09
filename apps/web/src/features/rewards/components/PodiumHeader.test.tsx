@@ -6,11 +6,11 @@ import PodiumHeader from './PodiumHeader';
 const state=vi.hoisted(()=>({
  auth:{user:{id:'current'} as {id:string}|null,session:{access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:1800000000,token_type:'bearer',user:{id:'current'}} as object|null,
   account:{userId:'current',loginUsername:'demo.user',hasOrganizerAccess:false,hasAthleteAccess:false,platformRole:'user'} as {userId:string;loginUsername:string;hasOrganizerAccess:boolean;hasAthleteAccess:boolean;platformRole:string}|null,signOut:vi.fn()},
- api:vi.fn(),locale:'en',
+ api:vi.fn(),locale:'en',hosted:false,
 }));
 vi.mock('@/lib/auth',()=>({useAuth:()=>state.auth}));
 vi.mock('@/lib/api',()=>({apiRequest:state.api}));
-vi.mock('@/lib/public-env',()=>({publicEnv:{rewardDemo:{mode:'testnet',chainId:10143}}}));
+vi.mock('@/lib/public-env',()=>({publicEnv:{get hostedOperations(){return state.hosted;},rewardDemo:{mode:'testnet',chainId:10143}}}));
 vi.mock('@/shared/i18n/I18nContext',()=>({useI18n:()=>({locale:state.locale})}));
 const empty={chainId:10143,items:[],nextCursor:null};
 const owned={...empty,items:[{clubId:'73000000-0000-4000-8000-000000000001',name:'Synthetic club'}]};
@@ -21,7 +21,7 @@ function view(path='/rewards'){
 }
 function nav(){return within(screen.getByRole('navigation',{name:'Main navigation'}));}
 beforeEach(()=>{
- state.auth.user={id:'current'};state.auth.session={access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:1800000000,token_type:'bearer',user:{id:'current'}};
+ state.hosted=false;state.auth.user={id:'current'};state.auth.session={access_token:'synthetic-token',refresh_token:'synthetic-refresh',expires_at:1800000000,token_type:'bearer',user:{id:'current'}};
  state.auth.account={userId:'current',loginUsername:'demo.user',hasOrganizerAccess:false,hasAthleteAccess:false,platformRole:'user'};
  state.auth.signOut.mockReset();state.api.mockReset().mockResolvedValue(empty);state.locale='en';
 });
@@ -33,7 +33,7 @@ it.each([
  if(role==='athlete')state.auth.account!.hasAthleteAccess=true;
  if(role==='club'){state.auth.account!.hasAthleteAccess=true;state.api.mockResolvedValue(owned);}
  view();expect(await nav().findByRole('link',{name:label})).toHaveAttribute('href',href);
- expect(nav().getAllByRole('link').map(link=>link.textContent)).toEqual(['Home','Events','Campaigns',label]);
+ expect(nav().getAllByRole('link').map(link=>link.textContent)).toEqual(['Home','Events','Campaigns',label,...(role==='club'?['My rewards']:[])]);
  if(role==='admin'||role==='reviewer')expect(state.api).not.toHaveBeenCalled();
 });
 it.each(['/rewards','/rewards/events','/rewards/campaigns','/rewards/wallet','/athlete/rewards','/club/rewards'])('keeps Review on %s for a reviewer',async path=>{
@@ -99,4 +99,18 @@ it.each([false,true])('uses verified non-club ownership for athlete=%s without h
 });
 it.each([{status:401,code:'reward_club_owner_required'},{status:403,code:'reward_account_session_required'},{status:503,code:'reward_club_owner_required'}])('does not treat an unrelated failure as non-ownership: %j',async error=>{
  state.api.mockRejectedValue(error);view();expect(await screen.findByRole('alert')).toHaveTextContent('Account navigation is temporarily unavailable');expect(nav().getAllByRole('link')).toHaveLength(3);
+});
+
+it('keeps athlete rewards and adds member club navigation on desktop and mobile',async()=>{
+ state.hosted=true;state.auth.account!.hasAthleteAccess=true;
+ state.api.mockImplementation(({path})=>Promise.resolve(path.includes('my-clubs')?{items:[{clubId:owned.items[0].clubId,name:'Member club',role:'member',canSign:false}],nextCursor:null}:empty));
+ view('/athlete/rewards');expect(await nav().findByRole('link',{name:'Club rewards'})).toHaveAttribute('href','/club/rewards');
+ expect(nav().getByRole('link',{name:'My rewards'})).toHaveAttribute('aria-current','page');
+ fireEvent.click(screen.getByLabelText('Navigation'));const mobile=within(screen.getByRole('navigation',{name:'Mobile navigation'}));
+ expect(mobile.getByRole('link',{name:'My rewards'})).toBeVisible();expect(mobile.getByRole('link',{name:'Club rewards'})).toBeVisible();
+});
+it('keeps athlete access when membership lookup fails without inventing club access',async()=>{
+ state.hosted=true;state.auth.account!.hasAthleteAccess=true;
+ state.api.mockImplementation(({path})=>path.includes('my-clubs')?Promise.reject(Error('offline')):Promise.resolve(empty));
+ view();await screen.findByRole('alert');expect(nav().getByRole('link',{name:'My rewards'})).toBeVisible();expect(nav().queryByRole('link',{name:'Club rewards'})).not.toBeInTheDocument();
 });

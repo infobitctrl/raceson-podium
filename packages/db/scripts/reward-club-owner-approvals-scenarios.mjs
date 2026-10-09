@@ -36,6 +36,21 @@ export async function clubOwnerApprovalScenarios({harness,scenario},row){
   assert.equal((await call(1)).signerAddress,null);
   assert.equal((await call(11)).signerAddress,members[0].address);
  });
+ await scenario('member club portal separates current membership, management and selected signing authority',async()=>{
+  const read=n=>scalar(`select public.service_reward_club_memberships(${q(id(n))},${q(id(n===1?2:n+1000))},null)`);
+  for(const n of [11,21,31]){const page=await read(n);const club=page.items.find(c=>c.clubId===row.beneficiary_id);assert(club);assert.equal(club.role,'member');assert.equal(club.canSign,true);}
+  assert.equal((await read(1)).items.find(c=>c.clubId===row.beneficiary_id).role,'manager');
+  assert.equal((await read(41)).items.length,0);
+  await query(`insert into public.club_memberships(id,club_id,athlete_profile_id,status) values(${q(id(43))},${q(row.beneficiary_id)},${q(id(42))},'active')`);
+  try{
+   const member=(await read(41)).items.find(c=>c.clubId===row.beneficiary_id);assert.equal(member.role,'member');assert.equal(member.canSign,false);
+   await assert.rejects(call(41),/reward_claim_scope_required/);
+   await query(`update public.club_memberships set status='removed' where id=${q(id(43))}`);assert.equal((await read(41)).items.length,0);
+   await query(`update auth.sessions set not_after=clock_timestamp()-interval '1 second' where id=${q(id(1011))}`);await assert.rejects(read(11),/reward_account_session_required/);
+  }finally{await query(`delete from public.club_memberships where id=${q(id(43))}; update auth.sessions set not_after=clock_timestamp()+interval '1 hour' where id=${q(id(1011))}`);}
+  const after=await scalar(`select public.service_reward_club_memberships(${q(id(11))},${q(id(1011))},${q(row.beneficiary_id)})`);assert(after.items.every(c=>c.clubId>row.beneficiary_id));
+  for(const role of ['anon','authenticated'])assert.equal(await scalar(`select has_function_privilege('${role}','public.service_reward_club_memberships(uuid,uuid,uuid)','EXECUTE')`),false);
+ });
  await scenario('durable approvals accept separate selected accounts and reject impersonation, stale IDs and duplicate consent',async()=>{
   const body={creationId:id(100),approvalId:row.approval_id,entitlementId:row.entitlement,safeAddress:address('9'),amountWei:row.amount_wei,owners:create.owners};
   const input={previousId:null,body,expiresAt:new Date(Date.now()+480000).toISOString()};

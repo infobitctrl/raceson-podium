@@ -19,3 +19,9 @@ it('account remount ignores late results from the previous account',async()=>{
  m.read.mockResolvedValue({items:[],nextCursor:null});render(<ClubOwnerApprovals hr={false}/>);await screen.findByText('No club rewards awaiting your treasury approval.');
  finish({items:[item],nextCursor:null});await waitFor(()=>expect(screen.queryByText('Demo Club 36')).not.toBeInTheDocument());
 });
+it('filters a selected club while retaining pagination to its later awards',async()=>{
+ m.read.mockResolvedValueOnce({items:[{...item,award:{...item.award,clubId:'other'}}],nextCursor:'next'}).mockResolvedValueOnce({items:[{...item,cursor:'two',clubName:'Selected club',award:{...item.award,clubId:'chosen'}}],nextCursor:null});
+ render(<ClubOwnerApprovals hr={false} clubId="chosen"/>);fireEvent.click(await screen.findByRole('button',{name:'Load more approvals'}));
+ expect(await screen.findByText('Selected club')).toBeVisible();expect(screen.queryByText('Demo Club 36')).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Review club reward'}));expect(await screen.findByText('Selected treasury selected-only')).toBeVisible();
+});

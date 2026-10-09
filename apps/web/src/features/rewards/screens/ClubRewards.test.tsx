@@ -1,3 +1,4 @@
+vi.mock('../data/clubMemberships',()=>({getRewardMemberClubs:async()=>({items:[{clubId:'73000000-0000-4000-8000-000000000001',name:'Member test club',role:'manager',canSign:false}],nextCursor:null})}));
 import { act, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";

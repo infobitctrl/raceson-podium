@@ -74,3 +74,19 @@ test('owner discovery is a bounded private GET and signature bodies cannot suppl
   }
  }finally{for(const[k,v]of Object.entries(old))if(v===undefined)delete process.env[k];else process.env[k]=v;}
 });
+
+test('member club discovery uses session identity and rejects writes and caller authority',async()=>{
+ const list='/api/v1/club/rewards/my-clubs';
+ assert(hostedCopyRequestAllowed('GET',new URL(list,origin),'sponsor-drafts-v1',true));
+ assert(!hostedCopyRequestAllowed('POST',new URL(list,origin),'sponsor-drafts-v1',true));
+ assert(!hostedCopyRequestAllowed('GET',new URL(list,origin),'preview-v1',true));
+ const old=Object.fromEntries(Object.keys(env).map(k=>[k,process.env[k]]));Object.assign(process.env,env);
+ try{
+  let response,calls=0;const deps={config:()=>({chainId:10143,origin}),sponsorReader:{},applyPrivateSessionHeaders(){},requireIdentity:async()=>({userId:id,sessionId:id}),
+   rpc:async(name,args)=>{calls++;assert.equal(name,'service_reward_club_memberships');assert.equal(args.p_user_id,id);assert.equal(args.p_session_id,id);return{data:{items:[],nextCursor:null},error:null};},sendSuccess(_r,data){response={status:200,data};},sendError(_r,status){response={status};}};
+  await dispatchDirectClaimsV5({method:'GET'},{},new URL(list,origin),deps);assert.equal(response.status,200);assert.equal(calls,1);
+  for(const suffix of ['?userId='+id,'?clubId='+id,'?after=bad','?after='+id+'&after='+id]){await dispatchDirectClaimsV5({method:'GET'},{},new URL(list+suffix,origin),deps);assert.equal(response.status,400);}
+  await dispatchDirectClaimsV5({method:'POST'},{},new URL(list,origin),deps);assert.equal(response.status,400);assert.equal(calls,1);
+  await dispatchDirectClaimsV5({method:'GET'},{},new URL(list,origin),{...deps,requireIdentity:async()=>{throw Error('Unauthorized');}});assert.equal(response.status,401);assert.equal(calls,1);
+ }finally{for(const[k,v]of Object.entries(old))if(v===undefined)delete process.env[k];else process.env[k]=v;}
+});

@@ -1,5 +1,5 @@
 import {clubDirectClaimV5} from '../../features/rewards/club-owner-approvals-service.js';
-import {clubOwnerAwards} from '@raceson/db/rewards';
+import {clubOwnerAwards,clubMemberships} from '@raceson/db/rewards';
 import type {RewardClubSafeDeploymentReader} from '@raceson/rewards-chain';
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {z} from 'zod';
@@ -19,16 +19,17 @@ export async function dispatchDirectClaimsV5(req:IncomingMessage,res:ServerRespo
  const match=/^\/api\/v1\/athlete\/rewards\/direct-claims\/([^/]+)\/([^/]+)$/.exec(url.pathname);
  const club=/^\/api\/v1\/club\/rewards\/direct-claims\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(url.pathname);
  const ownerList=url.pathname==='/api/v1/club/rewards/owner-awards';
- const route=match??club;if(!route&&!ownerList)return false;
+ const membershipList=url.pathname==='/api/v1/club/rewards/my-clubs';
+ const route=match??club;if(!route&&!ownerList&&!membershipList)return false;
  deps.applyPrivateSessionHeaders(res);
  try{
   const env=loadServerEnv();if(!hostedCopyOperationsEnabled(process.env,env)||deps.config()?.chainId!==10143||!deps.sponsorReader)throw Error('hosted_copy_unavailable');
-  if(ownerList){
+  if(ownerList||membershipList){
    if(req.method!=='GET')throw Error('invalid_sponsor_claim');
-   const query=z.object({after:z.string().regex(/^[0-9a-f-]{36}:[0-9a-f-]{36}:0x[0-9a-f]{64}$/).optional()}).strict().parse(Object.fromEntries(url.searchParams));
+   const query=z.object({after:(membershipList?uuid:z.string().regex(/^[0-9a-f-]{36}:[0-9a-f-]{36}:0x[0-9a-f]{64}$/)).optional()}).strict().parse(Object.fromEntries(url.searchParams));
    if([...url.searchParams].length!==Object.keys(query).length)throw Error('invalid_sponsor_claim');
    const actor=await deps.requireIdentity(req),rpc=deps.rpc??((name,args)=>createAdminSupabaseClient(env).rpc(name,args));
-   deps.sendSuccess(res,await clubOwnerAwards(actor,rpc,query.after??null));return true;
+   deps.sendSuccess(res,await (membershipList?clubMemberships:clubOwnerAwards)(actor,rpc,query.after??null));return true;
   }
   if(!route)throw Error('invalid_sponsor_claim');
   if(!['GET','POST'].includes(req.method??'')||[...url.searchParams].length)throw Error('invalid_sponsor_claim');

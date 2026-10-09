@@ -1,3 +1,4 @@
+import ClubMemberWorkspace from '../components/ClubMemberWorkspace';
 import { ShieldCheck, Users, Wallet } from "lucide-react";
 import setup from "../components/ClubTreasurySetup.module.css";
 import { clubSafeCreationHistory, type ClubCreationRecord } from "../data/clubSafeCreation";
@@ -115,7 +116,7 @@ function PrivateWorkspace() {
   const { t, locale } = useI18n(), [error, setError] = useState<unknown>(null);
   return error ? <div role="alert" className={`${p.panel} space-y-3`}><p>{t(clubTreasuryErrorKey(error))}</p>
     <Button variant="outline" onClick={() => setError(null)}>{t("rewards.organizer.checkAccess")}</Button>
-    <RewardAccountSwitch hr={locale==='hr'} label={locale==='hr'?'Prijavite se računom vlasnika kluba':'Sign in with the club owner account'}/></div> : <Workspace onAccessLost={setError} />;
+    <RewardAccountSwitch hr={locale==='hr'} label={locale==='hr'?'Prijavite se računom vlasnika kluba':'Sign in with the club owner account'}/></div> : publicEnv.hostedOperations ? <ClubMemberWorkspace hr={locale==='hr'}><Workspace onAccessLost={setError}/></ClubMemberWorkspace> : <Workspace onAccessLost={setError} />;
 }
 export default function ClubRewards() {
   const { t, locale } = useI18n(), { user, account, session, isLoading } = useAuth();
