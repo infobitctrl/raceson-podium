@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {ArrowLeft, ArrowRight, ChevronRight, RotateCcw, Minus, Plus} from 'lucide-react';
 import type {PublicSponsorCampaign} from '@raceson/domain/rewards/public-campaign';
+import {useDistributionViewport} from '../model/useDistributionViewport';
 import {radialDistribution} from '../model/radialDistribution';
 import {publicDistributionTree, type DistributionNode} from '../model/publicDistribution';
 import {usePublicCampaignRewards} from '../model/usePublicCampaignRewards';
@@ -18,7 +19,7 @@ export function DistributionExplorer({tree, hr, busy, failed, onSelectPot, initi
   const t = (en: string, local: string) => hr ? local : en;
   const [path, setPath] = useState<string[]>(initialPath), [offset, setOffset] = useState(0);
   const [shown, setShown] = useState<'allocations'|'categories'|'rewards'>('rewards');
-  const [zoom, setZoom] = useState(1);
+  const {viewportRef, zoom, dragging, zoomIn, zoomOut, fit, handlers} = useDistributionViewport();
   const categoryDepth = tree.children.some(child => /^pot-[0-5]$/.test(child.id)) ? 3 : 2;
   const maxDepth = shown === 'allocations' ? categoryDepth - 1 : shown === 'categories' ? categoryDepth : Infinity;
   const graph = radialDistribution(tree, maxDepth);
@@ -41,11 +42,11 @@ export function DistributionExplorer({tree, hr, busy, failed, onSelectPot, initi
     <nav className={s.breadcrumb} aria-label={t('Allocation path', 'Put raspodjele')}>{ancestors.map((n,i) => <span key={n.id}>{i ? <ChevronRight size={12}/> : null}<button onClick={() => back(i)} aria-current={i === ancestors.length-1 ? 'location' : undefined}>{n.label}</button></span>)}{path.length ? <button className={s.reset} onClick={() => back(0)} aria-label={t('Reset allocation view', 'Početni prikaz raspodjele')}><RotateCcw size={14}/></button> : null}</nav>
     <div className={s.toolbar}>
       <div className={s.levels} aria-label={t('Visible distribution levels', 'Vidljive razine raspodjele')} role="group">{(['allocations','categories','rewards'] as const).map(level => <button key={level} aria-pressed={shown===level} onClick={() => changeLevels(level)}>{level==='allocations'?t('Allocations','Raspodjela'):level==='categories'?t('Categories','Kategorije'):t('All rewards','Sve nagrade')}</button>)}</div>
-      <div className={s.zoom}><button onClick={() => setZoom(n=>Math.max(1,n-.5))} disabled={zoom===1} aria-label={t('Zoom out', 'Smanji prikaz')}><Minus size={14}/></button><button onClick={() => setZoom(1)} aria-label={t('Fit entire distribution', 'Prikaži cijelu raspodjelu')}>{zoom===1?t('Fit','Cijeli prikaz'):`${Math.round(zoom*100)}%`}</button><button onClick={() => setZoom(n=>Math.min(3,n+.5))} disabled={zoom===3} aria-label={t('Zoom in', 'Povećaj prikaz')}><Plus size={14}/></button></div>
+      <div className={s.zoom}><button onClick={zoomOut} disabled={zoom===1} aria-label={t('Zoom out', 'Smanji prikaz')}><Minus size={14}/></button><button onClick={fit} aria-label={t('Fit entire distribution', 'Prikaži cijelu raspodjelu')}>{zoom===1?t('Fit','Cijeli prikaz'):`${Math.round(zoom*100)}%`}</button><button onClick={zoomIn} disabled={zoom===3} aria-label={t('Zoom in', 'Povećaj prikaz')}><Plus size={14}/></button></div>
     </div>
     <div className={s.body}>
       <div className={s.canvas}>
-        <div className={s.viewport} tabIndex={0} role="region" aria-label={t('Reward distribution chart. Zoom and scroll to explore.', 'Graf raspodjele nagrada. Povećajte i pomičite prikaz.')}>
+        <div ref={viewportRef} {...handlers} data-dragging={dragging} className={s.viewport} tabIndex={0} role="region" aria-label={t('Reward distribution chart. Zoom and scroll to explore.', 'Graf raspodjele nagrada. Povećajte i pomičite prikaz.')}>
           <svg viewBox={`0 0 ${graph.size} ${graph.size}`} style={{width:`${zoom*100}%`}} aria-label={`${tree.label}: ${amount(tree)} test MON`} role="group">
             {graph.rings.map((r,i) => <circle key={i} className={s.orbit} cx={graph.size/2} cy={graph.size/2} r={r}/>)}
             {graph.nodes.filter(entry => entry.parentId).map(entry => {const parent=positions.get(entry.parentId!)!;return <path key={entry.node.id} className={s.connector} data-active={path.includes(entry.node.id)} d={`M${parent.x} ${parent.y} L${entry.x} ${entry.y}`}/>;})}
@@ -65,7 +66,7 @@ export function DistributionExplorer({tree, hr, busy, failed, onSelectPot, initi
       <aside className={s.details}><div className={s.detailHeading}><div><small>{t('Exploring', 'Pregled')}</small><h3>{node.label}</h3></div>{path.length ? <button onClick={() => back(ancestors.length-2)} aria-label={t('Back one level', 'Natrag jednu razinu')}><ArrowLeft size={16}/></button> : null}</div>
         {node.children.length ? <ul className={s.items}>{visible.map(child => <li key={child.id}><button onClick={() => open(child)}><i data-status={child.status ?? child.level}/><span><strong>{child.label}</strong><small>{child.level === 'winner' ? state(child) : `${prizePercent(child.amountWei,node.amountWei)}% ${t('of this pool','ovog fonda')}`}</small></span><b>{amount(child)}<small>test MON</small></b><ChevronRight size={14}/></button></li>)}</ul> : <div className={s.leaf}><strong>{state(node)}</strong>{node.reference ? <><p>{t('Public award reference', 'Javna oznaka nagrade')}</p><code>{node.reference}</code><p>{t('This circle shows this category’s share of the winner’s reward. The ledger combines their shares into one payment.', 'Krug prikazuje udio ove kategorije u nagradi dobitnika. Pregled spaja udjele u jednu isplatu.')}</p></> : <p>{node.level === 'reserve' ? t('Kept in the pool without a winner allocation.', 'Zadržano u fondu bez raspodjele dobitniku.') : busy ? t('Verifying winners…', 'Provjera dobitnika…') : failed ? t('Winner status unavailable. Retry below.', 'Stanje dobitnika nije dostupno. Pokušajte ponovno ispod.') : t('Winner breakdown is not available for this category yet.', 'Raspodjela dobitnicima još nije dostupna za ovu kategoriju.')}</p>}</div>}
         {node.children.length>8?<div className={s.paging}><button aria-label={t('Previous details', 'Prethodni detalji')} disabled={offset===0} onClick={() => setOffset(n=>Math.max(0,n-8))}><ArrowLeft size={14}/></button><span>{offset+1}–{Math.min(offset+8,node.children.length)} / {node.children.length}</span><button aria-label={t('Next details', 'Sljedeći detalji')} disabled={offset+8>=node.children.length} onClick={() => setOffset(n=>n+8)}><ArrowRight size={14}/></button></div>:null}
-        <p className={s.helper}>{t('Select any circle to follow its path. Zoom in for smaller rewards; scroll to move around. Circle sizes show levels, not amounts.', 'Odaberite krug za prikaz njegova puta. Povećajte prikaz za manje nagrade i pomičite graf. Veličine krugova označavaju razine, a ne iznose.')}</p>
+        <p className={s.helper}>{t('Scroll the mouse wheel to zoom. Drag to pan; click a circle for details. Circle sizes show levels, not amounts.', 'Kotačićem miša povećajte ili smanjite prikaz. Povucite za pomicanje; kliknite krug za detalje. Veličine krugova označavaju razine, a ne iznose.')}</p>
       </aside>
     </div>
   </section>;
