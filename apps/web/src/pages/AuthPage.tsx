@@ -217,6 +217,7 @@ export default function AuthPage() {
   };
 
   const selectTab = (nextTab: AuthTab, focusTab = false) => {
+    if (isPodium && nextTab === "signup") return;
     if (focusTab) tabFocusIntentRef.current = nextTab;
     if (nextTab === tab) {
       if (focusTab) {
@@ -245,6 +246,7 @@ export default function AuthPage() {
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPodium && tab === "signup") return;
     if (!hasSupabase) {
       const message = t("auth.error.configuration");
       setFormError(message);
@@ -300,6 +302,7 @@ export default function AuthPage() {
   };
 
   async function submitSignup() {
+    if (isPodium) return;
     const passwordValidationMessage = validatePasswordStrength(password);
     if (passwordValidationMessage) {
       setShowPasswordValidation(true);
@@ -510,12 +513,14 @@ export default function AuthPage() {
                         key={tabValue}
                         type="button"
                         role="tab"
+                        disabled={isPodium && tabValue === "signup"}
+                        aria-describedby={isPodium && tabValue === "signup" ? "podium-demo-account-notice" : undefined}
                         aria-selected={tab === tabValue}
                         tabIndex={tab === tabValue ? 0 : -1}
                         ref={(element) => { tabRefs.current[tabValue] = element; }}
                         onClick={() => selectTab(tabValue)}
                         onKeyDown={(event) => {
-                          const tabs: AuthTab[] = ["login", "signup"];
+                          const tabs: AuthTab[] = isPodium ? ["login"] : ["login", "signup"];
                           const currentIndex = tabs.indexOf(tabValue);
                           let nextIndex: number | null = null;
                           if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
@@ -532,19 +537,19 @@ export default function AuthPage() {
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
-                        {tabValue === "login" ? t("auth.signInAction") : signupLabel}
+                        {tabValue === "login" ? t("auth.signInAction") : <>{signupLabel}{isPodium ? <span className="mt-1 block text-xs">{t("podium.auth.unavailableInDemo")}</span> : null}</>}
                       </button>
                     ))}
                   </div>
 
-                  {isPodium ? <p className="mb-5 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-sm leading-relaxed">
-                    {t("podium.auth.existingAccounts")}
+                  {isPodium ? <p id="podium-demo-account-notice" className="mb-5 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-sm leading-relaxed">
+                    {t("podium.auth.demoAccountsOnly")}
                     {tab === "signup" ? <> <button type="button" className="font-semibold text-primary-readable underline underline-offset-2" onClick={() => selectTab("login", true)}>{t("auth.signInAction")}</button></> : null}
                   </p> : null}
-                  {localPodium ? <p className="mb-5 text-xs leading-relaxed text-muted-foreground">{t("podium.auth.demoNotice")}</p> : null}
 
                   {/* Form */}
-                  <form onSubmit={handleCredentialsSubmit} className="space-y-4">
+                  <form onSubmit={handleCredentialsSubmit}>
+                    <fieldset disabled={isPodium && tab === "signup"} aria-describedby={isPodium && tab === "signup" ? "podium-demo-account-notice" : undefined} className="space-y-4">
                     {tab === "signup" && hasExistingAccountWarning ? (
                       <ExistingAccountSignUpWarning
                         canResetPassword={Boolean(email.trim())}
@@ -709,13 +714,14 @@ export default function AuthPage() {
 
                     <button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || (isPodium && tab === "signup")}
                       aria-busy={isSubmitting}
                       className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-warm transition-all hover:shadow-glow hover:scale-[1.01] active:scale-[0.99]"
                     >
                       {isSubmitting ? t("auth.working") : tab === "login" ? t("auth.signInAction") : (isPodium ? signupLabel : t("auth.continue"))}
                       <ArrowRight className="h-4 w-4" />
                     </button>
+                    </fieldset>
                   </form>
 
                   <p className="mt-6 text-center text-xs text-muted-foreground">
@@ -723,6 +729,8 @@ export default function AuthPage() {
                       <>
                         {t(isPodium ? "podium.auth.newSponsor" : "auth.noAccount")}{" "}
                         <button
+                          disabled={isPodium}
+                          aria-describedby={isPodium ? "podium-demo-account-notice" : undefined}
                           onClick={() => selectTab("signup")}
                           className="text-primary-readable font-semibold hover:underline underline-offset-2"
                         >

@@ -9,6 +9,9 @@
 .surface [role=tab]{font-size:14px;padding:8px 12px;min-height:36px;font-weight:500}
 .surface input{border-color:#e5dfd6;background:#faf8f5;border-radius:10px;box-shadow:none}
 .surface button[type=submit]{background:#f56617;color:#201c19;box-shadow:none;border-radius:10px;font-size:14px;padding-block:11px;transform:none}
+.surface button:disabled{cursor:not-allowed;color:#827b73;background:#eee9e1;box-shadow:none;transform:none;text-decoration:none}
+.surface fieldset:disabled{opacity:.55}
+.surface fieldset:disabled input{cursor:not-allowed}
 .surface a[href="/auth"]{display:inline-flex}
 .surface form{margin-top:20px}
 .surface :is(button,a,input):focus-visible{outline:2px solid #201c19;outline-offset:3px}
