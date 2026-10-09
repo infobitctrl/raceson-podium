@@ -1,3 +1,4 @@
+import {clubOwnerApprovalScenarios} from './reward-club-owner-approvals-scenarios.mjs';
 import assert from 'node:assert/strict';
 import {literal as q} from './reward-integration-fixture.mjs';
 export async function clubDirectClaimsV5Scenarios({harness,scenario}){
@@ -52,7 +53,7 @@ export async function clubDirectClaimsV5Scenarios({harness,scenario}){
    insert into public.athlete_profiles(id,slug,first_name,last_name,display_name,birth_year,status,is_claimed,claimed_by_user_id) values(${q(id(n+1))},${q('member-'+n)},'Synthetic','Member',${q('Synthetic member '+n)},1990,'active',true,${q(id(n))});
    insert into public.club_memberships(id,club_id,athlete_profile_id,status,club_role_id) select ${q(id(n+2))},${q(row.beneficiary_id)},${q(id(n+1))},'active',id from public.club_roles where club_id=${q(row.beneficiary_id)} and not is_owner order by id limit 1;`);
   const ids=[id(4),id(13),id(23)],roster=()=>scalar(`select public.service_reward_club_creation_members(${q(id(1))},${q(id(2))},${q(row.beneficiary_id)},null,${q('{'+ids.join(',')+'}')}::uuid[])`);
-  const members=(await roster()).items.map((m,i)=>({...m,address:address(String(i+2))}));assert.equal(members.length,3);
+  const members=(await roster()).items.map((m,i)=>({memberId:m.memberId,userId:m.userId,name:m.name,address:address(String(i+2))}));assert.equal(members.length,3);
   const proof=await scalar(`select proof_id::text from app_private.reward_demo_copy_club_creations where id=${q(id(5))}`);
   const body={requestId:id(99),clubId:row.beneficiary_id,proofId:proof,owners:members.map(m=>m.address).sort(),members};
   const request=b=>scalar(`select public.service_reward_demo_copy_club_creation(${q(id(1))},${q(id(2))},'request',${q(JSON.stringify(b))}::jsonb)`);
@@ -66,6 +67,7 @@ export async function clubDirectClaimsV5Scenarios({harness,scenario}){
   assert.equal(await scalar(`select has_table_privilege('service_role','app_private.reward_club_creation_members','SELECT')`),false);
  });
 
+ await clubOwnerApprovalScenarios({harness,scenario},row);
  await scenario('V6 club reads immutable plans and rejects unknown versions without changing receipts',async()=>{
   const setup=await scalar(`select setup_id::text from app_private.reward_sponsor_allocation_approvals_v4 where id=${q(row.approval_id)}`);
   const change=version=>query(`begin;set local session_replication_role=replica;update app_private.reward_sponsor_executions set plan=jsonb_set(plan,'{version}',to_jsonb(${version}::integer)) where setup_id=${q(setup)};commit;`);

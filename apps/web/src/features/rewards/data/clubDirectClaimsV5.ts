@@ -14,9 +14,10 @@ export const clubDirectClaimSchemaV5=directClaimSchemaV5.extend({schema:z.litera
  phase:z.enum(['register','claim']).optional(),clubClaim:clubClaim.nullable().optional(),
  chainState:z.object({registrationNonce:uint,authorizationNonce:uint,clubOwnersHash:hash,allocationDigest:hash}).strict().optional(),
  registrationReceipt:z.object({transactionHash:hash,blockNumber:uint,blockHash:hash}).strict().nullable().optional(),
+ ownerApproval:z.object({signerAddress:address.nullable(),requestId:uuid.nullable(),expiresAt:z.string().datetime({offset:true}).nullable(),signatures:z.array(z.object({address,signature:z.string().regex(/^0x[0-9a-fA-F]{130}$/)}).strict()).max(3),submissions:z.array(hash).max(8)}).strict().optional(),
  safeAddress:address,owners:z.array(address).length(3),safeNonce:z.string().regex(/^(0|[1-9][0-9]*)$/),transaction:transaction.nullable()}).strict();
 export type ClubDirectClaimV5=z.infer<typeof clubDirectClaimSchemaV5>;
-export async function readClubDirectClaimV5(award:{approvalId:string;entitlementId:string},creationId:string,command?:{action:'prepare';proofId:string}|{action:'receipt'|'registrationReceipt';hash:string}){
+export async function readClubDirectClaimV5(award:{approvalId:string;entitlementId:string},creationId:string,command?:{action:'prepare';proofId:string}|{action:'receipt'|'registrationReceipt';hash:string}|{action:'sign';requestId:string;signature:Hex}|{action:'submitted';requestId:string;hash:string}){
  const path=`/v1/club/rewards/direct-claims/${uuid.parse(award.approvalId)}/${hash.parse(award.entitlementId)}/${uuid.parse(creationId)}`;
  const v=clubDirectClaimSchemaV5.parse(await apiRequest({path,cache:'no-store',...(command?{method:'POST' as const,body:command}:{})}));
  if(v.approvalId!==award.approvalId||v.entitlementId!==award.entitlementId||v.creationId!==creationId||BigInt(v.amountWei)<=0n

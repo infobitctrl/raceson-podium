@@ -1,3 +1,4 @@
+import ClubOwnerApprovals from '../components/ClubOwnerApprovals';
 import {useState} from 'react';
 import {useInfiniteQuery} from '@tanstack/react-query';
 import {getHostedAthleteAwards} from '../data/hostedAthleteAwards';
@@ -34,6 +35,7 @@ export default function HostedAthleteRewards({userId,profileId,viewKey,hr}:{user
  const total=items.reduce((sum,a)=>sum+BigInt(a.amountWei),0n);
  const t=(en:string,local:string)=>hr?local:en;
  return <div className={a.workspace}>
+  {!failed?<ClubOwnerApprovals hr={hr} onAccessError={setAccessError}/>:null}
   {ready?<div className={a.summaryWrap}><RewardAccountSummary awards={items.map(a=>({entitlementId:a.entitlementId,amountWei:a.amountWei,chainId:10143 as const}))}
    claimReadiness={needsDestinations?{reviewable,waiting:total-paid-reviewable}:undefined} confirmedPaid={complete?paid:null} paymentsComplete={complete}
    complete={complete} hasMore={!!awards.hasNextPage} loading={awards.isFetching} onMore={()=>void awards.fetchNextPage()}/></div>:null}

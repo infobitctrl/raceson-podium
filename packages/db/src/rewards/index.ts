@@ -135,3 +135,4 @@ export {hostedCopySettlementFacts,type HostedSettlementReceipt} from './hosted-c
 export * from "./direct-claims-v5.js";
 
 export * from "./club-direct-claims-v5.js";
+export {clubOwnerApproval,clubOwnerAwards,type ClubOwnerScope,type ClubOwnerRequest} from './club-owner-approvals.js';

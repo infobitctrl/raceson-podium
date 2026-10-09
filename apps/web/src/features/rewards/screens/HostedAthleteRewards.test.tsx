@@ -9,6 +9,7 @@ import HostedAthleteRewards from './HostedAthleteRewards';
 const mocks=vi.hoisted(()=>({awards:vi.fn(),destinations:vi.fn(),wallet:null as ComponentProps<typeof AthleteProfileWallet>|null,claims:null as ComponentProps<typeof SponsorClaims>|null,summary:null as ComponentProps<typeof RewardAccountSummary>|null}));
 vi.mock('../data/hostedAthleteAwards',()=>({getHostedAthleteAwards:mocks.awards}));
 vi.mock('../data/athleteDestinations',()=>({getOwnRewardDestinations:mocks.destinations}));
+vi.mock('../components/ClubOwnerApprovals',()=>({default:()=> <section>Club treasury approvals</section>}));
 vi.mock('../components/AthleteProfileWallet',()=>({default:(props:ComponentProps<typeof AthleteProfileWallet>)=>{mocks.wallet=props;return <aside><p>{props.ready?'Wallet ready':'Wallet unavailable'}</p>{props.destinations.map(d=><p key={d.requestId}>{d.address}</p>)}</aside>;}}));
 vi.mock('../components/SponsorClaims',()=>({default:(props:ComponentProps<typeof SponsorClaims>)=>{mocks.claims=props;return <section><p>{props.shared?.awards.length?'Copied award':'No copied awards'}</p><button onClick={()=>void props.shared?.refresh().catch(()=>{})}>Refresh</button><button onClick={()=>props.onAccessError?.({status:401})}>Lose access</button></section>;}}));
 vi.mock('../components/RewardAccountSummary',()=>({default:(props:ComponentProps<typeof RewardAccountSummary>)=>{mocks.summary=props;return <section>{props.complete?'Complete total':'Incomplete total'} {props.confirmedPaid?.toString()??'No receipt total'}</section>;}}));

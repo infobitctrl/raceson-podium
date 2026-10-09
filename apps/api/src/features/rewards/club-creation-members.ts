@@ -3,7 +3,7 @@ import type {RewardAccountIdentity,RewardLedgerRpc} from '@raceson/db/rewards';
 import type {PrivyClient} from '@privy-io/node';
 import {reviewerPrivyClient} from './review-publication-privy.js';
 const uuid=z.string().uuid();
-const member=z.object({memberId:uuid,name:z.string().min(1).max(1000),userId:uuid.nullable()}).strict();
+const member=z.object({memberId:uuid,name:z.string().min(1).max(1000),username:z.string().nullable().optional(),role:z.enum(['manager','athlete']).optional(),source:z.enum(['copied_representation','membership']).optional(),userId:uuid.nullable()}).strict();
 const page=z.object({clubId:uuid,items:z.array(member).max(25),nextCursor:uuid.nullable()}).strict();
 export type ClubMemberWalletLookup=(userId:string)=>Promise<string|null>;
 /** Provider-linked user-owned embedded wallets only; no search by name, email,
@@ -23,7 +23,7 @@ export function clubMemberWalletLookup(client:PrivyClient):ClubMemberWalletLooku
 export function clubCreationMembers(identity:RewardAccountIdentity,rpc:RewardLedgerRpc,lookup:ClubMemberWalletLookup=clubMemberWalletLookup(reviewerPrivyClient(process.env))){
  const actor={userId:uuid.parse(identity.userId),sessionId:uuid.parse(identity.sessionId)};
  async function roster(clubId:string,after:string|null,ids:string[]|null){
-  const r=await rpc('service_reward_club_creation_members',{p_user_id:actor.userId,p_session_id:actor.sessionId,p_club_id:uuid.parse(clubId),p_after:after===null?null:uuid.parse(after),p_ids:ids?.map(id=>uuid.parse(id))??null});
+  const r=await rpc('service_reward_club_creation_members_v2',{p_user_id:actor.userId,p_session_id:actor.sessionId,p_club_id:uuid.parse(clubId),p_after:after===null?null:uuid.parse(after),p_ids:ids?.map(id=>uuid.parse(id))??null});
   if(r.error){const code=String((r.error as {message?:unknown}).message);throw Error(['reward_account_session_required','reward_club_owner_required','reward_demo_account_required','reward_club_members_changed'].includes(code)?code:'reward_club_members_unavailable');}
   const p=page.parse(r.data);if(p.clubId!==clubId||new Set(p.items.map(m=>m.memberId)).size!==p.items.length)throw Error('reward_club_members_unavailable');return p;
  }

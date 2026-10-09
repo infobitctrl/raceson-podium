@@ -13,7 +13,7 @@ export type ClubDirectClaimCommandV5={action:'prepare';proofId:string}|{action:'
 function check(v:unknown,code='invalid_sponsor_claim'):asserts v{if(!v)throw Error(code);}
 /** The only server signature is an automatic account/wallet identity binding.
  * Sporting awards are already final. Two Safe owners consent and one submits their treasury’s claim. */
-export async function clubDirectClaimV5(actor:RewardAccountIdentity,approvalId:string,entitlementId:string,creationId:string,command:ClubDirectClaimCommandV5|undefined,
+export async function buildClubDirectClaimV5(actor:RewardAccountIdentity,approvalId:string,entitlementId:string,creationId:string,command:ClubDirectClaimCommandV5|undefined,
  deps:{rpc:RewardLedgerRpc;reader:SponsorChainReader & RewardClubSafeDeploymentReader;issuer:IdentityBindingIssuerV1|null;issuerV2?:IdentityBindingIssuerV1|null}){
  const identity={...actor};
  const read=()=>clubDirectClaimFactsV5(identity,approvalId,entitlementId,creationId,deps.rpc,command?.action==='prepare'?{proofId:command.proofId}:{});

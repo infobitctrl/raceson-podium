@@ -52,7 +52,7 @@ export async function sendClubSafeCreation(provider:RewardWalletProvider,view:Cl
  }finally{events.forEach(e=>provider.removeListener(e,change));}
 }
 
-const memberWallet=z.object({memberId:uuid,name:z.string().min(1).max(1000),address:address.nullable(),status:z.enum(['ready','setup_needed','unavailable'])}).strict().refine(m=>(m.status==='ready')===(m.address!==null));
+const memberWallet=z.object({memberId:uuid,name:z.string().min(1).max(1000),username:z.string().nullable().optional(),role:z.enum(['manager','athlete']).optional(),source:z.enum(['copied_representation','membership']).optional(),address:address.nullable(),status:z.enum(['ready','setup_needed','unavailable'])}).strict().refine(m=>(m.status==='ready')===(m.address!==null));
 export type ClubCreationMember=z.infer<typeof memberWallet>;
 export async function clubCreationMembers(clubId:string,after:string|null=null){
  uuid.parse(clubId);if(after!==null)uuid.parse(after);

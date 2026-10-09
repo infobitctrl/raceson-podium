@@ -33,3 +33,12 @@ it('does not label a paginated or filtered roster as a small club',async()=>{
  m.read.mockResolvedValue({clubId:'one',items:rows.slice(1,3),nextCursor:null});fireEvent.click(screen.getByRole('button',{name:'Load more members'}));await screen.findByLabelText('Select Member 3');
  fireEvent.change(screen.getByLabelText('Search club members'),{target:{value:'Member 1'}});expect(screen.queryByText(/more active member/)).not.toBeInTheDocument();
 });
+it('shows copied athlete aliases and manager role without changing the selected identity',async()=>{
+ m.read.mockResolvedValue({clubId:'one',items:[{...rows[0],name:'Demo Club 36 Representative',role:'manager',username:'demo.club36',source:'membership'},
+  {...rows[1],name:'Demo athlete 134',role:'athlete',username:'demo.athlete134',source:'copied_representation'}],nextCursor:null});
+ const change=vi.fn();render(<ClubTreasuryMembers clubId="one" disabled={false} onChange={change}/>);
+ await screen.findByText('Club manager');expect(screen.getByText('Athlete · Copied race roster')).toBeVisible();
+ fireEvent.change(screen.getByLabelText('Search club members'),{target:{value:'demo.athlete134'}});
+ fireEvent.click(screen.getByLabelText('Select Demo athlete 134'));expect(change.mock.calls.at(-1)?.[0][0].memberId).toBe('2');
+ expect(screen.queryByText('Demo Club 36 Representative')).not.toBeInTheDocument();
+});

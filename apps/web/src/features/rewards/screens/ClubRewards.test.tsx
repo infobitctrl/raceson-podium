@@ -1,14 +1,16 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/shared/i18n/I18nProvider";
 import ClubRewards from "./ClubRewards";
 import { clubFixture, clubAddress as a } from "../model/clubFixtures.test-helper";
-const c = vi.hoisted(() => ({ enabled: true, user: "owner", account: "owner", session: { epoch: 1 } as { epoch: number } | null,
+const c = vi.hoisted(() => ({ enabled: true, hosted: false, creations: vi.fn(), user: "owner", account: "owner", session: { epoch: 1 } as { epoch: number } | null,
   clubs: vi.fn(), history: vi.fn(), submit: vi.fn(), read: vi.fn(), withdraw: vi.fn(), wallet: vi.fn(), signOut: vi.fn() }));
+vi.mock("../data/clubSafeCreation",()=>({clubSafeCreationHistory:c.creations}));
+vi.mock("../components/ClubTreasuryCreation",()=>({default:({onBack}:{onBack:()=>void})=><section aria-label="Privy treasury setup"><h2>Create your club treasury with Privy</h2><button onClick={onBack}>Other treasury options</button></section>}));
 vi.mock("../components/SponsorClubClaims",()=>({default:()=> <div>Club claim controls</div>}));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: { id: c.user }, account: { userId: c.account }, session: c.session, isLoading: false, signOut:c.signOut }) }));
-vi.mock("@/lib/public-env", () => ({ publicEnv: { get rewardPortalEnabled() { return c.enabled; }, rewardDemo: { mode: "local" } } }));
+vi.mock("@/lib/public-env", () => ({ publicEnv: { get rewardPortalEnabled() { return c.enabled; }, get hostedOperations() { return c.hosted; }, rewardDemo: { mode: "local" } } }));
 vi.mock("../data/clubTreasuries", () => ({ getRewardOwnedClubs: c.clubs, getClubTreasuryHistory: c.history,
   submitClubTreasury: c.submit, readClubTreasury: c.read, withdrawClubTreasury: c.withdraw }));
 function Route(){const l=useLocation();return <span aria-label="Route">{l.pathname+l.search}</span>;}
@@ -29,7 +31,7 @@ function fill(region: HTMLElement, locale: "en" | "hr" = "en") {
   fireEvent.click(within(region).getByRole("checkbox"));
 }
 beforeEach(() => {
-  const f = clubFixture(); c.enabled = true; c.user = "owner"; c.account = "owner"; c.session = { epoch: 1 };
+  const f = clubFixture(); c.hosted = false; c.creations.mockReset().mockResolvedValue({items:[],nextCursor:null}); c.enabled = true; c.user = "owner"; c.account = "owner"; c.session = { epoch: 1 };
   c.clubs.mockReset().mockResolvedValue(f.clubs); c.history.mockReset().mockResolvedValue({ items: [], nextCursor: null });
   c.submit.mockReset().mockResolvedValue(f.request); c.read.mockReset().mockResolvedValue(f.request);
   c.withdraw.mockReset().mockResolvedValue({ ...f.request, status: "withdrawn", withdrawnAt: "2026-09-09T01:01:00Z" }); c.wallet.mockReset();
@@ -126,4 +128,52 @@ it('offers an explicit account switch after ownership denial instead of looping 
  c.clubs.mockRejectedValue({status:403});c.history.mockRejectedValue({status:403});mount();
  const change=await screen.findByRole('button',{name:'Sign in with the club owner account'});expect(c.signOut).not.toHaveBeenCalled();
  fireEvent.click(change);await screen.findByText('/auth?next=%2Fclub%2Frewards');expect(c.signOut).toHaveBeenCalledOnce();expect(c.submit).not.toHaveBeenCalled();expect(c.wallet).not.toHaveBeenCalled();
+});
+
+
+describe('Privy-first hosted treasury onboarding',()=>{
+  it('opens Privy setup before claims on first visit without wallet or nomination writes',async()=>{
+    c.hosted=true; mount();
+    const form=await screen.findByRole('region',{name:'Privy treasury setup'});
+    expect(form.compareDocumentPosition(screen.getByText('Club claim controls')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Nominate a treasury'})).not.toBeInTheDocument();
+    expect(c.creations).toHaveBeenCalledOnce();expect(c.submit).not.toHaveBeenCalled();expect(c.wallet).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button',{name:'Refresh request history'}));
+    expect(screen.getByRole('region',{name:'Privy treasury setup'})).toBe(form);
+    fireEvent.click(within(form).getByRole('button',{name:'Other treasury options'}));
+    expect(screen.queryByRole('region',{name:'Privy treasury setup'})).not.toBeInTheDocument();
+    expect(screen.getByRole('button',{name:'Create club treasury with Privy'})).toBeVisible();
+    const alternative=screen.getByText('Other treasury options',{selector:'summary'});
+    expect(alternative.closest('details')).not.toHaveAttribute('open');
+    fireEvent.click(alternative);
+    await waitFor(()=>expect(screen.getByRole('button',{name:'Nominate a treasury'})).toBeEnabled());
+    fireEvent.click(screen.getByRole('button',{name:'Nominate a treasury'}));
+    expect(await screen.findByRole('region',{name:'Nominate a treasury'})).toBeVisible();
+    expect(c.submit).not.toHaveBeenCalled();expect(c.wallet).not.toHaveBeenCalled();
+  });
+  it.each(['creation','nomination'])('does not auto-start another treasury with existing %s history',async kind=>{
+    c.hosted=true;
+    if(kind==='creation')c.creations.mockResolvedValue({items:[{requestId:'saved',current:true,verified:{safeAddress:a(10)}}],nextCursor:null});
+    else c.history.mockResolvedValue(clubFixture().history);
+    mount();await screen.findByRole('button',{name:'Create club treasury with Privy'});
+    expect(screen.queryByRole('region',{name:'Privy treasury setup'})).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'Create club treasury with Privy'}));
+    expect(await screen.findByRole('region',{name:'Privy treasury setup'})).toBeVisible();
+  });
+  it('waits for creation history and retries a failed read before defaulting to setup',async()=>{
+    c.hosted=true;let reject!:(e:unknown)=>void;c.creations.mockImplementationOnce(()=>new Promise((_r,j)=>{reject=j;}));mount();
+    await screen.findByText('Checking existing treasury setup…');
+    expect(screen.queryByRole('region',{name:'Privy treasury setup'})).not.toBeInTheDocument();
+    expect(screen.getByRole('button',{name:'Create club treasury with Privy'})).toBeDisabled();
+    await act(async()=>reject({status:503}));
+    fireEvent.click(await screen.findByRole('button',{name:'Retry treasury check'}));
+    expect(await screen.findByRole('region',{name:'Privy treasury setup'})).toBeVisible();
+    expect(c.submit).not.toHaveBeenCalled();expect(c.wallet).not.toHaveBeenCalled();
+  });
+  it('clears onboarding when the session changes and never offers it without ownership',async()=>{
+    c.hosted=true;const view=mount();await screen.findByRole('region',{name:'Privy treasury setup'});
+    c.clubs.mockResolvedValue({items:[],nextCursor:null});c.session={epoch:2};view.update();
+    expect(await screen.findByRole('region',{name:'No club to manage'})).toBeVisible();
+    expect(screen.queryByRole('region',{name:'Privy treasury setup'})).not.toBeInTheDocument();
+  });
 });
