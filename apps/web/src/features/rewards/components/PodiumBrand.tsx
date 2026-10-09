@@ -1,2 +1,12 @@
 import s from './PodiumHeader.module.css';
-export default function PodiumBrand(){return <><span className={s.logo} aria-hidden="true"><i/><i/><i/></span><span>RacesOn <b>Podium</b></span></>;}
+import {brandNavbarLight,brandNavbarSymbolLight} from '@/shared/brand/brandAssets';
+
+export default function PodiumBrand(){
+ return <>
+  <img className={s.logo} src={brandNavbarSymbolLight} width={192} height={137} alt="" aria-hidden="true"/>
+  <span className={s.brandName}>
+   <img className={s.wordmark} src={brandNavbarLight} width={384} height={73} alt="RacesOn"/>
+   <b>Podium</b>
+  </span>
+ </>;
+}
