@@ -42,11 +42,13 @@ export async function hostedCopyClubAwards(identity:RewardAccountIdentity,after:
  const v=object(await call(rpc,'service_reward_demo_copy_club_awards',{p_user_id:userId,p_session_id:sessionId,p_after:after}),['items','nextCursor']);
  if(!Array.isArray(v.items)||v.items.length>50||v.nextCursor!==null&&(typeof v.nextCursor!=='string'||!/^0x[0-9a-f]{64}$/.test(v.nextCursor)))throw Error('invalid_sponsor_claim');
  let previous=after;
- for(const row of v.items){const a=object(row,['approvalId','slot','entitlementId','amountWei','clubId','claims']);
+ for(const row of v.items){const directVersion=[5,6].includes((row as {protocolVersion?:number})?.protocolVersion??4);
+  const a=object(row,['approvalId','slot','entitlementId','amountWei','clubId','claims',...(directVersion?['protocolVersion','directClaim']:[])]);
   uuid(a.approvalId);uuid(a.clubId);
   if(!Number.isInteger(a.slot)||Number(a.slot)<0||Number(a.slot)>5||typeof a.entitlementId!=='string'||!/^0x[0-9a-f]{64}$/.test(a.entitlementId)
    ||previous!==null&&a.entitlementId<=previous||typeof a.amountWei!=='string'||! /^(0|[1-9][0-9]*)$/.test(a.amountWei)||!Array.isArray(a.claims))throw Error('invalid_sponsor_claim');
   previous=a.entitlementId;
+  if(directVersion){const direct=object(a.directClaim,['paid']);if(typeof direct.paid!=='boolean'||a.claims.length)throw Error('invalid_sponsor_claim');}
   for(const claim of a.claims){const c=object(claim,['id','prepared','consented','approved','paid']);uuid(c.id);
    if(!['prepared','consented','approved','paid'].every(k=>typeof c[k]==='boolean')||c.approved&&!c.consented||c.paid&&!c.approved||c.consented&&!c.prepared)throw Error('invalid_sponsor_claim');}
  }

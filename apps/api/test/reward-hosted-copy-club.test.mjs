@@ -43,6 +43,14 @@ test('club award pages reject duplicate/out-of-order entitlements, short-page cu
  for(const data of [{items:[row,row],nextCursor:null},{items:[row],nextCursor:row.entitlementId},{items:[{...row,claims:[{id:cid,prepared:true,consented:false,approved:false,paid:true}]}],nextCursor:null}])await assert.rejects(hostedCopyClubAwards(actor,null,async()=>({data,error:null})));
  await assert.rejects(hostedCopyClubAwards(actor,'wrong',rpc));
 });
+test('copied club awards preserve V5/V6 direct payment status and reject malformed or mixed protocols',async()=>{
+ const row={approvalId:id(6),slot:0,entitlementId:'0x'+'a'.repeat(64),amountWei:'101',clubId:id(8),claims:[]};
+ const read=item=>hostedCopyClubAwards(actor,null,async()=>({data:{items:[item],nextCursor:null},error:null}));
+ for(const protocolVersion of [5,6])for(const paid of [false,true]){
+  const direct={...row,protocolVersion,directClaim:{paid}};assert.deepEqual((await read(direct)).items,[direct]);
+ }
+ for(const patch of [{protocolVersion:7,directClaim:{paid:false}},{protocolVersion:6},{protocolVersion:6,directClaim:{paid:'false'}},{protocolVersion:6,directClaim:{paid:false,signature:'forbidden'}},{protocolVersion:6,directClaim:{paid:false},claims:[{id:cid,prepared:true,consented:false,approved:false,paid:false}]},{directClaim:{paid:false}}])await assert.rejects(read({...row,...patch}));
+});
 const envValues={APP_BASE_URL:origin,API_CORS_ORIGIN:origin,SUPABASE_URL:'https://niklhlmljiikwbkrmapw.supabase.co',SUPABASE_ANON_KEY:'synthetic-anon-key',SUPABASE_SERVICE_ROLE_KEY:'synthetic-service-key',RACESON_REWARD_PORTAL_MODE:'testnet',RACESON_REWARD_HOSTED_COPY_MODE:'sponsor-drafts-v1',RACESON_REWARD_HOSTED_OPERATIONS:'testnet-v1',RACESON_REWARD_DEMO_ORIGIN:origin,RACESON_REWARD_DEMO_SUPABASE_URL:'https://niklhlmljiikwbkrmapw.supabase.co'};
 test('copied club HTTP authenticates before private reads and refuses client identity, Safe approval and ordinary payment commands',async()=>{
  const old=Object.fromEntries(Object.keys(envValues).map(k=>[k,process.env[k]]));Object.assign(process.env,envValues);
