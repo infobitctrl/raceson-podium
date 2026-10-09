@@ -1,12 +1,7 @@
 import s from './PodiumHeader.module.css';
-import {brandNavbarLight,brandNavbarSymbolLight} from '@/shared/brand/brandAssets';
+import podiumLogo from '@/assets/brand/podium-trisport-logo.png';
+import {staticAssetUrl} from '@/lib/static-asset';
 
 export default function PodiumBrand(){
- return <>
-  <img className={s.logo} src={brandNavbarSymbolLight} width={192} height={137} alt="" aria-hidden="true"/>
-  <span className={s.brandName}>
-   <img className={s.wordmark} src={brandNavbarLight} width={384} height={73} alt="RacesOn"/>
-   <b>Podium</b>
-  </span>
- </>;
+ return <img className={s.logo} src={staticAssetUrl(podiumLogo)} width={1918} height={820} alt="RacesOn Podium"/>;
 }
