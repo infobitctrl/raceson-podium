@@ -38,7 +38,7 @@ it('expires a displayed request without treating its old signature as current',a
 });
 it.each(['not_open','paused','expired'])('reports blocked claim status %s without inventing approvals',async status=>{
  m.read.mockResolvedValue({...view,status,ownerApproval:{...approval,requestId:null,signatures:[],expiresAt:null}});render(<ClubMultisigStatus item={item} hr={false}/>);
- await screen.findByText('You have not signed · no active request');expect(screen.queryByText(/Collecting signatures/)).not.toBeInTheDocument();
+ await screen.findByText('No active signing request');expect(screen.queryByText(/Collecting signatures/)).not.toBeInTheDocument();
 });
 it('does not infer paid or signed from a stale list item, and reports failed access',async()=>{
  const lost=vi.fn();m.read.mockRejectedValue({status:403});render(<ClubMultisigStatus item={{...item,award:{...item.award,directClaim:{paid:true}}}} hr={false} onAccessError={lost}/>);
@@ -49,4 +49,9 @@ it('rejects a mismatched treasury and ignores a late previous account response',
  let finish:(value:unknown)=>void=()=>{};m.read.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));const old=render(<ClubMultisigStatus item={item} hr={false}/>);await waitFor(()=>expect(m.read).toHaveBeenCalledTimes(2));old.unmount();
  m.read.mockResolvedValue({...view,ownerApproval:{...approval,signatures:[]}});render(<ClubMultisigStatus item={item} hr={false}/>);await screen.findByText('You have not signed this request');
  await act(async()=>finish(view));expect(screen.queryByText('You signed this request')).not.toBeInTheDocument();
+});
+
+it('does not claim the athlete never signed a submitted request whose signatures have expired',async()=>{
+ m.read.mockResolvedValue({...view,ownerApproval:{...approval,requestId:null,expiresAt:null,signatures:[],submissions:['tx']}});render(<ClubMultisigStatus item={item} hr={false}/>);
+ await screen.findByText('Your signature status is unavailable for this submission');expect(screen.getByText(/Submitted · awaiting confirmation/)).toBeVisible();expect(screen.queryByText(/You have not signed/)).not.toBeInTheDocument();
 });
