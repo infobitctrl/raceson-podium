@@ -16,7 +16,10 @@ export const clubDirectClaimSchemaV5=directClaimSchemaV5.extend({schema:z.litera
  chainState:z.object({registrationNonce:uint,authorizationNonce:uint,clubOwnersHash:hash,allocationDigest:hash}).strict().optional(),
  registrationReceipt:z.object({transactionHash:hash,blockNumber:uint,blockHash:hash}).strict().nullable().optional(),
  ownerApproval:z.object({signerAddress:address.nullable(),requestId:uuid.nullable(),expiresAt:z.string().datetime({offset:true}).nullable(),signatures:z.array(z.object({address,signature:z.string().regex(/^0x[0-9a-fA-F]{130}$/)}).strict()).max(3),submissions:z.array(hash).max(8)}).strict().optional(),
- safeAddress:address,owners:z.array(address).length(3),safeNonce:z.string().regex(/^(0|[1-9][0-9]*)$/),transaction:transaction.nullable()}).strict();
+ ownerDisplay:z.array(z.object({address,name:z.string().trim().min(1).max(1000)}).strict()).max(3).optional(),
+ safeAddress:address,owners:z.array(address).length(3),safeNonce:z.string().regex(/^(0|[1-9][0-9]*)$/),transaction:transaction.nullable()}).strict().superRefine((v,c)=>{
+ if(v.ownerDisplay&&(new Set(v.ownerDisplay.map(o=>o.address)).size!==v.ownerDisplay.length||v.ownerDisplay.some(o=>!v.owners.includes(o.address))))c.addIssue({code:'custom',message:'invalid_owner_display'});
+});
 export type ClubDirectClaimV5=z.infer<typeof clubDirectClaimSchemaV5>;
 export async function readClubDirectClaimV5(award:{approvalId:string;entitlementId:string},creationId:string,command?:{action:'prepare';proofId:string}|{action:'receipt'|'registrationReceipt';hash:string}|{action:'sign';requestId:string;signature:Hex}|{action:'submitted';requestId:string;hash:string}){
  const path=`/v1/club/rewards/direct-claims/${uuid.parse(award.approvalId)}/${hash.parse(award.entitlementId)}/${uuid.parse(creationId)}`;

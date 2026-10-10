@@ -62,3 +62,10 @@ test('registration signatures bind the exact Safe nonce, call and chain independ
 test('manager outside owner set cannot prepare, sign or submit',async()=>{
  const f=fixture();await assert.rejects(f.run(4,{action:'prepare',proofId:id(8)}),/owner_required/);assert.equal(f.prepared,0);
 });
+
+test('display labels do not change an existing approval message or grant signing authority',async()=>{
+ const f=fixture();await f.run(0,{action:'prepare',proofId:id(8)});const requestId=f.saved.requestId;
+ const ownerDisplay=owners.map((address,i)=>({address,name:`Demo owner ${i+1}`}));f.change({ownerDisplay});
+ const current=await f.run(1);assert.deepEqual(current.ownerDisplay,ownerDisplay);assert.equal(current.ownerApproval.requestId,requestId);
+ assert(currentClubOwnerRequest(f.saved,f.current));await assert.rejects(f.run(4,{action:'prepare',proofId:id(8)}),/owner_required/);
+});

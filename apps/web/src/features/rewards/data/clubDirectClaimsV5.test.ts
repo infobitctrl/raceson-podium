@@ -1,5 +1,5 @@
 import {clubOwnersHashV1,walletBindingMessageV2,encodeWalletRegistrationV2,clubClaimMessageV6} from '@raceson/rewards-chain/club-signatures-v6';
-import {validateClubClaimV6} from './clubDirectClaimsV5';
+import {validateClubClaimV6,clubDirectClaimSchemaV5} from './clubDirectClaimsV5';
 import type {Address} from 'viem';
 import {it,expect,vi} from 'vitest';
 import {privateKeyToAccount} from 'viem/accounts';
@@ -128,4 +128,12 @@ it.each(['reject','unknown'] as const)('sponsorship %s never falls back to charg
  const send=mode==='reject'?vi.fn().mockRejectedValue(Error('sponsorship_denied')):vi.fn().mockResolvedValue({hash:'unknown'});
  await expect(sendDirectClubClaimV5(p,v,signatures,owners[0].address.toLowerCase(),()=>true,send)).rejects.toThrow(mode==='reject'?'sponsorship_denied':'transaction_unknown');
  expect(send).toHaveBeenCalledOnce();expect(p.request.mock.calls.some(([x])=>x.method==='eth_sendTransaction')).toBe(false);expect(p.listeners.size).toBe(0);
+});
+
+it('accepts address-bound owner display but rejects foreign, duplicate or private identity metadata',async()=>{
+ const v=await fixture(),ownerDisplay=[{address:v.owners[2],name:'Demo athlete 201'},{address:v.owners[0],name:'Demo athlete 70'}];
+ expect(clubDirectClaimSchemaV5.parse({...v,ownerDisplay}).ownerDisplay).toEqual(ownerDisplay);
+ for(const invalid of [[{address:safe,name:'Foreign'}],[ownerDisplay[0],ownerDisplay[0]],[{...ownerDisplay[0],userId:'private'}],[{...ownerDisplay[0],name:' '}]] )
+  expect(()=>clubDirectClaimSchemaV5.parse({...v,ownerDisplay:invalid})).toThrow();
+ expect(clubDirectClaimSchemaV5.parse(v).ownerDisplay).toBeUndefined();
 });

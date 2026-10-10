@@ -1,4 +1,4 @@
-import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {render,screen,fireEvent,waitFor,within} from '@testing-library/react';
 import {DirectClubClaim} from './DirectClubClaims';
 const m=vi.hoisted(()=>({read:vi.fn(),history:vi.fn(),send:vi.fn(),sign:vi.fn(),proof:vi.fn(),confirm:vi.fn(),dispose:vi.fn(),assertCurrent:vi.fn(),actor:'',request:null as string|null,signatures:[] as {address:string;signature:string}[]}));
 vi.mock('../data/clubDirectClaimsV5',()=>({readClubDirectClaimV5:m.read,sendDirectClubClaimV5:m.send,signDirectClubClaimV5:m.sign}));
@@ -51,4 +51,24 @@ it('V6 registration recovery confirms registration without payment or reusing cl
  sessionStorage.setItem(`podium:club-direct:${id}:${hash}`,JSON.stringify({creationId,hash,kind:'registrationReceipt'}));
  m.read.mockResolvedValue({...current(),protocolVersion:6,phase:'claim',recipient:safe,chainState:{registrationNonce:'1',authorizationNonce:'0',clubOwnersHash:hash,allocationDigest:hash},clubClaim:null,registrationReceipt:{transactionHash:hash,blockNumber:'1',blockHash:hash}});
  render(<DirectClubClaim award={{...award,protocolVersion:6}} hr={false} fixedCreation={fixed}/>);await screen.findByRole('button',{name:'Prepare club claim'});expect(screen.queryByText('Reward paid')).not.toBeInTheDocument();expect(m.sign).not.toHaveBeenCalled();expect(sessionStorage.length).toBe(0);
+});
+
+it('shows the recorded owner names with full matching addresses before preparation, including for a manager',async()=>{
+ const ownerDisplay=[{address:owners[2],name:'Demo athlete 201'},{address:owners[0],name:'Demo athlete 70'},{address:owners[1],name:'Demo athlete 173'}];
+ m.read.mockResolvedValue({...view,ownerDisplay,ownerApproval:{signerAddress:null,requestId:null,expiresAt:null,signatures:[],submissions:[]}});
+ render(<DirectClubClaim award={award} hr={false} fixedCreation={fixed}/>);
+ const list=await screen.findByRole('list',{name:'Treasury owners'}),items=within(list).getAllByRole('listitem');
+ for(const [i,name] of ['Demo athlete 70','Demo athlete 173','Demo athlete 201'].entries()){
+  expect(items[i]).toHaveTextContent(name);expect(within(items[i]).getByRole('link')).toHaveTextContent(owners[i]);
+ }
+ expect(screen.getByRole('button',{name:'Prepare club claim'})).toBeDisabled();expect(m.proof).not.toHaveBeenCalled();
+ m.read.mockResolvedValue({...current(),ownerDisplay,transaction:{from:safe},ownerApproval:{signerAddress:owners[0],requestId:id,signatures:[{address:owners[1],signature:'0x'+'11'.repeat(65)}],submissions:[],expiresAt:null}});
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
+ await waitFor(()=>expect(items[1]).toHaveTextContent('Signed'));expect(items[0]).toHaveTextContent('Awaiting signature');expect(m.sign).not.toHaveBeenCalled();
+});
+it('keeps legacy owner addresses visible without inventing names',async()=>{
+ render(<DirectClubClaim award={award} hr={false} fixedCreation={fixed}/>);
+ const list=await screen.findByRole('list',{name:'Treasury owners'});
+ expect(within(list).getAllByText('Owner name unavailable')).toHaveLength(3);
+ expect(within(list).getAllByRole('link').map(link=>link.textContent)).toEqual(owners);
 });

@@ -51,7 +51,7 @@ test('club direct route is bounded to an owned creation and rejects unscoped sig
  try{
   let response,calls=0;const deps={config:()=>({chainId:10143,origin}),sponsorReader:{getStorageAt:async()=>{}},identityIssuer:null,applyPrivateSessionHeaders(){},
    requireIdentity:async()=>({userId:id,sessionId:id}),readJsonBody:async()=>({action:'prepare',proofId:id,owners:['forged']}),
-   rpc:async(name,args)=>{calls++;assert.equal(name,'service_reward_demo_copy_club_direct_claim_v5');assert.equal(args.p_creation_id,id);return{data:null,error:{message:'reward_club_owner_required'}};},
+   rpc:async(name,args)=>{calls++;assert.equal(name,'service_reward_demo_copy_club_direct_claim_display');assert.equal(args.p_creation_id,id);return{data:null,error:{message:'reward_club_owner_required'}};},
    sendSuccess(){assert.fail('foreign club claim');},sendError(_r,status,code){response={status,code};}};
   await dispatchDirectClaimsV5({method:'POST'},{},new URL(p,origin),deps);assert.equal(response.status,400);assert.equal(calls,0);
   await dispatchDirectClaimsV5({method:'GET'},{},new URL(p,origin),deps);assert.equal(response.status,404);assert.equal(calls,2);
