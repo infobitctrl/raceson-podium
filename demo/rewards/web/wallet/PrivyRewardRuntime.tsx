@@ -126,7 +126,7 @@ function AuthenticatedWallet({ configuration, sessionKey, walletUserId, onState 
             if (sponsorTransactionSender(input) !== wallet.address.toLowerCase() || input.plan.chainId !== 10143 || !isCurrent()) return Promise.reject(new Error("sponsor_wallet_changed"));
             return checkSponsorTransaction(provider, input, () => isCurrent() && sponsorCurrent());
           },
-          sendDirectClubClaim: (view, signatures, address, clubCurrent) => sendDirectClubClaimV5(provider, view, signatures, address, () => isCurrent() && clubCurrent()),
+          sendDirectClubClaim: (view, signatures, address, clubCurrent) => sendDirectClubClaimV5(provider, view, signatures, address, () => isCurrent() && clubCurrent(), (tx,options)=>sponsoredSendRef.current(tx,options)),
           sendDirectClaim: (view, athleteCurrent) => {
             if (view.transaction?.from !== wallet.address.toLowerCase() || view.transaction.chainId !== 10143 || !isCurrent()) return Promise.reject(new Error("wallet_changed"));
             return sendDirectClaimV5(provider, view, () => isCurrent() && athleteCurrent(), (tx,options)=>sponsoredSendRef.current(tx,options));

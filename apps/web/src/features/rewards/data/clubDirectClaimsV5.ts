@@ -4,7 +4,7 @@ import {apiRequest} from '@/lib/api';
 import {encodeFunctionData,recoverTypedDataAddress,type Address,type Hex} from 'viem';
 import {directSafeAbiV5,directSafeMessageV5,verifyDirectSafeSignaturesV5,encodeDirectSafeCallV5,type DirectSafeCallV5} from '@raceson/rewards-chain/sponsor-club-direct-v5';
 import {encodeRegisterAndClaimV5,encodeSponsorDirectClaimV5,verifyWalletBindingProofV1} from '@raceson/rewards-chain/sponsor-direct-claims-v5';
-import {directClaimSchemaV5,directBindingSchemaV1} from './directClaimsV5';
+import {directClaimSchemaV5,directBindingSchemaV1,type SponsoredClaimSenderV5} from './directClaimsV5';
 import type {RewardWalletProvider} from './browserWallet';
 const address=z.string().regex(/^0x[0-9a-f]{40}$/),hash=z.string().regex(/^0x[0-9a-f]{64}$/),uuid=z.string().uuid();
 const uint=z.string().regex(/^(0|[1-9][0-9]*)$/);
@@ -52,7 +52,7 @@ export async function signDirectClubClaimV5(provider:RewardWalletProvider,view:C
  if(typeof signature!=='string'||!/^0x[0-9a-f]{130}$/i.test(signature)||(await (typed.primaryType==='ReceiveClubReward'?recoverTypedDataAddress({...typed,signature:signature as Hex}):recoverTypedDataAddress({...typed,signature:signature as Hex}))).toLowerCase()!==address)throw Error('reward_club_consent_invalid');
  return signature as Hex;
 }
-export async function sendDirectClubClaimV5(provider:RewardWalletProvider,view:ClubDirectClaimV5,signatures:Hex[],address:string,current:()=>boolean){
+export async function sendDirectClubClaimV5(provider:RewardWalletProvider,view:ClubDirectClaimV5,signatures:Hex[],address:string,current:()=>boolean,send?:SponsoredClaimSenderV5){
  const claim=view.protocolVersion===6&&view.phase==='claim'?validateClubClaimV6(view):null;
  const call=claim?null:await directClubCallV5(view);
  const data=claim?await encodeClubClaimV6({chainId:10143,campaign:view.campaignAddress as Address},claim,view.owners as Address[],signatures):encodeDirectSafeCallV5(call!,(await verifyDirectSafeSignaturesV5(call!,view.owners as Address[],signatures)).signature);
@@ -64,6 +64,15 @@ export async function sendDirectClubClaimV5(provider:RewardWalletProvider,view:C
   await check();const tx={from:address,to:claim?view.campaignAddress:call!.safe,data,value:'0x0',chainId:'0x279f'};
   if(call){const nonce=quantity(await provider.request({method:'eth_call',params:[{to:call.safe,data:encodeFunctionData({abi:directSafeAbiV5,functionName:'nonce'})},'pending']}));
   if(nonce!==call.nonce)throw Error('reward_sponsor_claim_conflict');}
+  if(send){
+   // Privy pays gas without drawing from the owner or the club's prize funds.
+   // A rejected or ambiguous sponsored send must never fall back to owner gas.
+   if(claim)validateClubClaimV6(view);else await directClubCallV5(view);
+   await check();
+   const {hash}=await send({from:address as Address,to:tx.to as Address,data,value:0n,chainId:10143},
+    {address:address as Address,sponsor:true,uiOptions:{showWalletUIs:true}});
+   if(typeof hash!=='string'||!/^0x[0-9a-f]{64}$/i.test(hash))throw Error('transaction_unknown');return hash.toLowerCase();
+  }
   const initialBalance=quantity(await provider.request({method:'eth_getBalance',params:[address,'pending']}));
   await check();if(initialBalance===0n)throw Error('claim_insufficient_balance');
   const gas=(quantity(await provider.request({method:'eth_estimateGas',params:[tx]}))*12n+9n)/10n,price=quantity(await provider.request({method:'eth_gasPrice'}));

@@ -87,3 +87,45 @@ it('V6 claim signs the reward domain, requires two fresh distinct owners and bro
  const tx=p.request.mock.calls.find(([x])=>x.method==='eth_sendTransaction')![0].params![0] as {to:string;data:string};expect(tx.to).toBe(campaign);expect(tx.data).not.toBe('0x');
  expect(p.request.mock.calls.some(([x])=>x.method==='eth_call')).toBe(false);
 });
+
+async function sponsoredFixture(phase:'v5'|'register'|'claim'){
+ const registration=phase==='v5'?await fixture():await v6Registration();
+ if(phase!=='claim')return registration;
+ const b=registration.transaction!.binding!,ownersHash=b.clubOwnersHash!;
+ return {...registration,phase:'claim' as const,recipient:safe,chainState:{registrationNonce:'1',authorizationNonce:'0',clubOwnersHash:ownersHash,allocationDigest:id},
+  transaction:{chainId:10143 as const,from:safe,to:campaign,data:'0x',value:'0' as const,binding:null,identityProof:null},
+  clubClaim:{entitlementId:id,recipient:safe,amount:'100',pot:0 as const,nonce:'0',issuedAt:b.issuedAt,expiresAt:b.expiresAt,allocationDigest:id,clubOwnersHash:ownersHash,registrationNonce:'1'}};
+}
+async function consent(v:ClubDirectClaimV5){
+ return Promise.all(owners.slice(0,2).map(o=>signDirectClubClaimV5(provider(o),v,o.address.toLowerCase(),()=>true)));
+}
+it.each(['v5','register','claim'] as const)('sponsors %s with zero owner balance, exact destination and explicit wallet UI',async phase=>{
+ const v=await sponsoredFixture(phase),signatures=await consent(v),p=provider(),base=p.request.getMockImplementation()!;
+ p.request.mockImplementation(async args=>args.method==='eth_getBalance'?'0x0':base(args));
+ const send=vi.fn().mockResolvedValue({hash:id}),address=owners[0].address.toLowerCase();
+ await expect(sendDirectClubClaimV5(p,v,signatures,address,()=>true,send)).resolves.toBe(id);
+ expect(send).toHaveBeenCalledExactlyOnceWith({from:address,to:phase==='claim'?campaign:safe,data:expect.stringMatching(/^0x[0-9a-f]+$/),value:0n,chainId:10143},
+  {address,sponsor:true,uiOptions:{showWalletUIs:true}});
+ expect(p.request.mock.calls.some(([x])=>['eth_getBalance','eth_estimateGas','eth_gasPrice','eth_sendTransaction'].includes(x.method))).toBe(false);
+ expect(p.listeners.size).toBe(0);
+});
+it.each(['wallet','chain','nonce','session','event','duplicate','expired'] as const)('sponsored registration preserves %s safety gate',async mode=>{
+ const v=await v6Registration(),signatures=await consent(v),p=provider(),base=p.request.getMockImplementation()!;
+ p.request.mockImplementation(async args=>{
+  if(mode==='wallet'&&args.method==='eth_accounts')return[issuer.address];
+  if(mode==='chain'&&args.method==='eth_chainId')return'0x1';
+  if(mode==='nonce'&&args.method==='eth_call')return'0x1';
+  if(mode==='event'&&args.method==='eth_call')p.listeners.get('accountsChanged')?.();
+  if(mode==='expired'&&args.method==='eth_call')v.transaction!.binding!.expiresAt='1';
+  return base(args);
+ });
+ const send=vi.fn();
+ await expect(sendDirectClubClaimV5(p,v,mode==='duplicate'?[signatures[0],signatures[0]]:signatures,owners[0].address.toLowerCase(),()=>mode!=='session',send)).rejects.toThrow();
+ expect(send).not.toHaveBeenCalled();expect(p.request.mock.calls.some(([x])=>x.method==='eth_sendTransaction')).toBe(false);expect(p.listeners.size).toBe(0);
+});
+it.each(['reject','unknown'] as const)('sponsorship %s never falls back to charging the owner or retrying',async mode=>{
+ const v=await sponsoredFixture('claim'),signatures=await consent(v),p=provider();
+ const send=mode==='reject'?vi.fn().mockRejectedValue(Error('sponsorship_denied')):vi.fn().mockResolvedValue({hash:'unknown'});
+ await expect(sendDirectClubClaimV5(p,v,signatures,owners[0].address.toLowerCase(),()=>true,send)).rejects.toThrow(mode==='reject'?'sponsorship_denied':'transaction_unknown');
+ expect(send).toHaveBeenCalledOnce();expect(p.request.mock.calls.some(([x])=>x.method==='eth_sendTransaction')).toBe(false);expect(p.listeners.size).toBe(0);
+});

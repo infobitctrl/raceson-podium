@@ -65,7 +65,7 @@ export function DirectClubClaim({award,hr,onBusy,onAccessError,fixedCreation}:{a
   if(v.ownerApproval?.requestId)await readClubDirectClaimV5({approvalId:award.approvalId!,entitlementId:award.entitlementId!},creationId,{action:'submitted',requestId:v.ownerApproval.requestId,hash});
  }
  return <section className={s.card}><h3>{setupAmount(BigInt(award.amountWei),hr)} test MON</h3>
-  <p>{t('The full award goes to the club treasury. The submitting owner pays the network fee.','Cijela nagrada ide u klupsku riznicu. Vlasnik koji šalje transakciju plaća mrežnu naknadu.')}</p>
+  <p>{t('The full award goes to the club treasury. RacesOn sponsors network fees with Privy. External wallets pay their own network fees.','Cijela nagrada ide u klupsku riznicu. RacesOn pokriva mrežne naknade uz Privy. Vanjski novčanici plaćaju vlastite mrežne naknade.')}</p>
   {!fixedCreation&&!treasuries.length&&!busy?<p>{t('Create your club’s 2-of-3 treasury in Club and treasury first. Your award remains reserved.','Prvo stvorite klupsku riznicu s dva od tri potpisa u odjeljku Klub i riznica. Nagrada ostaje rezervirana.')}</p>:null}
   {treasuries.length>1?<label className={s.field}>{t('Club treasury','Klupska riznica')}<select value={creationId} disabled={busy||!!pending} onChange={e=>void run(()=>load(e.target.value))}><option value="" disabled>{t('Choose a treasury','Odaberite riznicu')}</option>{treasuries.map(r=><option key={r.requestId} value={r.requestId}>{r.verified!.safeAddress}</option>)}</select></label>:null}
   {view?<><RewardExplorerLink chainId={10143} kind="address" value={view.safeAddress}/>
