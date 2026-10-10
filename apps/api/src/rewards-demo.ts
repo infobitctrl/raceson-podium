@@ -83,7 +83,9 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   }:{};
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClubCreation(req,res,url,{...deps,creationReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClubClaims(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
-  if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchDirectClaimsV5(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
+  // Direct claim checks use the same block-pinned, read-only aggregation as
+  // publication. Keep the shared RPC pacer; no cached state or signing changes.
+  if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchDirectClaimsV5(req,res,url,{...deps,sponsorReader:config?.chainId===10143?controllerPublicClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClaims(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchAthleteRewardRoutes(req,res,url,{...deps,
     resolveRpc:identity=>hostedCopyBeneficiaryWalletRpc(identity,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}))return true;
