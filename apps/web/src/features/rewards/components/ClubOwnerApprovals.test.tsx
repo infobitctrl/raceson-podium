@@ -2,6 +2,7 @@ import {render,screen,fireEvent,waitFor} from '@testing-library/react';
 import ClubOwnerApprovals from './ClubOwnerApprovals';
 const m=vi.hoisted(()=>({read:vi.fn()}));
 vi.mock('../data/clubOwnerApprovals',()=>({clubOwnerAwards:m.read}));
+vi.mock('./ClubMultisigStatus',()=>({default:()=> <p>Current multisig stage</p>}));
 vi.mock('./DirectClubClaims',()=>({DirectClubClaim:({fixedCreation})=><p>Selected treasury {fixedCreation.creationId}</p>}));
 vi.mock('./RewardClaimDialog',()=>({default:({children,onClose})=><div role="dialog">{children(()=>{})}<button onClick={onClose}>Close approval</button></div>}));
 const item={cursor:'one',creationId:'selected-only',clubName:'Demo Club 36',safeAddress:'0x'+'12'.repeat(20),award:{slot:1,amountWei:'1000000000000000000',directClaim:{paid:false}}};

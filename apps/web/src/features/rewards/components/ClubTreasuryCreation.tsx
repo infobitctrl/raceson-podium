@@ -15,7 +15,7 @@ import {rewardClubSafeTestnetDependencies} from '@raceson/rewards-chain';
 import type {RewardOwnedClub} from '../model/clubTreasuries';
 import {formatEther,type Address} from 'viem';
 type Attempt={action:'request';requestId:string;clubId:string;proofId:string;owners:string[];memberIds:string[]};
-export default function ClubTreasuryCreation({clubs,onBack,onSaved}:{clubs:RewardOwnedClub[];onBack:()=>void;onSaved:()=>void}){
+export default function ClubTreasuryCreation({clubs,onBack,onSaved,onVerified}:{clubs:RewardOwnedClub[];onBack:()=>void;onSaved:()=>void;onVerified?:()=>void}){
  const auth=useAuth(),embedded=useRewardEmbeddedWallet(),wallet=embedded.wallet;
  const [clubId,setClubId]=useState(clubs.length===1?clubs[0]!.clubId:''),[members,setMembers]=useState<ClubCreationMember[]>([]),[ownerAck,setOwnerAck]=useState(false),[feeAck,setFeeAck]=useState(false);
  const [proofStep,setProofStep]=useState<PreparedWalletProof|null>(null),[proof,setProof]=useState<WalletProof|null>(null),[attempt,setAttempt]=useState<Attempt|null>(null);
@@ -23,6 +23,8 @@ export default function ClubTreasuryCreation({clubs,onBack,onSaved}:{clubs:Rewar
  const [hash,setHash]=useState(''),[unknown,setUnknown]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[nominated,setNominated]=useState(false);
  const live=useRef(false),flight=useRef(false),abort=useRef<AbortController|null>(null),scope=useRef(wallet),lastWallet=useRef(wallet);scope.current=wallet;
  const session=useRef(auth.session),stepRef=useRef(proofStep);stepRef.current=proofStep;
+ const verifiedNotice=useRef<string|null>(null);
+ function notifyVerified(record:ClubCreationRecord){if(record.current&&record.verified&&verifiedNotice.current!==record.requestId){verifiedNotice.current=record.requestId;onVerified?.();}}
  const current=()=>live.current&&session.current===auth.session&&scope.current===wallet;
  useEffect(()=>{live.current=true;void loadHistory();return()=>{live.current=false;abort.current?.abort();stepRef.current?.dispose();};},[]);
  useEffect(()=>{if(lastWallet.current!==wallet){lastWallet.current=wallet;abort.current?.abort();stepRef.current?.dispose();setProofStep(null);setProof(null);setFeeAck(false);setView(v=>v?{...v,prepared:null}:null);}},[wallet]);
@@ -52,13 +54,13 @@ export default function ClubTreasuryCreation({clubs,onBack,onSaved}:{clubs:Rewar
   retain(id,'unknown');setUnknown(true);setFeeAck(false);
   const transactionHash=await wallet.sendClubSafeCreation(checked,current);if(!current())return;retain(id,transactionHash);setHash(transactionHash);setUnknown(false);
   const v=await clubSafeCreation(id,{action:'submitted',transactionHash});if(current()){setView(v);await loadHistory();}}
- async function verify(){if(!view||!/^0x[0-9a-f]{64}$/.test(hash))return;const v=await clubSafeCreation(view.record.requestId,{action:'verify',transactionHash:hash});if(current()){setView(v);setUnknown(false);retain(v.record.requestId,hash);await loadHistory();}}
+ async function verify(){if(!view||!/^0x[0-9a-f]{64}$/.test(hash))return;const v=await clubSafeCreation(view.record.requestId,{action:'verify',transactionHash:hash});if(current()){setView(v);setUnknown(false);retain(v.record.requestId,hash);await loadHistory();if(current())notifyVerified(v.record);}}
  const pendingId=view&&!view.record.verified?view.record.requestId:null;
- const latestReceiptScope=useRef({current,loadHistory});latestReceiptScope.current={current,loadHistory};
+ const latestReceiptScope=useRef({current,loadHistory,notifyVerified});latestReceiptScope.current={current,loadHistory,notifyVerified};
  useEffect(()=>{
   if(!hash||!pendingId)return;
   let stopped=false,checking=false,tries=0;const id=pendingId;
-  const timer=setInterval(()=>{if(stopped||checking||flight.current||tries++>=20)return;checking=true;void clubSafeCreation(id,{action:'verify',transactionHash:hash}).then(v=>{if(!stopped&&latestReceiptScope.current.current()){setView(v);if(v.record.verified){setUnknown(false);void latestReceiptScope.current.loadHistory();}}}).catch(()=>{/* Keep the exact hash available for explicit recovery. */}).finally(()=>{checking=false;});},3000);
+  const timer=setInterval(()=>{if(stopped||checking||flight.current||tries++>=20)return;checking=true;void clubSafeCreation(id,{action:'verify',transactionHash:hash}).then(v=>{if(!stopped&&latestReceiptScope.current.current()){setView(v);if(v.record.verified){setUnknown(false);void latestReceiptScope.current.loadHistory();latestReceiptScope.current.notifyVerified(v.record);}}}).catch(()=>{/* Keep the exact hash available for explicit recovery. */}).finally(()=>{checking=false;});},3000);
   return()=>{stopped=true;clearInterval(timer);};
  },[hash,pendingId,wallet]);
  async function nominate(){const r=view?.record;if(!r?.verified||!r.current)return;

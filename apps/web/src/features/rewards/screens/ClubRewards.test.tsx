@@ -8,7 +8,7 @@ import { clubFixture, clubAddress as a } from "../model/clubFixtures.test-helper
 const c = vi.hoisted(() => ({ enabled: true, hosted: false, creations: vi.fn(), user: "owner", account: "owner", session: { epoch: 1 } as { epoch: number } | null,
   clubs: vi.fn(), history: vi.fn(), submit: vi.fn(), read: vi.fn(), withdraw: vi.fn(), wallet: vi.fn(), signOut: vi.fn() }));
 vi.mock("../data/clubSafeCreation",()=>({clubSafeCreationHistory:c.creations}));
-vi.mock("../components/ClubTreasuryCreation",()=>({default:({onBack}:{onBack:()=>void})=><section aria-label="Privy treasury setup"><h2>Create your club treasury with Privy</h2><button onClick={onBack}>Other treasury options</button></section>}));
+vi.mock("../components/ClubTreasuryCreation",()=>({default:({onBack,onVerified}:{onBack:()=>void;onVerified?:()=>void})=><section aria-label="Privy treasury setup"><h2>Create your club treasury with Privy</h2><button onClick={onBack}>Other treasury options</button><button onClick={onVerified}>Finish verified creation</button></section>}));
 vi.mock("../components/SponsorClubClaims",()=>({default:()=> <div>Club claim controls</div>}));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: { id: c.user }, account: { userId: c.account }, session: c.session, isLoading: false, signOut:c.signOut }) }));
 vi.mock("@/lib/public-env", () => ({ publicEnv: { get rewardPortalEnabled() { return c.enabled; }, get hostedOperations() { return c.hosted; }, rewardDemo: { mode: "local" } } }));
@@ -133,6 +133,38 @@ it('offers an explicit account switch after ownership denial instead of looping 
 
 
 describe('Privy-first hosted treasury onboarding',()=>{
+  const verifiedCreation=()=>({requestId:'verified',clubId:clubFixture().request.clubId,current:true,owners:[a(20),a(21),a(22)],verified:{safeAddress:a(10),transactionHash:'0x'+'ab'.repeat(32)}});
+  it.each(['en','hr'] as const)('collapses verified treasury history and keeps claims prominent in %s',async locale=>{
+    c.hosted=true;c.creations.mockResolvedValue({items:[verifiedCreation()],nextCursor:null});mount(locale);
+    const disclosure=(await screen.findByText(locale==='en'?'Wallet & treasury':'Novčanik i riznica',{selector:'summary span'})).closest('details')!;
+    expect(disclosure).not.toHaveAttribute('open');expect(screen.getByText('Club claim controls')).toBeVisible();
+    expect(screen.queryByRole('button',{name:'Create club treasury with Privy'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('region',{name:'Privy treasury setup'})).not.toBeInTheDocument();
+    fireEvent.click(within(disclosure).getByText(locale==='en'?'Wallet & treasury':'Novčanik i riznica'));
+    await waitFor(()=>expect(disclosure).toHaveAttribute('open'));
+    expect(within(disclosure).getByRole('link',{name:a(10)})).toBeVisible();
+    expect(c.wallet).not.toHaveBeenCalled();expect(c.submit).not.toHaveBeenCalled();
+    fireEvent.click(within(disclosure).getByRole('button',{name:locale==='en'?'Manage treasury':'Upravljaj riznicom'}));
+    expect(await screen.findByRole('region',{name:'Privy treasury setup'})).toBeVisible();
+  });
+  it.each(['unverified','stale','other-club'])('does not hide setup for a %s creation',async kind=>{
+    const item=verifiedCreation();c.hosted=true;
+    c.creations.mockResolvedValue({items:[{...item,...(kind==='unverified'?{verified:null,transactions:[{transactionHash:'0x'+'ab'.repeat(32)}]}:kind==='stale'?{current:false}:{clubId:'other'})}],nextCursor:null});mount();
+    expect(await screen.findByRole('button',{name:'Create club treasury with Privy'})).toBeVisible();
+    expect(screen.queryByText('Wallet & treasury')).not.toBeInTheDocument();
+  });
+  it('keeps setup available if another managed club is missing a verified treasury',async()=>{
+    c.hosted=true;c.clubs.mockResolvedValue({items:[...clubFixture().clubs.items,{clubId:'other',name:'Another club'}],nextCursor:null});
+    c.creations.mockResolvedValue({items:[verifiedCreation()],nextCursor:null});mount();
+    expect(await screen.findByRole('button',{name:'Create club treasury with Privy'})).toBeVisible();expect(screen.queryByText('Wallet & treasury')).not.toBeInTheDocument();
+  });
+  it('returns to rewards after a newly verified receipt and closes the creation form',async()=>{
+    c.hosted=true;mount();await screen.findByRole('region',{name:'Privy treasury setup'});
+    c.creations.mockResolvedValue({items:[verifiedCreation()],nextCursor:null});fireEvent.click(screen.getByRole('button',{name:'Finish verified creation'}));
+    const summary=await screen.findByText('Wallet & treasury');expect(summary.closest('details')).not.toHaveAttribute('open');
+    expect(screen.queryByRole('region',{name:'Privy treasury setup'})).not.toBeInTheDocument();expect(screen.getByText('Club claim controls')).toBeVisible();
+    expect(c.creations).toHaveBeenCalledTimes(2);expect(c.wallet).not.toHaveBeenCalled();
+  });
   it('opens Privy setup before claims on first visit without wallet or nomination writes',async()=>{
     c.hosted=true; mount();
     const form=await screen.findByRole('region',{name:'Privy treasury setup'});

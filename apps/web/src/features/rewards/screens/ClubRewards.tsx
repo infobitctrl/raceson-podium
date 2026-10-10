@@ -3,6 +3,7 @@ import { ShieldCheck, Users, Wallet } from "lucide-react";
 import setup from "../components/ClubTreasurySetup.module.css";
 import { clubSafeCreationHistory, type ClubCreationRecord } from "../data/clubSafeCreation";
 import RewardReadiness from "../components/RewardReadiness";
+import RewardExplorerLink from "../components/RewardExplorerLink";
 import RewardAccountSwitch from "../components/RewardAccountSwitch";
 import SponsorClubClaims from "../components/SponsorClubClaims";
 import p from "../components/Podium.module.css";
@@ -42,7 +43,17 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
   const { t, locale } = useI18n(), clubs = usePrivatePage(getRewardOwnedClubs, onAccessLost), history = usePrivatePage(getClubTreasuryHistory, onAccessLost);
   const [open, setOpen] = useState(false);
   const creations = usePrivatePage(getCreationHistory, onAccessLost);
+  const refreshCreations = creations.load;
   const [setupChoice, setSetupChoice] = useState<'create' | 'overview' | null>(null);
+  const [walletDetailsOpen, setWalletDetailsOpen] = useState(false);
+  const treasuryReady = publicEnv.hostedOperations && !clubs.loading && !clubs.error && !clubs.nextCursor
+    && !creations.loading && !creations.error && clubs.items.length > 0
+    && clubs.items.every(club => creations.items.some(item => item.clubId === club.clubId && item.current && item.verified));
+  const onTreasuryVerified = useCallback(() => {
+    setWalletDetailsOpen(false);
+    setSetupChoice('overview');
+    void refreshCreations();
+  }, [refreshCreations]);
   const firstSetup = publicEnv.hostedOperations && !clubs.loading && !history.loading && !creations.loading
     && !clubs.error && !history.error && !creations.error && clubs.items.length > 0
     && !history.items.length && !history.nextCursor && !creations.items.length && !creations.nextCursor;
@@ -59,8 +70,7 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
     <p className="text-sm text-muted-foreground">{locale === "hr" ? "Klupske nagrade upravlja vlasnik kluba. Članstvo u klubu ne daje pristup isplatama." : "Club rewards are managed by the club owner. Club membership does not grant payment access."}</p>
     <div className="flex flex-wrap items-center gap-3"><RewardAccountSwitch hr={locale==="hr"} label={locale==="hr"?"Prijavite se računom vlasnika kluba":"Sign in with the club owner account"}/><Link className={p.secondary} to="/rewards/campaigns">{locale === "hr" ? "Kampanje" : "Campaigns"}</Link><button className={p.secondary} onClick={()=>{void clubs.load();void history.load();}}>{t("rewards.club.refreshClubs")}</button></div>
   </section>;
-  return <div className="space-y-6">
-    {publicEnv.hostedOperations && clubs.items.length > 0 ? <section className={setup.card} aria-labelledby="club-setup-title">
+  const treasurySetup = publicEnv.hostedOperations && clubs.items.length > 0 ? <section className={setup.card} aria-labelledby="club-setup-title">
       <div className={setup.intro}><span className={setup.icon}><ShieldCheck size={24} aria-hidden="true"/></span><div>
         <span className={setup.badge}>{locale === 'hr' ? 'Preporučeno · Privy' : 'Recommended · Privy'}</span>
         <h2 id="club-setup-title">{locale === 'hr' ? 'Postavite klupsku riznicu uz Privy' : 'Set up your club treasury with Privy'}</h2>
@@ -73,14 +83,14 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
       </ul>
       {creations.loading ? <p role="status">{locale === 'hr' ? 'Provjera postojeće riznice…' : 'Checking existing treasury setup…'}</p> : creations.error ? <div role="alert"><p>{locale === 'hr' ? 'Nije moguće provjeriti postojeću riznicu.' : 'Existing treasury setup could not be checked.'}</p><Button variant="outline" onClick={()=>void creations.load()}>{locale === 'hr' ? 'Pokušaj ponovno' : 'Retry treasury check'}</Button></div> : null}
       {!createOpen && !open ? <Button disabled={setupUnavailable} onClick={()=>setSetupChoice('create')} className={setup.primary}>{locale === 'hr' ? 'Postavi klupsku riznicu uz Privy' : 'Create club treasury with Privy'}</Button> : null}
-      {createOpen ? <Suspense fallback={<p role="status">{t('rewards.loading')}</p>}><Creation clubs={clubs.items} onBack={()=>setSetupChoice('overview')} onSaved={()=>{setSetupChoice('create');void history.load();void creations.load();}}/></Suspense> : null}
+      {createOpen ? <Suspense fallback={<p role="status">{t('rewards.loading')}</p>}><Creation clubs={clubs.items} onBack={()=>setSetupChoice('overview')} onVerified={onTreasuryVerified} onSaved={()=>{setSetupChoice('create');void history.load();void creations.load();}}/></Suspense> : null}
       {!createOpen ? <details className={setup.alternatives}><summary>{locale === 'hr' ? 'Druge mogućnosti riznice' : 'Other treasury options'}</summary>
         <p>{locale === 'hr' ? 'Već imate klupsku Safe riznicu? Predložite postojeću adresu s pravilom dva od tri potpisa.' : 'Already have a club Safe treasury? Nominate its existing address with two-of-three approval.'}</p>
         <Button variant="outline" disabled={setupUnavailable || open} onClick={()=>{setSetupChoice('overview');setOpen(true);}}>{t('rewards.club.nominate')}</Button>
       </details> : null}
       {open ? <Suspense fallback={<p role="status">{t('rewards.loading')}</p>}><Nomination clubs={clubs.items} onAccessLost={onAccessLost} onBack={()=>setOpen(false)} onSaved={()=>void history.load()}/></Suspense> : null}
-    </section> : null}
-    <div className={`${p.recipientLayout} ${p.clubLayout}`}><aside className={p.recipientReadiness} aria-label={locale === "hr" ? "Klub i riznica" : "Club and treasury"}>
+    </section> : null;
+  const treasuryOverview = <aside className={p.recipientReadiness} aria-label={locale === "hr" ? "Klub i riznica" : "Club and treasury"}>
     <section aria-labelledby="club-owner-title" className={`${p.panel} space-y-3`}>
       <h2 id="club-owner-title" className="text-xl font-semibold">{t("rewards.club.yourClubs")}</h2>
       {clubs.loading ? <p role="status">{t("rewards.loading")}</p> : clubs.error ? <p role="alert">{t(clubTreasuryErrorKey(clubs.error))}</p>
@@ -92,7 +102,7 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
     </section>
     {!unavailable&&!clubs.loading&&!history.loading?<RewardReadiness label={locale==='hr'?'Spremnost kluba':'Club readiness'} steps={[
       {id:'owner',title:locale==='hr'?'Pristup vlasnika kluba':'Club owner access',detail:locale==='hr'?'Pristup potvrđen za gore navedene klubove.':'Access checked for the clubs listed above.',state:clubs.items.length?'complete':'waiting'},
-      {id:'treasury',title:locale==='hr'?'Klupska riznica':'Club treasury',detail:publicEnv.hostedOperations?(locale==='hr'?'Postavite riznicu uz Privy iznad. Postojeća Safe riznica dostupna je pod drugim mogućnostima.':'Set up with Privy above. An existing Safe treasury is available under other options.'):(locale==='hr'?'Predložite klupski Safe s pravilom dva od tri potpisa.':'Nominate the club’s 2-of-3 Safe.'),state:(publicEnv.hostedOperations?creations.items.some(item=>item.current&&item.verified):history.items.some(item=>item.status==='pending_review'))?'complete':'current'},
+      {id:'treasury',title:locale==='hr'?'Klupska riznica':'Club treasury',detail:treasuryReady?(locale==='hr'?'Riznica je potvrđena. Klupske nagrade preuzimaju dva odabrana vlasnika.':'Treasury verified. Two selected owners approve club reward claims.'):publicEnv.hostedOperations?(locale==='hr'?'Postavite riznicu uz Privy iznad. Postojeća Safe riznica dostupna je pod drugim mogućnostima.':'Set up with Privy above. An existing Safe treasury is available under other options.'):(locale==='hr'?'Predložite klupski Safe s pravilom dva od tri potpisa.':'Nominate the club’s 2-of-3 Safe.'),state:(publicEnv.hostedOperations?treasuryReady:history.items.some(item=>item.status==='pending_review'))?'complete':'current'},
     ]}/>:null}
     <section aria-labelledby="club-history-title" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="club-history-title" className="text-xl font-semibold">{t("rewards.club.history")}</h2>
@@ -103,9 +113,28 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
           : <p className="rounded-xl border border-dashed border-border p-5 text-sm">{t("rewards.club.emptyHistory")}</p>}
       {history.nextCursor ? <Button variant="outline" disabled={history.loading} onClick={() => void history.load(history.nextCursor)}>{t("rewards.loadMore")}</Button> : null}
     </section>
-    </aside><div className={p.recipientAwards}>
-    <SponsorClubClaims role="recipient" hr={locale==="hr"} chainId={publicEnv.rewardDemo?.mode==="local"?31337:10143} onAccessError={onAccessLost}/>
-    </div></div>
+    </aside>;
+  const claims = <SponsorClubClaims role="recipient" hr={locale==="hr"} chainId={publicEnv.rewardDemo?.mode==="local"?31337:10143} onAccessError={onAccessLost}/>;
+  return <div className="space-y-4">
+    {treasuryReady ? <>
+      <details className={setup.completed} open={walletDetailsOpen} onToggle={event=>setWalletDetailsOpen(event.currentTarget.open)}>
+        <summary><Wallet size={18} aria-hidden="true"/><span>{locale==='hr'?'Novčanik i riznica':'Wallet & treasury'}</span><span className={setup.ready}><ShieldCheck size={15} aria-hidden="true"/>{locale==='hr'?'Potvrđeno':'Verified'}</span></summary>
+        <div className={setup.completedBody}>
+          <p className="text-sm text-muted-foreground">{locale==='hr'?'Riznica je spremna. Detalji stvaranja i povijest dostupni su ovdje.':'Your treasury is ready. Creation details and history are available here.'}</p>
+          <ul className={setup.creationHistory}>{creations.items.filter(item=>clubs.items.some(club=>club.clubId===item.clubId)).map(item=><li key={item.requestId}>
+            <strong>{clubs.items.find(club=>club.clubId===item.clubId)?.name}</strong>
+            <p>{item.current&&item.verified?(locale==='hr'?'Potvrđena riznica · 2 od 3 potpisa':'Verified treasury · 2 of 3 approvals'):(locale==='hr'?'Prethodni zahtjev za stvaranje':'Previous creation request')}</p>
+            {item.verified?<><RewardExplorerLink chainId={10143} kind="address" value={item.verified.safeAddress}/><p><RewardExplorerLink chainId={10143} kind="tx" value={item.verified.transactionHash}/></p></>:null}
+            <details><summary>{locale==='hr'?'Podaci o stvaranju i vlasnicima':'Creation and owner details'}</summary><p className="break-all">{item.requestId}</p><ul>{item.owners.map(owner=><li key={owner}><RewardExplorerLink chainId={10143} kind="address" value={owner}/></li>)}</ul></details>
+          </li>)}</ul>
+          {creations.nextCursor?<Button variant="outline" disabled={creations.loading} onClick={()=>void creations.load(creations.nextCursor)}>{t('rewards.loadMore')}</Button>:null}
+          {!createOpen&&!open?<Button variant="outline" onClick={()=>setSetupChoice('create')}>{locale==='hr'?'Upravljaj riznicom':'Manage treasury'}</Button>:null}
+          {createOpen||open?treasurySetup:null}
+          {treasuryOverview}
+        </div>
+      </details>
+      <div className={p.recipientAwards}>{claims}</div>
+    </> : <>{treasurySetup}<div className={`${p.recipientLayout} ${p.clubLayout}`}>{treasuryOverview}<div className={p.recipientAwards}>{claims}</div></div></>}
     {!publicEnv.hostedOperations && open ? <Suspense fallback={<p role="status">{t("rewards.loading")}</p>}><Nomination clubs={clubs.items} onAccessLost={onAccessLost}
       onBack={() => setOpen(false)} onSaved={() => { void history.load(); }} /></Suspense> : null}
     {!publicEnv.hostedOperations?<Button variant="outline" aria-expanded={ledgerOpen} onClick={() => setLedgerOpen(v => !v)}>{t("rewards.clubLedger.open")}</Button>:null}

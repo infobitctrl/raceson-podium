@@ -4,6 +4,7 @@ const DirectClubClaim=lazy(()=>import('./DirectClubClaims').then(module=>({defau
 import RewardClaimDialog from './RewardClaimDialog';
 import {setupAmount} from '../model/setupAmount';
 import {Button} from '@/components/ui/button';
+import ClubMultisigStatus from './ClubMultisigStatus';
 export default function ClubOwnerApprovals({hr,clubId,onAccessError}:{hr:boolean;clubId?:string;onAccessError?:(e:unknown)=>void}){
  const [items,setItems]=useState<ClubOwnerAward[]>([]),[cursor,setCursor]=useState<string|null>(null),[selected,setSelected]=useState<ClubOwnerAward|null>(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState(false);const epoch=useRef(0),access=useRef(onAccessError);access.current=onAccessError;
@@ -23,7 +24,7 @@ export default function ClubOwnerApprovals({hr,clubId,onAccessError}:{hr:boolean
   {busy?<p role="status">{t('Loading approvals…','Učitavanje odobrenja…')}</p>:null}
   {error?<p role="alert">{t('Approvals could not be verified. Refresh to retry.','Odobrenja nije moguće provjeriti. Osvježite za ponovni pokušaj.')}</p>:null}
   {!busy&&!error&&!visibleItems.length?<p className="text-sm text-muted-foreground">{t('No club rewards awaiting your treasury approval.','Nema klupskih nagrada koje čekaju vaše odobrenje.')}</p>:null}
-  <ul className="space-y-2">{visibleItems.map(item=><li key={item.cursor} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/40 p-3"><div><strong>{item.clubName}</strong><p className="text-sm">{setupAmount(BigInt(item.award.amountWei),hr)} test MON · {item.award.slot===0?t('League','Liga'):`${t('Round','Kolo')} ${item.award.slot}`}</p></div><Button variant="outline" onClick={()=>setSelected(item)}>{item.award.directClaim?.paid?t('View payment','Pregledaj isplatu'):t('Review club reward','Pregledaj klupsku nagradu')}</Button></li>)}</ul>
+  <ul className="space-y-2">{visibleItems.map(item=><li key={item.cursor} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/40 p-3"><div><strong>{item.clubName}</strong><p className="text-sm">{setupAmount(BigInt(item.award.amountWei),hr)} test MON · {item.award.slot===0?t('League','Liga'):`${t('Round','Kolo')} ${item.award.slot}`}</p>{!busy?<ClubMultisigStatus item={item} hr={hr} onAccessError={onAccessError}/>:null}</div><Button variant="outline" onClick={()=>setSelected(item)}>{item.award.directClaim?.paid?t('View payment','Pregledaj isplatu'):t('Review club reward','Pregledaj klupsku nagradu')}</Button></li>)}</ul>
   {cursor?<Button variant="outline" disabled={busy} onClick={()=>void load(cursor)}>{t('Load more approvals','Učitaj još odobrenja')}</Button>:null}
   {selected&&creation?<RewardClaimDialog club hr={hr} onClose={()=>{setSelected(null);void load();}}>{onBusy=><Suspense fallback={<p role="status">{t('Loading approval…','Učitavanje odobrenja…')}</p>}><DirectClubClaim key={selected.cursor} award={selected.award} fixedCreation={creation} hr={hr} onBusy={onBusy} onAccessError={onAccessError}/></Suspense>}</RewardClaimDialog>:null}
  </section>;

@@ -12,7 +12,7 @@ vi.mock('../data/clubTreasuries',()=>({submitClubTreasury:m.nominate}));
 const id='7d100000-0000-4000-8000-000000000301',clubId='7d100000-0000-4000-8000-000000000201';
 const address=(n:string)=>'0x'+n.repeat(40),hash='0x'+'d'.repeat(64),owners=['1','2','3'].map(address);
 function view(){return{record:{requestId:id,clubId,chainId:10143,sender:address('a'),owners,saltNonce:'2',createdAt:'2026-10-06T01:00:00.000Z',current:true,transactions:[],verified:null},prepared:null};}
-const clubs=[{clubId,name:'Synthetic owned club'}],props={clubs,onBack:vi.fn(),onSaved:vi.fn()};
+const clubs=[{clubId,name:'Synthetic owned club'}],props={clubs,onBack:vi.fn(),onSaved:vi.fn(),onVerified:vi.fn()};
 function prepared(){return{...view(),prepared:{plan:{safe:{context:{verifyingContract:address('e')}}},gas:'120000',gasPrice:'100',maximumFee:'12000000',balance:'12000000'}};}
 const memberRows=owners.map((address,i)=>({memberId:`7d100000-0000-4000-8000-00000000050${i}`,name:`Member ${i+1}`,address,status:'ready'}));
 beforeEach(()=>{vi.clearAllMocks();m.members.mockResolvedValue({clubId,items:memberRows,nextCursor:null});sessionStorage.clear();m.wallet={provider:{},sendClubSafeCreation:m.send};m.history.mockResolvedValue({items:[],nextCursor:null});m.proof.mockResolvedValue(m.step);m.step.confirm.mockResolvedValue({proofId:'7d100000-0000-4000-8000-000000000401',address:address('a')});m.step.assertCurrent.mockResolvedValue(undefined);m.nominate.mockResolvedValue({});});
@@ -37,12 +37,12 @@ it('requires three explicit distinct owners and wallet proof before saving, and 
  expect(m.api.mock.calls[0][1]).toMatchObject({action:'request',clubId,owners,proofId:'7d100000-0000-4000-8000-000000000401'});expect(m.send).not.toHaveBeenCalled();expect(m.nominate).not.toHaveBeenCalled();
 });
 it('holds an ambiguous wallet response across reload and requires exact receipt verification before separate nomination',async()=>{
- await resume();await checkProof();fireEvent.click(screen.getByRole('button',{name:'Prepare treasury'}));await screen.findByText(/Your network fee/);expect(m.send).not.toHaveBeenCalled();
+ await resume();await checkProof();fireEvent.click(screen.getByRole('button',{name:'Prepare treasury'}));await screen.findByText(/Your network fee/);expect(m.send).not.toHaveBeenCalled();expect(props.onVerified).not.toHaveBeenCalled();
  const create=screen.getByRole('button',{name:'Create club treasury · Privy'});expect(create).toBeDisabled();fireEvent.click(screen.getByRole('checkbox'));m.send.mockRejectedValueOnce(Error('unknown'));fireEvent.click(create);await screen.findByRole('alert');
  expect(m.send).toHaveBeenCalledTimes(1);expect(sessionStorage.getItem(`podium-safe-creation:synthetic-club-account:${id}`)).toBe('unknown');expect(screen.queryByRole('button',{name:'Create club treasury · Privy'})).not.toBeInTheDocument();cleanup();
  await resume();await screen.findByText(/wallet response was not confirmed/);expect(screen.queryByRole('button',{name:'Prepare treasury'})).not.toBeInTheDocument();expect(m.send).toHaveBeenCalledTimes(1);
  const verified={...view(),record:{...view().record,transactions:[{transactionHash:hash}],verified:{transactionHash:hash,safeAddress:address('e'),blockNumber:'100',blockHash:hash,initializerHash:hash}}};m.api.mockResolvedValue(verified);
- fireEvent.change(screen.getByLabelText('Creation transaction hash'),{target:{value:hash}});fireEvent.click(screen.getByRole('button',{name:'Verify finalized creation receipt'}));await screen.findByText('Club treasury ready');expect(m.nominate).not.toHaveBeenCalled();
+ fireEvent.change(screen.getByLabelText('Creation transaction hash'),{target:{value:hash}});expect(props.onVerified).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Verify finalized creation receipt'}));await screen.findByText('Club treasury ready');expect(m.nominate).not.toHaveBeenCalled();expect(props.onVerified).toHaveBeenCalledOnce();
  fireEvent.click(screen.getByRole('button',{name:'Nominate this verified treasury'}));await screen.findByText('Nomination saved · awaiting review');expect(m.nominate).toHaveBeenCalledWith(expect.objectContaining({clubId,safeAddress:address('e'),owners,idempotencyKey:`safe-creation-${id}`}));expect(m.send).toHaveBeenCalledTimes(1);
 });
 it('requires a new acknowledgement when the checked fee changes and never enters the wallet',async()=>{
@@ -51,4 +51,10 @@ it('requires a new acknowledgement when the checked fee changes and never enters
 });
 it('allows retained history after ownership loss but exposes no deployment or nomination authority',async()=>{
  const v={...view(),record:{...view().record,current:false}};m.history.mockResolvedValue({items:[v.record],nextCursor:null});m.api.mockResolvedValue(v);render(<ClubTreasuryCreation {...props}/>);fireEvent.click(await screen.findByRole('button',{name:/Resume creation request/}));await screen.findByRole('alert');expect(screen.getByRole('button',{name:'Verify my wallet'})).toBeDisabled();expect(m.send).not.toHaveBeenCalled();expect(m.nominate).not.toHaveBeenCalled();
+});
+it('keeps an existing verified treasury inspectable without firing a new completion',async()=>{
+ const v={...view(),record:{...view().record,transactions:[{transactionHash:hash}],verified:{transactionHash:hash,safeAddress:address('e'),blockNumber:'100',blockHash:hash,initializerHash:hash}}};
+ m.history.mockResolvedValue({items:[v.record],nextCursor:null});m.api.mockResolvedValue(v);render(<ClubTreasuryCreation {...props}/>);
+ fireEvent.click(await screen.findByRole('button',{name:/Verified treasury/}));await screen.findByText('Club treasury ready');
+ expect(props.onVerified).not.toHaveBeenCalled();expect(screen.getByRole('button',{name:'Nominate this verified treasury'})).toBeEnabled();expect(m.send).not.toHaveBeenCalled();
 });
