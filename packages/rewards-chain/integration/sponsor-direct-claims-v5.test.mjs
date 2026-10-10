@@ -1,14 +1,14 @@
 import {clubOwnersHashV1,walletBindingMessageV2,verifyWalletBindingProofV2,encodeWalletRegistrationV2,encodeRegisterAndClaimV6,clubClaimMessageV6,encodeClubClaimV6} from '../dist/club-signatures-v6.js';
 import {sponsorProgrammeBuildV6,sponsorCampaignBuildV6,sponsorFactoryBuildV6,walletRegistryBuildV2} from '../dist/sponsor-v6-build.js';
 import {verifyClubRegistrationReceiptV6} from '../dist/sponsor-direct-claims-v5.js';
-import {clubDirectClaimV5} from '../../../apps/api/dist/features/rewards/club-direct-claims-v5-service.js';
+import {buildClubDirectClaimV5 as clubDirectClaimV5} from '../../../apps/api/dist/features/rewards/club-direct-claims-v5-service.js';
 import {rewardClubSafeTestnetDependencies} from '../dist/club-safe-creation.js';
 import {deployOriginalClubSafeFixture} from './safe-deployment-fixture.mjs';
 import {directSafeMessageV5,verifyDirectSafeSignaturesV5,encodeDirectSafeCallV5,observeDirectClubTreasuryV5} from '../dist/sponsor-club-direct-v5.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {encodeDeployData,encodeFunctionData,keccak256,hashMessage} from 'viem';
+import {concatHex,encodeAbiParameters,encodeEventTopics,encodeDeployData,encodeFunctionData,keccak256,hashMessage,parseAbi,toHex,zeroAddress,zeroHash} from 'viem';
 import {rewardWalletControlMessage} from '../dist/wallet-control.js';
 import {directClaimV5} from '../../../apps/api/dist/features/rewards/direct-claims-v5-service.js';
 import {startOwnedRewardChain,fixtureSigner} from './owned-chain.mjs';
@@ -18,6 +18,24 @@ import {walletBindingMessageV1,verifyWalletBindingProofV1,encodeWalletRegistrati
 import {sponsorProgrammeBuildV5,sponsorCampaignBuildV5,sponsorFactoryBuildV5,walletRegistryBuildV1} from '../dist/sponsor-v5-build.js';
 const artifact=name=>JSON.parse(readFileSync(new URL(`../../../contracts/out/${name}.sol/${name}.json`,import.meta.url)));
 const h=n=>'0x'+String(n).padStart(64,'0');
+// A carrier transport fixture around actual local Safe/registry/campaign
+// receipts. It models Privy's public bundler envelope, not a hosted SDK send.
+const carrierAbi=parseAbi(['function handleOps((address sender,uint256 nonce,bytes initCode,bytes callData,bytes32 accountGasLimits,uint256 preVerificationGas,bytes32 gasFees,bytes paymasterAndData,bytes signature)[] ops,address beneficiary)','function execute(bytes32 mode,bytes executionCalldata)','event UserOperationEvent(bytes32 indexed userOpHash,address indexed sender,address indexed paymaster,uint256 nonce,bool success,uint256 actualGasCost,uint256 actualGasUsed)']);
+const carrierEntry='0x0000000071727de22e5e9d8baf0edac6f37da032';
+function clubCarrierReader(reader,hash,sender){
+ return {...reader,
+  getTransaction:async args=>{const tx=await reader.getTransaction(args);if(args.hash!==hash)return tx;
+   const callData=encodeFunctionData({abi:carrierAbi,functionName:'execute',args:[zeroHash,concatHex([tx.to,toHex(0n,{size:32}),tx.input])]});
+   const op={sender,nonce:7n,initCode:'0x',callData,accountGasLimits:zeroHash,preVerificationGas:0n,gasFees:zeroHash,paymasterAndData:'0x',signature:'0x'};
+   return {...tx,to:carrierEntry,input:encodeFunctionData({abi:carrierAbi,functionName:'handleOps',args:[[op],zeroAddress]})};
+  },
+  getTransactionReceipt:async args=>{const r=await reader.getTransactionReceipt(args);if(args.hash!==hash)return r;
+   return {...r,to:carrierEntry,logs:[...r.logs,{address:carrierEntry,transactionHash:hash,blockHash:r.blockHash,blockNumber:r.blockNumber,removed:false,
+    topics:encodeEventTopics({abi:carrierAbi,eventName:'UserOperationEvent',args:{userOpHash:h(999),sender,paymaster:zeroAddress}}),
+    data:encodeAbiParameters([{type:'uint256'},{type:'bool'},{type:'uint256'},{type:'uint256'}],[7n,true,1n,1n])}]};
+  },
+ };
+}
 for(const version of [5,6])for(const chainId of [31337,10143])test(`V${version} publication → explicit wallet registration → direct claim, owned local chain ${chainId}`,{timeout:120000},async t=>{
  const chain=await startOwnedRewardChain({chainId});
  const bindingMessage=version===6?walletBindingMessageV2:walletBindingMessageV1,verifyBinding=version===6?verifyWalletBindingProofV2:verifyWalletBindingProofV1,register=version===6?encodeWalletRegistrationV2:encodeWalletRegistrationV1;
@@ -198,6 +216,9 @@ for(const version of [5,6])for(const chainId of [31337,10143])test(`V${version} 
      if(version===6){
       assert.equal(cp.phase,'register');await assert.rejects(clubGet({action:'receipt',hash:paidClub.transactionHash}));assert.equal(clubReceipt,null);
       const registered=await clubGet({action:'registrationReceipt',hash:paidClub.transactionHash});assert.equal(registered.phase,'claim');assert.equal(registered.status,'claimable');assert.equal(clubReceipt,null);
+      const bundled=await clubDirectClaimV5(actor,approvalId,clubrow.entitlementId,creationId,{action:'registrationReceipt',hash:paidClub.transactionHash},{...clubDeps,reader:clubCarrierReader(chain.publicClient,paidClub.transactionHash,clubActor.address)});
+      assert.equal(bundled.phase,'claim');assert.equal(bundled.status,'claimable');assert.equal(clubReceipt,null);
+      await assert.rejects(clubDirectClaimV5(actor,approvalId,clubrow.entitlementId,creationId,{action:'registrationReceipt',hash:paidClub.transactionHash},{...clubDeps,reader:clubCarrierReader(chain.publicClient,paidClub.transactionHash,wrong.address)}));
       const ready=await clubGet({action:'prepare',proofId});assert.equal(ready.phase,'claim');
       const c=ready.clubClaim,claim={...c,amount:BigInt(c.amount),nonce:BigInt(c.nonce),issuedAt:BigInt(c.issuedAt),expiresAt:BigInt(c.expiresAt),registrationNonce:BigInt(c.registrationNonce)};
       const ctx={chainId,campaign:ready.campaignAddress},owners=chain.clubOwners.map(o=>o.address),proofs=await Promise.all(chain.clubOwners.slice(0,2).map(o=>o.signTypedData(clubClaimMessageV6(ctx,claim))));
@@ -205,6 +226,9 @@ for(const version of [5,6])for(const chainId of [31337,10143])test(`V${version} 
       paidClub=await send({to:ready.campaignAddress,data:await encodeClubClaimV6(ctx,claim,owners,proofs)});await finalized();
      }
      assert.equal((await clubGet({action:'receipt',hash:paidClub.transactionHash})).status,'paid');assert.equal(clubReceipt.recipient,safeAddress);
+     const bundledPayment=await clubDirectClaimV5(actor,approvalId,clubrow.entitlementId,creationId,{action:'receipt',hash:paidClub.transactionHash},{...clubDeps,reader:clubCarrierReader(chain.publicClient,paidClub.transactionHash,clubActor.address)});
+     assert.equal(bundledPayment.status,'paid');assert.equal(bundledPayment.receipt.recipient,safeAddress);assert.equal(bundledPayment.receipt.amountWei,clubrow.amount.toString());
+     await assert.rejects(clubDirectClaimV5(actor,approvalId,clubrow.entitlementId,creationId,{action:'receipt',hash:paidClub.transactionHash},{...clubDeps,reader:clubCarrierReader(chain.publicClient,paidClub.transactionHash,wrong.address)}));
      assert.equal((await clubGet()).status,'paid');assert.equal(await chain.publicClient.getTransactionCount({address:reviewer.address}),beforeReviewer);
      revoked=true;await assert.rejects(get(),{code:'reward_account_session_required'});
     }finally{Date.now=realNow;}

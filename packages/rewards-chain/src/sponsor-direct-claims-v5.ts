@@ -1,4 +1,5 @@
 import {walletRegistryAbiV2,clubClaimAbiV6} from './club-signatures-v6.js';
+import {sponsoredReceiptCall} from './sponsored-receipt-call.js';
 import {directSafeReceiptCallV5,type DirectClubTreasuryV5} from './sponsor-club-direct-v5.js';
 import type {RewardClubSafeDeploymentReader} from './club-safe-deployment.js';
 import {decodeSponsorExecutionPlan,type SponsorExecutionPlan} from '@raceson/domain/rewards/sponsor-execution';
@@ -93,9 +94,16 @@ export async function verifySponsorDirectReceiptV5(reader:SponsorChainReader,sco
   &&tx.to?.toLowerCase()===receipt.to?.toLowerCase()&&receipt.status==='success'&&receipt.blockNumber<=BigInt(view.observation.blockNumber)
   &&tx.blockNumber===receipt.blockNumber&&tx.blockHash===receipt.blockHash&&tx.transactionIndex===receipt.transactionIndex,'direct_claim_receipt_mismatch');
  let callTo=tx.to?.toLowerCase(),callData=tx.input;
+ if(scope.beneficiaryKind===1&&treasury){
+  const target=scope.plan.version===6?view.campaignAddress:treasury.safe.context.verifyingContract;
+  if(callTo!==target.toLowerCase()){
+   const routed=sponsoredReceiptCall(tx,receipt.logs,target,treasury.safe.owners);
+   callTo=routed.to;callData=routed.data;
+  }
+ }
  if(scope.beneficiaryKind===1&&scope.plan.version===5){
   demand(safeReader(reader)&&treasury&&treasury.safe.context.verifyingContract.toLowerCase()===view.recipient&&callTo===view.recipient,'direct_claim_receipt_mismatch');
-  const inner=await directSafeReceiptCallV5(reader,treasury,tx.input,receipt.logs);callTo=inner.to;callData=inner.data;
+  const inner=await directSafeReceiptCallV5(reader,treasury,callData,receipt.logs);callTo=inner.to;callData=inner.data;
  }else if(scope.beneficiaryKind===0)demand(!treasury,'direct_claim_receipt_mismatch');
  else demand(treasury&&treasury.safe.context.verifyingContract.toLowerCase()===view.recipient,'direct_claim_receipt_mismatch');
  // App-paid EIP-7702 claims arrive inside a bundler transaction. Its outer
@@ -135,10 +143,12 @@ export async function verifyClubRegistrationReceiptV6(reader:SponsorChainReader 
  const view=await observeSponsorDirectClaimV5(reader,scope),safe=treasury.safe.context.verifyingContract.toLowerCase();
  const [tx,r]=await Promise.all([reader.getTransaction({hash}),reader.getTransactionReceipt({hash})]);
  demand(tx.hash===hash&&r.transactionHash===hash&&tx.chainId===scope.plan.chainId&&tx.value===0n
-  &&tx.to?.toLowerCase()===safe&&r.to?.toLowerCase()===safe&&tx.from.toLowerCase()===r.from.toLowerCase()
+  &&tx.to?.toLowerCase()===r.to?.toLowerCase()&&tx.from.toLowerCase()===r.from.toLowerCase()
   &&r.status==='success'&&r.blockNumber<=BigInt(view.observation.blockNumber)&&tx.blockNumber===r.blockNumber
   &&tx.blockHash===r.blockHash&&tx.transactionIndex===r.transactionIndex,'direct_claim_receipt_mismatch');
- const inner=await directSafeReceiptCallV5(reader,treasury,tx.input,r.logs);
+ const execution=tx.to?.toLowerCase()===safe?{to:safe,data:tx.input}:sponsoredReceiptCall(tx,r.logs,safe,treasury.safe.owners);
+ demand(execution.to===safe,'direct_claim_receipt_mismatch');
+ const inner=await directSafeReceiptCallV5(reader,treasury,execution.data,r.logs);
  demand(inner.to===view.registryAddress,'direct_claim_receipt_mismatch');
  const call=decodeFunctionData({abi:walletRegistryAbiV2,data:inner.data});
  demand(call.functionName==='register','direct_claim_receipt_mismatch');
