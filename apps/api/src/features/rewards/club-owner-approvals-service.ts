@@ -1,4 +1,5 @@
 import {isDeepStrictEqual} from 'node:util';
+import {clubApprovalExpiry} from './club-approval-lifetime.js';
 import {recoverTypedDataAddress,type Address,type Hex} from 'viem';
 import {clubOwnerApproval,type ClubOwnerRequest,type RewardAccountIdentity} from '@raceson/db/rewards';
 import {clubClaimMessageV6,type ClubClaimV6} from '@raceson/rewards-chain/club-signatures-v6';
@@ -39,8 +40,9 @@ export async function coordinateClubOwnerApproval(actor:RewardAccountIdentity,sc
   if(!saved.request||!currentClubOwnerRequest(saved.request,current)){
    const prepared=await deps.build(command);
    const expiry=prepared.clubClaim?.expiresAt??prepared.transaction?.binding?.expiresAt;
-   // Legacy V5 Safe calls have no signed expiry; coordination expires after 9m.
-   const expiresAt=new Date(expiry?Number(expiry)*1000:Date.now()+540000).toISOString();
+   if(expiry!==undefined&&(typeof expiry!=='string'||!/^\d+$/.test(expiry)))throw Error('invalid_sponsor_claim');
+   // Legacy V5 Safe calls have no signed expiry; cap coordination by the award deadline.
+   const expiresAt=new Date(Number(typeof expiry==='string'?BigInt(expiry):clubApprovalExpiry(BigInt(Math.floor(Date.now()/1000)),BigInt(prepared.deadline)))*1000).toISOString();
    saved=await clubOwnerApproval(actor,scope,deps.rpc,'prepare',{previousId:saved.request?.requestId??null,body:prepared,expiresAt});
    current=await read();
   }

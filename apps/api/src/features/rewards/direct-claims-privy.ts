@@ -1,4 +1,5 @@
 import {walletBindingMessageV2} from '@raceson/rewards-chain/club-signatures-v6';
+import {identityBindingLifetimeSeconds} from './club-approval-lifetime.js';
 import {z} from 'zod';
 import {PrivyClient} from '@privy-io/node';
 import {createViemAccount} from '@privy-io/node/viem';
@@ -19,7 +20,7 @@ export function directIdentityIssuerFromEnv(env:Record<string,string|undefined>,
  return {address:c.address as Address,async sign(context,binding){
   if(context.chainId!==10143||context.registry.toLowerCase()!==c.registry||![0,1].includes(binding.beneficiaryKind))throw Error('identity_binding_unavailable');
   const now=BigInt(Math.floor(Date.now()/1000));
-  if(binding.issuedAt>now||binding.expiresAt<=now||binding.expiresAt-binding.issuedAt>600n)throw Error('identity_binding_unavailable');
+  if(binding.issuedAt>now||binding.expiresAt<=now||binding.expiresAt<=binding.issuedAt||binding.expiresAt-binding.issuedAt>identityBindingLifetimeSeconds(binding.beneficiaryKind))throw Error('identity_binding_unavailable');
   const client=new PrivyClient({appId:c.appId,appSecret:env.RACESON_REWARD_IDENTITY_APP_SECRET!,maxRetries:0,timeout:15000});
   const wallet=await client.wallets().get(c.walletId);
   if(wallet.address.toLowerCase()!==c.address||wallet.chain_type!=='ethereum'||wallet.owner_id!==null

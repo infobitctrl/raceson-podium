@@ -5,11 +5,11 @@ import {ClubSignaturePolicyV1} from "../src/ClubSignaturePolicyV1.sol";
 
 import {Test} from "forge-std/Test.sol";
 import {ISafeFixture} from "./SafeRewardConsent.t.sol";
-import {RacesOnWalletRegistryV2 as Registry} from "../src/RacesOnWalletRegistryV2.sol";
-import {RacesOnRewardCampaignV6 as Campaign} from "../src/RacesOnRewardCampaignV6.sol";
+import {RacesOnWalletRegistryV3 as Registry} from "../src/RacesOnWalletRegistryV3.sol";
+import {RacesOnRewardCampaignV7 as Campaign} from "../src/RacesOnRewardCampaignV7.sol";
 
 /// Original Safe 1.4.1 artifacts; all people and signatures are synthetic local fixtures.
-contract SafeClubSignaturesV6Test is Test {
+contract SafeClubSignaturesV7Test is Test {
     uint256 private constant ISSUER = 0xA001;
     uint256 private constant FIRST = 0x1111;
     uint256 private constant SECOND = 0x2222;
@@ -157,7 +157,7 @@ contract SafeClubSignaturesV6Test is Test {
 
     function testModuleCannotUseDirectRegistryOrRecipientRelayPaths() public {
         _register();
-        ClaimModuleV6 module = new ClaimModuleV6();
+        ClaimModuleV7 module = new ClaimModuleV7();
         bytes memory enable = abi.encodeWithSignature("enableModule(address)", address(module));
         assertTrue(_execute(address(safe), enable, _two(_hash(address(safe), enable))));
         assertFalse(module.execute(address(safe), address(campaign), abi.encodeCall(campaign.claimDirect, (AWARD))));
@@ -246,7 +246,7 @@ contract SafeClubSignaturesV6Test is Test {
         vm.expectRevert(Campaign.InvalidAuthorizationTime.selector);
         campaign.claimClub(AWARD, 0, issued + 1, expiry, signatures);
         vm.expectRevert(Campaign.InvalidAuthorizationTime.selector);
-        campaign.claimClub(AWARD, 0, issued, issued + 1 days + 1, signatures);
+        campaign.claimClub(AWARD, 0, issued, issued + 2 days + 1, signatures);
         vm.warp(expiry);
         vm.expectRevert(Campaign.InvalidAuthorizationTime.selector);
         campaign.claimClub(AWARD, 0, issued, expiry, signatures);
@@ -268,7 +268,7 @@ contract SafeClubSignaturesV6Test is Test {
 
     function testRejectingClubReceiverRollsBackNonceAndReentryCannotPayTwice() public {
         address[] memory members = safe.getOwners();
-        SmallClubTreasuryV6 receiver = new SmallClubTreasuryV6(members, 2);
+        SmallClubTreasuryV7 receiver = new SmallClubTreasuryV7(members, 2);
         Registry.Binding memory b = Registry.Binding(
             CLUB,
             address(receiver),
@@ -323,7 +323,7 @@ contract SafeClubSignaturesV6Test is Test {
             address[] memory members = new address[](count);
             members[0] = vm.addr(FIRST);
             if (count == 2) members[1] = vm.addr(SECOND);
-            SmallClubTreasuryV6 small = new SmallClubTreasuryV6(members, count);
+            SmallClubTreasuryV7 small = new SmallClubTreasuryV7(members, count);
             Registry.Binding memory b = Registry.Binding(
                 CLUB,
                 address(small),
@@ -348,44 +348,44 @@ contract SafeClubSignaturesV6Test is Test {
         assertEq(address(safe).balance, 1 ether);
     }
 
-    function testClubApprovalsRemainExecutableAfterTenMinutesWithin24Hours() public {
+    function testClubApprovalsRemainExecutableAfterTenMinutesWithin48Hours() public {
         uint64 issued = uint64(block.timestamp);
-        uint64 expires = issued + 24 hours;
+        uint64 expires = issued + 48 hours;
         Registry.Binding memory b = Registry.Binding(
             CLUB, address(safe), 1, 0, issued, expires, ClubSignaturePolicyV1.ownersHash(address(safe))
         );
         bytes memory data = abi.encodeCall(registry.register, (b, _sign(ISSUER, registry.bindingDigest(b))));
         bytes memory signatures = _two(_hash(address(registry), data));
-        vm.warp(uint256(issued) + 23 hours);
+        vm.warp(uint256(issued) + 47 hours);
         assertTrue(_execute(address(registry), data, signatures));
         issued = uint64(block.timestamp);
-        expires = issued + 24 hours;
+        expires = issued + 48 hours;
         signatures = _two(campaign.clubClaimDigest(AWARD, 0, issued, expires));
-        vm.warp(uint256(issued) + 23 hours);
+        vm.warp(uint256(issued) + 47 hours);
         campaign.claimClub(AWARD, 0, issued, expires, signatures);
         assertEq(campaign.paid(1), 1 ether);
         assertEq(address(safe).balance, 1 ether);
     }
 
-    function testClubAuthorizationLongerThan24HoursIsRejected() public {
+    function testClubAuthorizationLongerThan48HoursIsRejected() public {
         uint64 issued = uint64(block.timestamp);
         Registry.Binding memory b = Registry.Binding(
-            CLUB, address(safe), 1, 0, issued, issued + 24 hours + 1, ClubSignaturePolicyV1.ownersHash(address(safe))
+            CLUB, address(safe), 1, 0, issued, issued + 48 hours + 1, ClubSignaturePolicyV1.ownersHash(address(safe))
         );
         bytes memory proof = _sign(ISSUER, registry.bindingDigest(b));
         vm.prank(address(safe));
         vm.expectRevert(Registry.InvalidBinding.selector);
         registry.register(b, proof);
         _register();
-        bytes memory signatures = _two(campaign.clubClaimDigest(AWARD, 0, issued, issued + 24 hours + 1));
+        bytes memory signatures = _two(campaign.clubClaimDigest(AWARD, 0, issued, issued + 48 hours + 1));
         vm.expectRevert(Campaign.InvalidAuthorizationTime.selector);
-        campaign.claimClub(AWARD, 0, issued, issued + 24 hours + 1, signatures);
+        campaign.claimClub(AWARD, 0, issued, issued + 48 hours + 1, signatures);
     }
 
-    function testClubClaimRejectsExact24HourExpiry() public {
+    function testClubClaimRejectsExact48HourExpiry() public {
         _register();
         uint64 issued = uint64(block.timestamp);
-        uint64 expires = issued + 24 hours;
+        uint64 expires = issued + 48 hours;
         bytes memory signatures = _two(campaign.clubClaimDigest(AWARD, 0, issued, expires));
         vm.warp(expires);
         vm.expectRevert(Campaign.InvalidAuthorizationTime.selector);
@@ -394,19 +394,19 @@ contract SafeClubSignaturesV6Test is Test {
     }
 }
 
-interface IModuleSafeV6 {
+interface IModuleSafeV7 {
     function execTransactionFromModule(address to, uint256 value, bytes memory data, uint8 operation)
         external
         returns (bool);
 }
 
-contract ClaimModuleV6 {
+contract ClaimModuleV7 {
     function execute(address safe, address to, bytes memory data) external returns (bool) {
-        return IModuleSafeV6(safe).execTransactionFromModule(to, 0, data, 0);
+        return IModuleSafeV7(safe).execTransactionFromModule(to, 0, data, 0);
     }
 }
 
-contract SmallClubTreasuryV6 {
+contract SmallClubTreasuryV7 {
     address[] private members;
     uint256 private threshold;
     bool private rejectPayment;

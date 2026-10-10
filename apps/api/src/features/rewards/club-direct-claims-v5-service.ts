@@ -1,4 +1,5 @@
 import {directIdentityIssuerFromEnv} from './direct-claims-privy.js';
+import {clubApprovalExpiry} from './club-approval-lifetime.js';
 import {clubOwnersHashV1,encodeWalletRegistrationV2,verifyWalletBindingProofV2,type WalletBindingV2,type ClubClaimV6} from '@raceson/rewards-chain/club-signatures-v6';
 import {clubDirectClaimFactsV5,type RewardAccountIdentity,type RewardLedgerRpc} from '@raceson/db/rewards';
 import {verifyRewardWalletControl} from '@raceson/rewards-chain';
@@ -41,8 +42,9 @@ export async function buildClubDirectClaimV5(actor:RewardAccountIdentity,approva
   const from=facts.treasury.safeAddress;check(facts.treasury.owners.includes(challenge.address),'reward_destination_proof_required');
   if(observed.registeredAddress===from){
    if(v6){
-    const now=BigInt(Math.floor(Date.now()/1000)),expiresAt=BigInt(Math.floor(Date.parse(challenge.expiresAt)/1000));
-    check(expiresAt>now+30n&&observed.allocationDigest&&observed.clubOwnersHash===ownersHash,'reward_wallet_challenge_expired');
+    const now=BigInt(Math.floor(Date.now()/1000)),proofExpiry=BigInt(Math.floor(Date.parse(challenge.expiresAt)/1000));
+    check(proofExpiry>now+30n&&observed.allocationDigest&&observed.clubOwnersHash===ownersHash,'reward_wallet_challenge_expired');
+    const expiresAt=clubApprovalExpiry(now,BigInt(observed.deadline));
     clubClaim={entitlementId:facts.scope.entitlementId,recipient:from as Address,amount:BigInt(facts.scope.amountWei),pot:facts.scope.slot===0?1:0,
      nonce:BigInt(observed.authorizationNonce),issuedAt:now,expiresAt,allocationDigest:observed.allocationDigest,clubOwnersHash:ownersHash,registrationNonce:BigInt(observed.registrationNonce)};
    }
@@ -52,7 +54,7 @@ export async function buildClubDirectClaimV5(actor:RewardAccountIdentity,approva
    const now=BigInt(Math.floor(Date.now()/1000)),proofExpiry=BigInt(Math.floor(Date.parse(challenge.expiresAt)/1000));
    check(now>=BigInt(Math.floor(Date.parse(challenge.issuedAt)/1000))&&proofExpiry>now+30n,'reward_wallet_challenge_expired');
    const context={chainId:10143 as const,registry:facts.scope.plan.walletRegistry as Address};
-   const binding:WalletBindingV1|WalletBindingV2={beneficiaryId:facts.scope.beneficiaryId,recipient:from as Address,beneficiaryKind:1,nonce:BigInt(observed.registrationNonce),issuedAt:now,expiresAt:proofExpiry,...(facts.scope.plan.version===6?{clubOwnersHash:clubOwnersHashV1(facts.treasury.owners as Address[])}:{})};
+   const binding:WalletBindingV1|WalletBindingV2={beneficiaryId:facts.scope.beneficiaryId,recipient:from as Address,beneficiaryKind:1,nonce:BigInt(observed.registrationNonce),issuedAt:now,expiresAt:clubApprovalExpiry(now,BigInt(observed.deadline)),...(facts.scope.plan.version===6?{clubOwnersHash:clubOwnersHashV1(facts.treasury.owners as Address[])}:{})};
    const fresh=await read();check(JSON.stringify(fresh.scope)===JSON.stringify(facts.scope)&&JSON.stringify(fresh.treasury)===JSON.stringify(facts.treasury)&&fresh.challenge?.proof?.proofId===challenge.proof.proofId&&fresh.challenge.address===challenge.address,'reward_sponsor_claim_conflict');
    const identityProof=await issuer.sign(context,binding);
    if('clubOwnersHash' in binding)await verifyWalletBindingProofV2(context,binding as WalletBindingV2,issuer.address,identityProof);else await verifyWalletBindingProofV1(context,binding,issuer.address,identityProof);
