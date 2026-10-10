@@ -53,3 +53,29 @@ it('fails closed when pages repeat or fail instead of rendering a partial distri
  api.mockResolvedValue({...page,total:30,rows:Array.from({length:25},(_,i)=>row(i+1))});render(ui());
  expect(await screen.findByRole('alert')).toHaveTextContent('No payment status is assumed');expect(screen.queryByRole('table')).not.toBeInTheDocument();
 });
+
+it('defaults to ascending position and combines exact category filters with search and status independently per ledger',async()=>{
+ const athletes=Array.from({length:30},(_,i)=>({...row(i+1,i===28?'claimed':'unclaimed'),breakdown:[{category:i===29?'Open masters':'Open',place:30-i,amountWei:'3000000000000000'}]}));
+ const clubs=[3,1,2].map((place,i)=>({...row(31+i),kind:'club',breakdown:[{category:'Combined clubs',place,amountWei:'3000000000000000'}]}));
+ const all=[...athletes,...clubs];api.mockImplementation(async(_id,_slot,offset)=>({...page,total:all.length,offset,rows:all.slice(offset,offset+25)}));
+ render(ui());const table=await screen.findByRole('table',{name:'Athlete rewards'}),club=screen.getByRole('table',{name:'Club rewards'});
+ const names=()=>within(table).getAllByRole('rowheader').map(h=>h.textContent);
+ const categories=screen.getByRole('group',{name:'Athlete rewards · Category filters'});
+ expect(within(table).getByRole('columnheader',{name:'Position'})).toHaveAttribute('aria-sort','ascending');
+ expect(names()[0]).toBe('Athlete reward 30');
+ expect(within(club).getAllByRole('rowheader').map(h=>h.textContent)).toEqual(['Club reward 32','Club reward 33','Club reward 31']);
+ fireEvent.click(screen.getByRole('button',{name:'Next'}));
+ fireEvent.click(within(categories).getByRole('button',{name:'Open',exact:true}));
+ expect(names()[0]).toBe('Athlete reward 29');expect(names()).toHaveLength(25);
+ expect(screen.getByRole('button',{name:'Previous'})).toBeDisabled();
+ expect(within(categories).getByRole('button',{name:'Open',exact:true})).toHaveAttribute('aria-pressed','true');
+ expect(screen.getByText('29 matching rewards of 30.')).toBeVisible();
+ fireEvent.change(screen.getByLabelText('Athlete rewards · Reward status'),{target:{value:'claimed'}});
+ expect(names()).toEqual(['Athlete reward 29']);
+ fireEvent.change(screen.getByLabelText('Athlete rewards · Search rewards'),{target:{value:'missing'}});
+ expect(within(table).queryAllByRole('rowheader')).toHaveLength(0);
+ fireEvent.click(screen.getByRole('button',{name:'Clear filters'}));
+ expect(names()[0]).toBe('Athlete reward 30');
+ expect(within(categories).getByRole('button',{name:'All categories'})).toHaveAttribute('aria-pressed','true');
+ expect(within(club).getAllByRole('rowheader')).toHaveLength(3);expect(api).toHaveBeenCalledTimes(2);
+});

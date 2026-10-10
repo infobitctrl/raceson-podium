@@ -24,3 +24,12 @@ it('sorts sporting names, positions and exact times with absent values last',()=
 it('displays all wei precision without truncating paid amounts',()=>{expect(publicAmount(43750000000000000n)).toBe('0.04375');expect(publicAmount(1n)).toBe('0.000000000000000001');expect(publicAmount(1000000000000000001n,true)).toBe('1,000000000000000001');});
 
 it('formats copied finish times with millisecond precision and leaves absent league times empty',()=>{expect(publicFinishTime('5199630')).toBe('01:26:39.630');expect(publicFinishTime('0')).toBe('00:00:00.000');expect(publicFinishTime(null)).toBe('—');});
+
+it('sorts aggregated rewards by the selected category position without changing amounts or breakdowns',()=>{
+ const rows=[row,{...row,id:'second',number:2,breakdown:[{category:'Long · Female',place:2,amountWei:'40'},{category:'Short · Male',place:1,amountWei:'20'}]},
+ {...row,id:'unknown',number:3,breakdown:[{category:'Long · Female',place:1,amountWei:'40'},{category:'Short · Male',place:null,amountWei:'20'}]}];
+ const original=structuredClone(rows);
+ expect(sortPublicRewards(rows,'position',false,false,'Short · Male').map(r=>r.id)).toEqual(['second','opaque','unknown']);
+ expect(sortPublicRewards(rows,'position',true,false,'Short · Male').map(r=>r.id)).toEqual(['opaque','second','unknown']);
+ expect(rows).toEqual(original);
+});

@@ -33,10 +33,10 @@ export function publicDistributionTree(campaign: PublicSponsorCampaign, pot: Pub
     campaign.pots.length === 1 ? trackNodes(pot) : campaign.pots.map(p => ({id: `pot-${p.slot}`, label: p.slot === 0 ? t('League', 'Liga') : p.name, amountWei: BigInt(p.amountWei), level: 'allocation', children: trackNodes(p)}))};
 }
 export type RewardSort = 'reference' | 'number' | 'reward' | 'position' | 'name' | 'club' | 'time' | 'amount' | 'status';
-export function sortPublicRewards(rows: PublicRewardPage['rows'], sort: RewardSort, descending: boolean, hr = false) {
+export function sortPublicRewards(rows: PublicRewardPage['rows'], sort: RewardSort, descending: boolean, hr = false, category: string | null = null) {
   const reward = (r: typeof rows[number]) => r.breakdown?.map(b => b.category).join(' · ') ?? (r.kind==='athlete' ? hr?'Nagrada sportaša':'Athlete reward' : hr?'Nagrada kluba':'Club reward');
   const status=(r:typeof rows[number])=>({claimed:hr?'Preuzeto':'Claimed',unclaimed:hr?'Nepreuzeto':'Unclaimed',planned:hr?'Planirano':'Planned'})[r.status];
-  const position=(r:typeof rows[number])=>r.breakdown?.find(b=>b.place!==null)?.place??null;
+  const position=(r:typeof rows[number])=>r.breakdown?.find(b=>(category===null||b.category===category)&&b.place!==null)?.place??null;
   return [...rows].sort((a,b) => {
     if(sort==='position'||sort==='time'){
       const x=sort==='position'?position(a):a.display?.timeMs==null?null:BigInt(a.display.timeMs),y=sort==='position'?position(b):b.display?.timeMs==null?null:BigInt(b.display.timeMs);
