@@ -32,13 +32,27 @@ export function publicDistributionTree(campaign: PublicSponsorCampaign, pot: Pub
   return {id: 'pool', label: campaign.pots.length === 1 ? t('Prize pool', 'Fond nagrada') : t('Campaign pool', 'Fond kampanje'), amountWei: BigInt(campaign.budgetWei), level: 'pool', children:
     campaign.pots.length === 1 ? trackNodes(pot) : campaign.pots.map(p => ({id: `pot-${p.slot}`, label: p.slot === 0 ? t('League', 'Liga') : p.name, amountWei: BigInt(p.amountWei), level: 'allocation', children: trackNodes(p)}))};
 }
-export type RewardSort = 'reference' | 'reward' | 'amount' | 'status';
+export type RewardSort = 'reference' | 'number' | 'reward' | 'position' | 'name' | 'club' | 'time' | 'amount' | 'status';
 export function sortPublicRewards(rows: PublicRewardPage['rows'], sort: RewardSort, descending: boolean, hr = false) {
   const reward = (r: typeof rows[number]) => r.breakdown?.map(b => b.category).join(' · ') ?? (r.kind==='athlete' ? hr?'Nagrada sportaša':'Athlete reward' : hr?'Nagrada kluba':'Club reward');
   const status=(r:typeof rows[number])=>({claimed:hr?'Preuzeto':'Claimed',unclaimed:hr?'Nepreuzeto':'Unclaimed',planned:hr?'Planirano':'Planned'})[r.status];
+  const position=(r:typeof rows[number])=>r.breakdown?.find(b=>b.place!==null)?.place??null;
   return [...rows].sort((a,b) => {
-    const n = sort === 'amount' ? (BigInt(a.amountWei) < BigInt(b.amountWei) ? -1 : BigInt(a.amountWei) > BigInt(b.amountWei) ? 1 : 0)
+    if(sort==='position'||sort==='time'){
+      const x=sort==='position'?position(a):a.display?.timeMs==null?null:BigInt(a.display.timeMs),y=sort==='position'?position(b):b.display?.timeMs==null?null:BigInt(b.display.timeMs);
+      if(x===null||y===null)return x===y?a.number-b.number:x===null?1:-1;
+      return (x<y?-1:x>y?1:0)*(descending?-1:1)||a.number-b.number;
+    }
+    const n = sort === 'number' ? a.number-b.number : sort === 'name' ? (a.display?.name??'').localeCompare(b.display?.name??'',hr?'hr':'en',{numeric:true})
+      : sort === 'club' ? (a.display?.club??'').localeCompare(b.display?.club??'',hr?'hr':'en',{numeric:true})
+      : sort === 'amount' ? (BigInt(a.amountWei) < BigInt(b.amountWei) ? -1 : BigInt(a.amountWei) > BigInt(b.amountWei) ? 1 : 0)
       : sort === 'status' ? status(a).localeCompare(status(b),hr?'hr':'en') : sort === 'reward' ? reward(a).localeCompare(reward(b),hr?'hr':'en') || a.number-b.number : a.id.localeCompare(b.id);
     return (descending ? -n : n) || a.number-b.number;
   });
+}
+
+export function publicFinishTime(timeMs:string|null) {
+ if(timeMs===null)return '—';
+ const ms=BigInt(timeMs),seconds=ms/1000n;
+ return `${(seconds/3600n).toString().padStart(2,'0')}:${(seconds/60n%60n).toString().padStart(2,'0')}:${(seconds%60n).toString().padStart(2,'0')}.${(ms%1000n).toString().padStart(3,'0')}`;
 }

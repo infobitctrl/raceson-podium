@@ -26,7 +26,7 @@ export function hostedCopyPublicRpc(rpc:RewardLedgerRpc,identity?:RewardAccountI
    return rpc('service_reward_demo_copy_public_directory',{});
   if(name==='service_reward_public_awards_v4'&&Object.keys(args).length===3&&setupId(args.p_setup_id)
    &&Number.isInteger(args.p_slot)&&Number(args.p_slot)>=0&&Number(args.p_slot)<=5)
-   return rpc('service_reward_demo_copy_public_awards',{p_setup_id:args.p_setup_id,p_slot:args.p_slot});
+   return rpc('service_reward_demo_copy_public_awards_v2',{p_setup_id:args.p_setup_id,p_slot:args.p_slot});
   if(name!=='service_reward_public_campaign'||Object.keys(args).length!==5||!setupId(args.p_setup_id)
    ||!['p_chain_id','p_setup_id','p_actor_user_id','p_actor_session_id','p_campaign'].every(k=>k in args))throw Error('invalid_public_campaign');
   if(args.p_campaign!==null){

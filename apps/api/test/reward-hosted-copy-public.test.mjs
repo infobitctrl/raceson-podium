@@ -11,7 +11,7 @@ test('copy public closure exposes three fixed projections and captures exact pub
  await publicRead('service_reward_public_campaign',campaignArgs);
  await publicRead('service_reward_public_directory',{p_chain_id:10143});
  await publicRead('service_reward_public_awards_v4',{p_chain_id:10143,p_setup_id:id,p_slot:5});
- assert.deepEqual(calls.map(c=>c[0]),['service_reward_demo_copy_public_campaign','service_reward_demo_copy_public_directory','service_reward_demo_copy_public_awards']);
+ assert.deepEqual(calls.map(c=>c[0]),['service_reward_demo_copy_public_campaign','service_reward_demo_copy_public_directory','service_reward_demo_copy_public_awards_v2']);
  assert.deepEqual(calls[1][1],{});assert.equal('p_chain_id' in calls[2][1],false);
  const identity={...actor},publish=hostedCopyPublicRpc(rpc,identity,id);identity.userId=other;
  const write={...campaignArgs,p_actor_user_id:actor.userId,p_actor_session_id:actor.sessionId,p_campaign:{id}};

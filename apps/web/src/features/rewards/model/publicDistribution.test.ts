@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {publicDistributionTree,publicTrackGroups,sortPublicRewards} from './publicDistribution';
+import {publicDistributionTree,publicTrackGroups,sortPublicRewards,publicFinishTime} from './publicDistribution';
 import type {PublicRewardPage,PublicSponsorCampaign} from '@raceson/domain/rewards/public-campaign';
 const pot={slot:3,name:'Round 3',amountWei:'100',groups:[{name:'Long · Female',amountWei:'40'},{name:'Short · Male',amountWei:'40'},{name:'Combined clubs',amountWei:'20'}]} as PublicSponsorCampaign['pots'][number];
 const campaign={budgetWei:'100',pots:[pot]} as PublicSponsorCampaign;
@@ -12,4 +12,15 @@ describe('public allocation economics',()=>{
 });
 
 import {publicAmount} from './publicAmount';
+it('sorts sporting names, positions and exact times with absent values last',()=>{
+ const rows=[{...row,id:'a',number:1,display:{name:'Runner 10',club:null,timeMs:null},breakdown:[{category:'Distance',amountWei:'60',place:null}]},
+ {...row,id:'b',number:2,display:{name:'Runner 2',club:'Club 2',timeMs:'1000000000000001'}},
+ {...row,id:'c',number:3,display:{name:'Runner 3',club:'Club 1',timeMs:'1000000000000000'}}];
+ expect(sortPublicRewards(rows,'name',false).map(r=>r.id)).toEqual(['b','c','a']);
+ expect(sortPublicRewards(rows,'time',false).map(r=>r.id)).toEqual(['c','b','a']);
+ expect(sortPublicRewards(rows,'time',true).map(r=>r.id)).toEqual(['b','c','a']);
+ expect(sortPublicRewards(rows,'position',true).at(-1)?.id).toBe('a');
+});
 it('displays all wei precision without truncating paid amounts',()=>{expect(publicAmount(43750000000000000n)).toBe('0.04375');expect(publicAmount(1n)).toBe('0.000000000000000001');expect(publicAmount(1000000000000000001n,true)).toBe('1,000000000000000001');});
+
+it('formats copied finish times with millisecond precision and leaves absent league times empty',()=>{expect(publicFinishTime('5199630')).toBe('01:26:39.630');expect(publicFinishTime('0')).toBe('00:00:00.000');expect(publicFinishTime(null)).toBe('—');});

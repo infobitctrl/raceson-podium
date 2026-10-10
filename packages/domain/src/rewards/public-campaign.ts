@@ -36,13 +36,22 @@ export function decodePublicSponsorCampaign(value: unknown): PublicSponsorCampai
 }
 
 export type PublicRewardBreakdown = {category: string; amountWei: string; place: number | null};
+export type PublicRewardDisplay = {name: string; club: string | null; timeMs: string | null};
+export function decodePublicRewardDisplay(value: unknown): PublicRewardDisplay {
+  const d = value as PublicRewardDisplay;
+  const text = (v: unknown) => typeof v === 'string' && v.trim().length > 0 && v.length <= 300;
+  if (!d || typeof d !== 'object' || Array.isArray(d) || Object.keys(d).sort().join() !== 'club,name,timeMs'
+    || !text(d.name) || d.club !== null && !text(d.club)
+    || d.timeMs !== null && (typeof d.timeMs !== 'string' || !/^(0|[1-9][0-9]{0,15})$/.test(d.timeMs))) throw Error('invalid_public_awards');
+  return d;
+}
 
-/** Public references only. No account/profile identity, recipient address or consent. */
+/** Copied sporting display only. No account IDs, recipient addresses or consent. */
 export type PublicRewardPage = {
   campaignId: string; slot: number; chainId: 10143 | 31337; blockNumber: string; blockTimestamp: string;
   total: number; offset: number; sort: 'reward' | 'amount'; direction: 'asc' | 'desc';
   availability: 'awaiting_approval' | 'awaiting_distribution' | 'open' | 'paused' | 'closed';
-  rows: {id: string; number: number; kind: 'athlete' | 'club'; amountWei: string; status: 'planned' | 'unclaimed' | 'claimed'; breakdown?: PublicRewardBreakdown[]}[];
+  rows: {id: string; number: number; kind: 'athlete' | 'club'; amountWei: string; status: 'planned' | 'unclaimed' | 'claimed'; breakdown?: PublicRewardBreakdown[]; display?: PublicRewardDisplay}[];
 };
 export const PUBLIC_REWARD_PAGE_SIZE = 25;
 export function decodePublicRewardPage(value: unknown): PublicRewardPage {
@@ -59,7 +68,7 @@ export function decodePublicRewardPage(value: unknown): PublicRewardPage {
     || !Array.isArray(p.rows) || p.rows.length!==Math.min(PUBLIC_REWARD_PAGE_SIZE,Math.max(0,p.total-p.offset))) return fail();
   const ids=new Set<string>(),numbers=new Set<number>();
   for (const r of p.rows) {
-    if (!exact(r,'id,number,kind,amountWei,status'+(r.breakdown===undefined?'':',breakdown')) || !sponsorTxHash(r.id) || BigInt(r.id)===0n || ids.has(r.id)
+    if (!exact(r,'id,number,kind,amountWei,status'+(r.breakdown===undefined?'':',breakdown')+(r.display===undefined?'':',display')) || !sponsorTxHash(r.id) || BigInt(r.id)===0n || ids.has(r.id)
       || !Number.isInteger(r.number) || r.number<1 || r.number>p.total || numbers.has(r.number)
       || !['athlete','club'].includes(r.kind) || !uint(r.amountWei) || BigInt(r.amountWei)===0n
       || !['planned','unclaimed','claimed'].includes(r.status)) return fail();
@@ -68,6 +77,10 @@ export function decodePublicRewardPage(value: unknown): PublicRewardPage {
         || !uint(b.amountWei) || BigInt(b.amountWei) === 0n || b.place !== null && (!Number.isSafeInteger(b.place) || b.place < 1))
       || new Set(r.breakdown.map(b=>b.category)).size !== r.breakdown.length
       || r.breakdown.reduce((sum,b)=>sum+BigInt(b.amountWei),0n)!==BigInt(r.amountWei))) return fail();
+    if (r.display !== undefined) {
+      decodePublicRewardDisplay(r.display);
+      if (r.kind === 'club' && (r.display.club !== null || r.display.timeMs !== null)) return fail();
+    }
     ids.add(r.id);numbers.add(r.number);
   }
   return p;

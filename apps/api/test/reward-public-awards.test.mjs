@@ -19,6 +19,18 @@ function fixture(count=2){
  return{raw,observed,reader,reads:()=>reads};
 }
 const query={offset:0,sort:'reward',direction:'asc'};
+test('copied sporting display is bounded and cannot expose account, wallet or consent fields',async()=>{
+ const f=fixture();f.raw.awards[0].display={name:'Races Mon70',club:'Demo club 1',timeMs:'4860447'};
+ const p=await publicAwardPage(f.reader,f.observed,scope,f.raw,query);
+ assert.deepEqual(p.rows[0].display,f.raw.awards[0].display);
+ for(const patch of [{name:''},{club:42},{timeMs:'-1'},{timeMs:'01'},{timeMs:'1.2'},{timeMs:'10000000000000000'},{wallet:address},{userId:scope.id},{consent:true}]){
+  f.raw.awards[0].display={name:'Races Mon70',club:null,timeMs:null,...patch};
+  await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scope,f.raw,query));
+ }
+ const club={...p.rows[0],kind:'club',display:{name:'Demo club 1',club:null,timeMs:null}};
+ assert.doesNotThrow(()=>decodePublicRewardPage({...p,rows:[club,p.rows[1]]}));
+ assert.throws(()=>decodePublicRewardPage({...p,rows:[{...club,display:{...club.display,timeMs:'1000'}},p.rows[1]]}));
+});
 test('mixed finalized paid flags become claimed/unclaimed without identity or recipient leakage',async()=>{
  const f=fixture(),p=await publicAwardPage(f.reader,f.observed,scope,f.raw,query);
  assert.deepEqual(p.rows.map(r=>r.status),['claimed','unclaimed']);assert.equal(p.availability,'open');
