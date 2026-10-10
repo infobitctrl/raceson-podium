@@ -1,4 +1,5 @@
 import {clubDirectClaimV5} from '../../features/rewards/club-owner-approvals-service.js';
+import {clubStatusReader} from '../../features/rewards/club-status-reader.js';
 import {clubOwnerAwards,clubMemberships} from '@raceson/db/rewards';
 import type {RewardClubSafeDeploymentReader} from '@raceson/rewards-chain';
 import type {IncomingMessage,ServerResponse} from 'node:http';
@@ -40,7 +41,7 @@ export async function dispatchDirectClaimsV5(req:IncomingMessage,res:ServerRespo
   const shared={rpc,reader:deps.sponsorReader,issuer:deps.identityIssuer===undefined?directIdentityIssuerFromEnv(process.env):deps.identityIssuer};
   if(club){
    if(!safeReader(deps.sponsorReader))throw Error('hosted_copy_unavailable');
-   deps.sendSuccess(res,await clubDirectClaimV5(actor,approvalId,entitlementId,uuid.parse(club[3]),change as Parameters<typeof clubDirectClaimV5>[4],{...shared,reader:deps.sponsorReader}));
+   deps.sendSuccess(res,await clubDirectClaimV5(actor,approvalId,entitlementId,uuid.parse(club[3]),change as Parameters<typeof clubDirectClaimV5>[4],{...shared,reader:req.method==='GET'?clubStatusReader(deps.sponsorReader):deps.sponsorReader}));
   }else deps.sendSuccess(res,await directClaimV5(actor,approvalId,entitlementId,change as Parameters<typeof directClaimV5>[3],shared));
  }catch(e){const code=e&&typeof e==='object'&&'code'in e?String(e.code):e instanceof Error?e.message:'';
   if(['Unauthorized','Missing bearer token','reward_account_session_required'].includes(code))deps.sendError(res,401,'reward_auth_required','Sign in to the isolated demo.');

@@ -116,7 +116,7 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
     </aside>;
   const claims = <SponsorClubClaims role="recipient" hr={locale==="hr"} chainId={publicEnv.rewardDemo?.mode==="local"?31337:10143} onAccessError={onAccessLost}/>;
   return <div className="space-y-4">
-    {treasuryReady ? <>
+    {treasuryReady ?
       <details className={setup.completed} open={walletDetailsOpen} onToggle={event=>setWalletDetailsOpen(event.currentTarget.open)}>
         <summary><Wallet size={18} aria-hidden="true"/><span>{locale==='hr'?'Novčanik i riznica':'Wallet & treasury'}</span><span className={setup.ready}><ShieldCheck size={15} aria-hidden="true"/>{locale==='hr'?'Potvrđeno':'Verified'}</span></summary>
         <div className={setup.completedBody}>
@@ -132,9 +132,13 @@ function Workspace({ onAccessLost }: { onAccessLost: (error: unknown) => void })
           {createOpen||open?treasurySetup:null}
           {treasuryOverview}
         </div>
-      </details>
+      </details> : treasurySetup}
+    {/* Keep the claims subtree mounted when treasury history finishes loading;
+        moving it between conditional branches restarted all status checks. */}
+    <div className={treasuryReady ? undefined : `${p.recipientLayout} ${p.clubLayout}`}>
+      {!treasuryReady ? treasuryOverview : null}
       <div className={p.recipientAwards}>{claims}</div>
-    </> : <>{treasurySetup}<div className={`${p.recipientLayout} ${p.clubLayout}`}>{treasuryOverview}<div className={p.recipientAwards}>{claims}</div></div></>}
+    </div>
     {!publicEnv.hostedOperations && open ? <Suspense fallback={<p role="status">{t("rewards.loading")}</p>}><Nomination clubs={clubs.items} onAccessLost={onAccessLost}
       onBack={() => setOpen(false)} onSaved={() => { void history.load(); }} /></Suspense> : null}
     {!publicEnv.hostedOperations?<Button variant="outline" aria-expanded={ledgerOpen} onClick={() => setLedgerOpen(v => !v)}>{t("rewards.clubLedger.open")}</Button>:null}

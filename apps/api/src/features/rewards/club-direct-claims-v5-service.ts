@@ -22,8 +22,13 @@ export async function buildClubDirectClaimV5(actor:RewardAccountIdentity,approva
  const treasury={safe:{context:{environment:'monad-testnet' as const,chainId:10143 as const,verifyingContract:facts.treasury.safeAddress as Address},
   singletonAddress:rewardClubSafeTestnetDependencies.singletonAddress,fallbackHandlerAddress:rewardClubSafeTestnetDependencies.fallbackHandlerAddress,owners:facts.treasury.owners as Address[]},
   factoryAddress:rewardClubSafeTestnetDependencies.factoryAddress,deploymentTransactionHash:facts.treasury.deploymentTransactionHash as Hex,initializationSaltNonce:BigInt('0x'+facts.treasury.creationId.replaceAll('-',''))+1n};
- const safe=await observeDirectClubTreasuryV5(deps.reader,treasury);
- let observed=await observeSponsorDirectClaimV5(deps.reader,facts.scope);
+ // Both depend on the authenticated facts, not each other. Keep every final
+ // authority, nonce and checkpoint recheck below after these initial reads.
+ const [safe,initialObservation]=await Promise.all([
+  observeDirectClubTreasuryV5(deps.reader,treasury),
+  observeSponsorDirectClaimV5(deps.reader,facts.scope),
+ ]);
+ let observed=initialObservation;
  let clubClaim:ClubClaimV6|null=null,registrationReceipt:null|{transactionHash:Hex;blockNumber:string;blockHash:Hex}=null;
  const v6=facts.scope.plan.version===6;
  const ownersHash=clubOwnersHashV1(facts.treasury.owners as Address[]);

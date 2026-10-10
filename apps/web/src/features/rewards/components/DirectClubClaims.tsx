@@ -1,3 +1,4 @@
+import type {ClubPaymentState} from "./useClubPaymentStates";
 import RewardErrorNotice from "./RewardErrorNotice";
 import {useCallback,useEffect,useRef,useState} from 'react';
 import type {Hex} from 'viem';
@@ -10,12 +11,15 @@ import SponsorWallet from './SponsorWallet';
 import RewardClaimDialog from './RewardClaimDialog';
 import RewardExplorerLink from './RewardExplorerLink';
 import s from './SponsorLaunch.module.css';
-export default function DirectClubClaims({awards,hr,onRefresh,onAccessError}:{awards:SponsorClubAward[];hr:boolean;onRefresh:()=>Promise<void>;onAccessError?:(e:unknown)=>void}){
+export default function DirectClubClaims({awards,hr,onRefresh,onAccessError,paymentState}:{paymentState?:(award:SponsorClubAward)=>ClubPaymentState;awards:SponsorClubAward[];hr:boolean;onRefresh:()=>Promise<void>;onAccessError?:(e:unknown)=>void}){
  const [selected,setSelected]=useState<SponsorClubAward|null>(null),t=(en:string,local:string)=>hr?local:en;
  return <section aria-label={t('Direct club rewards','Izravne klupske nagrade')}>
-  <p>{t('Distribution is approved. Two treasury owners consent, then either owner submits the claim. No further reviewer approval is needed.','Raspodjela je odobrena. Dva vlasnika riznice daju pristanak, zatim jedan šalje preuzimanje. Dodatno odobrenje pregledavatelja nije potrebno.')}</p>
-  <ul>{awards.map(a=><li key={a.entitlementId}><strong>{a.slot===0?t('League','Liga'):`${t('Round','Kolo')} ${a.slot}`} · {setupAmount(BigInt(a.amountWei),hr)} test MON</strong>{' '}
-   <button className={s.primary} onClick={()=>setSelected(a)}>{a.directClaim?.paid?t('View payment','Pregledaj isplatu'):t('Claim to club treasury','Preuzmi u klupsku riznicu')}</button></li>)}</ul>
+  <p>{awards.every(a=>(paymentState?.(a)??(a.directClaim?.paid?'paid':'unclaimed'))==='paid')?t('These rewards have been paid to the club treasury. No further signature is needed.','Ove nagrade isplaćene su klupskoj riznici. Nije potreban dodatni potpis.'):t('Unclaimed rewards need consent from two treasury owners. Paid rewards need no further signature.','Nepreuzete nagrade zahtijevaju pristanak dva vlasnika riznice. Isplaćene nagrade ne zahtijevaju dodatni potpis.')}</p>
+  <div className={s.claimRows}>{awards.map(a=>{const state=paymentState?.(a)??(a.directClaim?.paid?'paid':'unclaimed'),paid=state==='paid';return <div className={s.claimRow} key={`${a.approvalId}:${a.entitlementId}`}>
+   <div><strong>{a.slot===0?t('League','Liga'):`${t('Round','Kolo')} ${a.slot}`}</strong><span className={s.claimAmount}>{setupAmount(BigInt(a.amountWei),hr)} <small>test MON</small></span>
+    <span className={s.claimState} data-paid={paid}>{paid?t('Paid','Isplaćeno'):state==='unclaimed'?t('Unclaimed','Nepreuzeto'):state==='checking'?t('Checking payment…','Provjera isplate…'):t('Status unavailable','Stanje nije dostupno')}</span></div>
+   <div className={s.claimActions}><button className={paid?s.secondary:s.primary} onClick={()=>setSelected(a)}>{paid?t('View payment','Pregledaj isplatu'):state==='unclaimed'?t('Claim to club treasury','Preuzmi u klupsku riznicu'):t('Review status','Provjeri stanje')}</button></div>
+  </div>;})}</div>
   {selected?<RewardClaimDialog club hr={hr} onClose={()=>{setSelected(null);void onRefresh().catch(()=>{});}}>{onBusy=><DirectClubClaim award={selected} hr={hr} onBusy={onBusy} onAccessError={onAccessError}/>}</RewardClaimDialog>:null}
  </section>;
 }

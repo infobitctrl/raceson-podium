@@ -1,3 +1,4 @@
+import {useEffect} from 'react';
 vi.mock('../data/clubMemberships',()=>({getRewardMemberClubs:async()=>({items:[{clubId:'73000000-0000-4000-8000-000000000001',name:'Member test club',role:'manager',canSign:false}],nextCursor:null})}));
 import { act, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
@@ -6,10 +7,10 @@ import { I18nProvider } from "@/shared/i18n/I18nProvider";
 import ClubRewards from "./ClubRewards";
 import { clubFixture, clubAddress as a } from "../model/clubFixtures.test-helper";
 const c = vi.hoisted(() => ({ enabled: true, hosted: false, creations: vi.fn(), user: "owner", account: "owner", session: { epoch: 1 } as { epoch: number } | null,
-  clubs: vi.fn(), history: vi.fn(), submit: vi.fn(), read: vi.fn(), withdraw: vi.fn(), wallet: vi.fn(), signOut: vi.fn() }));
+  claimMount:vi.fn(), clubs: vi.fn(), history: vi.fn(), submit: vi.fn(), read: vi.fn(), withdraw: vi.fn(), wallet: vi.fn(), signOut: vi.fn() }));
 vi.mock("../data/clubSafeCreation",()=>({clubSafeCreationHistory:c.creations}));
 vi.mock("../components/ClubTreasuryCreation",()=>({default:({onBack,onVerified}:{onBack:()=>void;onVerified?:()=>void})=><section aria-label="Privy treasury setup"><h2>Create your club treasury with Privy</h2><button onClick={onBack}>Other treasury options</button><button onClick={onVerified}>Finish verified creation</button></section>}));
-vi.mock("../components/SponsorClubClaims",()=>({default:()=> <div>Club claim controls</div>}));
+vi.mock("../components/SponsorClubClaims",()=>({default:function Claims(){useEffect(()=>{c.claimMount();},[]);return <div>Club claim controls</div>;}}));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: { id: c.user }, account: { userId: c.account }, session: c.session, isLoading: false, signOut:c.signOut }) }));
 vi.mock("@/lib/public-env", () => ({ publicEnv: { get rewardPortalEnabled() { return c.enabled; }, get hostedOperations() { return c.hosted; }, rewardDemo: { mode: "local" } } }));
 vi.mock("../data/clubTreasuries", () => ({ getRewardOwnedClubs: c.clubs, getClubTreasuryHistory: c.history,
@@ -32,6 +33,7 @@ function fill(region: HTMLElement, locale: "en" | "hr" = "en") {
   fireEvent.click(within(region).getByRole("checkbox"));
 }
 beforeEach(() => {
+  c.claimMount.mockClear();
   const f = clubFixture(); c.hosted = false; c.creations.mockReset().mockResolvedValue({items:[],nextCursor:null}); c.enabled = true; c.user = "owner"; c.account = "owner"; c.session = { epoch: 1 };
   c.clubs.mockReset().mockResolvedValue(f.clubs); c.history.mockReset().mockResolvedValue({ items: [], nextCursor: null });
   c.submit.mockReset().mockResolvedValue(f.request); c.read.mockReset().mockResolvedValue(f.request);
@@ -209,4 +211,11 @@ describe('Privy-first hosted treasury onboarding',()=>{
     expect(await screen.findByRole('region',{name:'No club to manage'})).toBeVisible();
     expect(screen.queryByRole('region',{name:'Privy treasury setup'})).not.toBeInTheDocument();
   });
+});
+
+it('does not remount rewards and restart status checks when a verified treasury finishes loading',async()=>{
+ c.hosted=true;let finish:(value:unknown)=>void=()=>{};c.creations.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ mount();await screen.findByText('Club claim controls');expect(c.claimMount).toHaveBeenCalledTimes(1);
+ await act(async()=>finish({items:[{requestId:'verified',clubId:clubFixture().request.clubId,current:true,owners:[a(20),a(21),a(22)],verified:{safeAddress:a(10),transactionHash:'0x'+'ab'.repeat(32)}}],nextCursor:null}));
+ await screen.findByText('Wallet & treasury',{selector:'summary span'});expect(c.claimMount).toHaveBeenCalledTimes(1);expect(screen.getByText('Club claim controls')).toBeVisible();
 });
