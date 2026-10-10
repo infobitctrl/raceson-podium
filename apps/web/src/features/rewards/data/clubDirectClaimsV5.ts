@@ -6,6 +6,7 @@ import {directSafeAbiV5,directSafeMessageV5,verifyDirectSafeSignaturesV5,encodeD
 import {encodeRegisterAndClaimV5,encodeSponsorDirectClaimV5,verifyWalletBindingProofV1} from '@raceson/rewards-chain/sponsor-direct-claims-v5';
 import {directClaimSchemaV5,directBindingSchemaV1,type SponsoredClaimSenderV5} from './directClaimsV5';
 import type {RewardWalletProvider} from './browserWallet';
+import {sponsoredClaimGas} from './sponsoredClaimGas';
 const address=z.string().regex(/^0x[0-9a-f]{40}$/),hash=z.string().regex(/^0x[0-9a-f]{64}$/),uuid=z.string().uuid();
 const uint=z.string().regex(/^(0|[1-9][0-9]*)$/);
 const clubClaim=z.object({entitlementId:hash,recipient:address,amount:uint,pot:z.union([z.literal(0),z.literal(1)]),nonce:uint,issuedAt:uint,expiresAt:uint,allocationDigest:hash,clubOwnersHash:hash,registrationNonce:uint}).strict();
@@ -67,9 +68,11 @@ export async function sendDirectClubClaimV5(provider:RewardWalletProvider,view:C
   if(send){
    // Privy pays gas without drawing from the owner or the club's prize funds.
    // A rejected or ambiguous sponsored send must never fall back to owner gas.
+   const transaction={from:address as Address,to:tx.to as Address,data,value:0n as const,chainId:10143 as const};
+   const gasLimit=await sponsoredClaimGas(provider,transaction);
    if(claim)validateClubClaimV6(view);else await directClubCallV5(view);
    await check();
-   const {hash}=await send({from:address as Address,to:tx.to as Address,data,value:0n,chainId:10143},
+   const {hash}=await send({...transaction,gasLimit},
     {address:address as Address,sponsor:true,uiOptions:{showWalletUIs:true}});
    if(typeof hash!=='string'||!/^0x[0-9a-f]{64}$/i.test(hash))throw Error('transaction_unknown');return hash.toLowerCase();
   }

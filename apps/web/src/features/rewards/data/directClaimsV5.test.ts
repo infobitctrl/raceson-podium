@@ -27,7 +27,7 @@ describe('athlete direct claim transaction boundary',()=>{
   const v=await fixture();v.recipient=v.transaction!.from;v.transaction={...v.transaction!,to:campaign,data:encodeSponsorDirectClaimV5(id),binding:null,identityProof:null};
   await expect(validateDirectClaimTransactionV5(v)).resolves.toEqual(v.transaction);
   const p=provider();await expect(sendDirectClaimV5(p,v,()=>true,vi.fn().mockResolvedValue({hash:id}))).resolves.toBe(id);
-  expect(p.request.mock.calls.map(([x])=>x.method)).toEqual(['eth_accounts','eth_chainId','eth_accounts','eth_chainId']);
+  expect(p.request.mock.calls.map(([x])=>x.method)).toEqual(['eth_accounts','eth_chainId','eth_estimateGas','eth_gasPrice','eth_accounts','eth_chainId']);
   expect(p.listeners.size).toBe(0);
  });
  it('wallet/network/session changes stop sponsored submission',async()=>{
@@ -57,9 +57,9 @@ it.each(['0x0','0x1'])('sponsors an athlete with balance %s without requesting f
  p.request.mockImplementation(async args=>args.method==='eth_getBalance'?balance:base(args));
  const send=vi.fn().mockResolvedValue({hash:id}),v=await fixture();
  await expect(sendDirectClaimV5(p,v,()=>true,send)).resolves.toBe(id);
- expect(send).toHaveBeenCalledWith({chainId:10143,from:v.transaction!.from,to:registry,data:v.transaction!.data,value:0n},
+ expect(send).toHaveBeenCalledWith({chainId:10143,from:v.transaction!.from,to:registry,data:v.transaction!.data,value:0n,gasLimit:240000n},
   {address:v.transaction!.from,sponsor:true,uiOptions:{showWalletUIs:true}});
- expect(p.request.mock.calls.every(([x])=>['eth_accounts','eth_chainId'].includes(x.method))).toBe(true);expect(p.listeners.size).toBe(0);
+ expect(p.request.mock.calls.every(([x])=>['eth_accounts','eth_chainId','eth_estimateGas','eth_gasPrice'].includes(x.method))).toBe(true);expect(p.listeners.size).toBe(0);
 });
 it('sponsorship absence or provider failure never falls back to charging the athlete',async()=>{
  const p=provider(),v=await fixture();
@@ -68,4 +68,18 @@ it('sponsorship absence or provider failure never falls back to charging the ath
  await expect(sendDirectClaimV5(p,v,()=>true,send)).rejects.toThrow('provider sponsorship unavailable');
  expect(send).toHaveBeenCalledOnce();expect(p.request.mock.calls.some(([x])=>x.method==='eth_sendTransaction')).toBe(false);
  expect(p.listeners.size).toBe(0);
+});
+it.each(['revert','event','expiry'])('stops before the wallet confirmation when simulation observes %s',async mode=>{
+ const p=provider(),base=p.request.getMockImplementation()!,v=await fixture(),send=vi.fn();
+ p.request.mockImplementation(async args=>{
+  if(args.method==='eth_estimateGas'){
+   if(mode==='revert')throw Error('contract reverted');
+   if(mode==='event')p.listeners.get('accountsChanged')?.();
+   if(mode==='expiry')v.transaction!.binding!.expiresAt='1';
+  }
+  return base(args);
+ });
+ await expect(sendDirectClaimV5(p,v,()=>true,send)).rejects.toThrow();
+ expect(send).not.toHaveBeenCalled();expect(p.listeners.size).toBe(0);
+ expect(p.request.mock.calls.some(([x])=>['eth_getBalance','eth_sendTransaction'].includes(x.method))).toBe(false);
 });

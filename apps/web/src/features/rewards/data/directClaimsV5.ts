@@ -4,6 +4,7 @@ import {apiRequest} from '@/lib/api';
 import {encodeRegisterAndClaimV5,encodeSponsorDirectClaimV5,verifyWalletBindingProofV1} from '@raceson/rewards-chain/sponsor-direct-claims-v5';
 import type {RewardWalletProvider} from './browserWallet';
 import type {Address,Hex} from 'viem';
+import {sponsoredClaimGas} from './sponsoredClaimGas';
 const hash=z.string().regex(/^0x[0-9a-f]{64}$/),address=z.string().regex(/^0x[0-9a-f]{40}$/),uint=z.string().regex(/^(0|[1-9][0-9]*)$/),uuid=z.string().uuid();
 export const directBindingSchemaV1=z.object({beneficiaryId:hash,recipient:address,beneficiaryKind:z.literal(0),nonce:uint,issuedAt:uint,expiresAt:uint,clubOwnersHash:hash.optional()}).strict();
 const receipt=z.object({transactionHash:hash,amountWei:uint,recipient:address,blockNumber:uint,blockHash:hash}).strict();
@@ -30,10 +31,10 @@ export async function validateDirectClaimTransactionV5(view:DirectClaimV5){
  }else if(tx.identityProof!==null||tx.to!==v.campaignAddress||tx.from!==v.recipient||tx.data!==encodeSponsorDirectClaimV5(v.entitlementId as Hex))throw Error('invalid_direct_claim_transaction');
  return tx;
 }
-export type SponsoredClaimSenderV5=(transaction:{chainId:10143;from:Address;to:Address;data:Hex;value:0n},
+export type SponsoredClaimSenderV5=(transaction:{chainId:10143;from:Address;to:Address;data:Hex;value:0n;gasLimit?:bigint},
  options:{address:Address;sponsor:true;uiOptions:{showWalletUIs:true}})=>Promise<{hash:string}>;
 /** Only the explicit app-paid SDK capability may submit. Never fall back to a
- * recipient-funded transaction or estimate against the athlete's balance. */
+ * recipient-funded transaction or estimate fees against the athlete's balance. */
 export async function sendDirectClaimV5(provider:RewardWalletProvider,view:DirectClaimV5,current:()=>boolean,send?:SponsoredClaimSenderV5){
  if(!send)throw Error('claim_sponsorship_unavailable');
  const tx=await validateDirectClaimTransactionV5(view);
@@ -45,8 +46,10 @@ export async function sendDirectClaimV5(provider:RewardWalletProvider,view:Direc
  events.forEach(event=>provider.on(event,change));
  try{
   await check();
+  const transaction={from:tx.from as Address,to:tx.to as Address,data:tx.data as Hex,value:0n as const,chainId:10143 as const};
+  const gasLimit=await sponsoredClaimGas(provider,transaction);
   await validateDirectClaimTransactionV5(view);await check();
-  const {hash:result}=await send({from:tx.from as Address,to:tx.to as Address,data:tx.data as Hex,value:0n,chainId:10143},
+  const {hash:result}=await send({...transaction,gasLimit},
    {address:tx.from as Address,sponsor:true,uiOptions:{showWalletUIs:true}});
   if(typeof result!=='string'||!/^0x[0-9a-f]{64}$/i.test(result))throw Error('transaction_unknown');
   return result.toLowerCase();

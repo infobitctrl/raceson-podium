@@ -104,9 +104,9 @@ it.each(['v5','register','claim'] as const)('sponsors %s with zero owner balance
  p.request.mockImplementation(async args=>args.method==='eth_getBalance'?'0x0':base(args));
  const send=vi.fn().mockResolvedValue({hash:id}),address=owners[0].address.toLowerCase();
  await expect(sendDirectClubClaimV5(p,v,signatures,address,()=>true,send)).resolves.toBe(id);
- expect(send).toHaveBeenCalledExactlyOnceWith({from:address,to:phase==='claim'?campaign:safe,data:expect.stringMatching(/^0x[0-9a-f]+$/),value:0n,chainId:10143},
+ expect(send).toHaveBeenCalledExactlyOnceWith({from:address,to:phase==='claim'?campaign:safe,data:expect.stringMatching(/^0x[0-9a-f]+$/),value:0n,chainId:10143,gasLimit:240000n},
   {address,sponsor:true,uiOptions:{showWalletUIs:true}});
- expect(p.request.mock.calls.some(([x])=>['eth_getBalance','eth_estimateGas','eth_gasPrice','eth_sendTransaction'].includes(x.method))).toBe(false);
+ expect(p.request.mock.calls.some(([x])=>['eth_getBalance','eth_sendTransaction'].includes(x.method))).toBe(false);
  expect(p.listeners.size).toBe(0);
 });
 it.each(['wallet','chain','nonce','session','event','duplicate','expired'] as const)('sponsored registration preserves %s safety gate',async mode=>{

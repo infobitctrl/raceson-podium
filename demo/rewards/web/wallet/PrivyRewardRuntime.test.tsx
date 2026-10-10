@@ -267,15 +267,15 @@ it('authorizes the exact publication request for the verified reviewer without c
 
 it('the actual embedded claim adapter requests app-paid fees for the exact wallet and never sends raw',async()=>{
  const address=`0x${'ab'.repeat(20)}`,campaign=`0x${'cd'.repeat(20)}`,hash=`0x${'ef'.repeat(32)}` as const;
- const provider={request:vi.fn(async({method}:{method:string})=>method==='eth_accounts'?[address]:method==='eth_chainId'?'0x279f':'0x0'),on:vi.fn(),removeListener:vi.fn()};
+ const provider={request:vi.fn(async({method}:{method:string})=>method==='eth_accounts'?[address]:method==='eth_chainId'?'0x279f':method==='eth_estimateGas'?'0x30d40':method==='eth_gasPrice'?'0x1':'0x0'),on:vi.fn(),removeListener:vi.fn()};
  mocks.walletList=[{address,walletClientType:'privy',connectorType:'embedded',linked:true,imported:false,getEthereumProvider:async()=>provider}];
  mocks.sponsoredSend.mockResolvedValue({hash});const onState=vi.fn();
  render(<PrivyRewardRuntime configuration={configuration} sessionKey="sponsored" walletUserId="demo-user" onState={onState}/>);await act(async()=>{});
  const binding=onState.mock.lastCall?.[1].wallet;
  const claim={schema:'podium-direct-claim-v5',approvalId:'72000000-0000-4000-8000-000000000001',entitlementId:hash,chainId:10143,amountWei:'100',campaignAddress:campaign,registryAddress:campaign,identityIssuer:campaign,beneficiaryId:hash,status:'claimable',recipient:address,deadline:'1999999999',receipt:null,rehearsalPolicy:'podium-demo-alias-rehearsal-v1',transaction:{chainId:10143,from:address,to:campaign,data:encodeSponsorDirectClaimV5(hash),value:'0',binding:null,identityProof:null}};
  await expect(binding.sendDirectClaim(claim,()=>true)).resolves.toBe(hash);
- expect(mocks.sponsoredSend).toHaveBeenCalledWith({chainId:10143,from:address,to:campaign,data:claim.transaction.data,value:0n},{address,sponsor:true,uiOptions:{showWalletUIs:true}});
- expect(provider.request.mock.calls.every(([arg])=>['eth_accounts','eth_chainId'].includes(arg.method))).toBe(true);
+ expect(mocks.sponsoredSend).toHaveBeenCalledWith({chainId:10143,from:address,to:campaign,data:claim.transaction.data,value:0n,gasLimit:240000n},{address,sponsor:true,uiOptions:{showWalletUIs:true}});
+ expect(provider.request.mock.calls.every(([arg])=>['eth_accounts','eth_chainId','eth_estimateGas','eth_gasPrice'].includes(arg.method))).toBe(true);
  mocks.sponsoredSend.mockClear();await expect(binding.sendDirectClaim(claim,()=>false)).rejects.toThrow();expect(mocks.sponsoredSend).not.toHaveBeenCalled();
 });
 
@@ -285,7 +285,7 @@ it('club owner adapter uses sponsored gas for exact two-owner calldata and retir
  const {directClubCallV5}=await import('@/features/rewards/data/clubDirectClaimsV5');
  const owners=[9302,9303,9304].map(n=>privateKeyToAccount(toHex(BigInt(n),{size:32})));
  const address=owners[0].address.toLowerCase(),safe=`0x${'34'.repeat(20)}` as const,campaign=`0x${'cd'.repeat(20)}` as const,hash=`0x${'ef'.repeat(32)}` as const;
- const provider={request:vi.fn(async({method}:{method:string})=>method==='eth_accounts'?[address]:method==='eth_chainId'?'0x279f':'0x0'),on:vi.fn(),removeListener:vi.fn()};
+ const provider={request:vi.fn(async({method}:{method:string})=>method==='eth_accounts'?[address]:method==='eth_chainId'?'0x279f':method==='eth_estimateGas'?'0x30d40':method==='eth_gasPrice'?'0x1':'0x0'),on:vi.fn(),removeListener:vi.fn()};
  mocks.walletList=[{address,walletClientType:'privy',connectorType:'embedded',linked:true,imported:false,getEthereumProvider:async()=>provider}];
  mocks.sponsoredSend.mockResolvedValue({hash});const onState=vi.fn();
  let clubSessionKey="club-sponsored";
@@ -294,8 +294,8 @@ it('club owner adapter uses sponsored gas for exact two-owner calldata and retir
  const claim={schema:'podium-club-direct-claim-v5' as const,approvalId:'72000000-0000-4000-8000-000000000001',creationId:'72000000-0000-4000-8000-000000000002',clubId:'72000000-0000-4000-8000-000000000003',safeAddress:safe,owners:owners.map(o=>o.address.toLowerCase()),safeNonce:'0',entitlementId:hash,chainId:10143 as const,amountWei:'100',campaignAddress:campaign,registryAddress:campaign,identityIssuer:campaign,beneficiaryId:hash,status:'claimable' as const,recipient:safe,deadline:'1999999999',receipt:null,rehearsalPolicy:'podium-demo-alias-rehearsal-v1' as const,transaction:{chainId:10143 as const,from:safe,to:campaign,data:encodeSponsorDirectClaimV5(hash),value:'0' as const,binding:null,identityProof:null}};
  const call=await directClubCallV5(claim),signatures=await Promise.all(owners.slice(0,2).map(o=>o.signTypedData(directSafeMessageV5(call))));
  await expect(binding.sendDirectClubClaim(claim,signatures,address,()=>true)).resolves.toBe(hash);
- expect(mocks.sponsoredSend).toHaveBeenCalledExactlyOnceWith({chainId:10143,from:address,to:safe,data:expect.stringMatching(/^0x[0-9a-f]+$/),value:0n},{address,sponsor:true,uiOptions:{showWalletUIs:true}});
- expect(provider.request.mock.calls.every(([arg])=>['eth_accounts','eth_chainId','eth_call'].includes(arg.method))).toBe(true);
+ expect(mocks.sponsoredSend).toHaveBeenCalledExactlyOnceWith({chainId:10143,from:address,to:safe,data:expect.stringMatching(/^0x[0-9a-f]+$/),value:0n,gasLimit:240000n},{address,sponsor:true,uiOptions:{showWalletUIs:true}});
+ expect(provider.request.mock.calls.every(([arg])=>['eth_accounts','eth_chainId','eth_call','eth_estimateGas','eth_gasPrice'].includes(arg.method))).toBe(true);
  mocks.sponsoredSend.mockClear();await expect(binding.sendDirectClubClaim(claim,signatures,address,()=>false)).rejects.toThrow();expect(mocks.sponsoredSend).not.toHaveBeenCalled();
  mocks.auth.session={access_token:'retired-club-session'};clubSessionKey='retired-club-session';page.rerender(runtime());await act(async()=>{});
  await expect(binding.sendDirectClubClaim(claim,signatures,address,()=>true)).rejects.toThrow();expect(mocks.sponsoredSend).not.toHaveBeenCalled();
