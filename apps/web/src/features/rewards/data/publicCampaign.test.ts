@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
-import {readPublicRewards} from './publicCampaign';
+import {readPublicRewards,readPublicCampaignSource} from './publicCampaign';
 const mocks = vi.hoisted(() => ({origin: vi.fn(), fetch: vi.fn()}));
 vi.mock('@/lib/public-env', () => ({assertPublicEnvironmentOrigin: mocks.origin,
   publicEnv: {rewardDemo: {chainId: 31337, apiBaseUrl: 'https://isolated.invalid/api'}}}));
@@ -10,6 +10,16 @@ const page = {campaignId: id, slot: 1, chainId: 31337, blockNumber: '100', block
 beforeEach(() => {mocks.fetch.mockReset(); mocks.origin.mockReset(); vi.stubGlobal('fetch', mocks.fetch);});
 afterEach(() => vi.unstubAllGlobals());
 function response(value: unknown = page) {mocks.fetch.mockResolvedValue({ok: true, json: async () => ({data: value})});}
+it('reads only the selected public source without cookies, cache or a directory refresh',async()=>{
+ const value={id,chainId:31337,selection:null};response(value);
+ const abort=new AbortController();expect(await readPublicCampaignSource(id,abort.signal)).toEqual(value);
+ expect(mocks.fetch).toHaveBeenCalledWith(`https://isolated.invalid/api/v1/rewards/public-campaigns/${id}/source`,expect.objectContaining({credentials:'omit',cache:'no-store',redirect:'error'}));
+ abort.abort();expect(mocks.fetch.mock.calls[0][1].signal.aborted).toBe(true);
+});
+it.each([{id:'72000000-0000-4000-8000-000000000002'},{chainId:10143},{wallet:'private'},{selection:{userId:'private'}}])('rejects foreign or private source data: %j',async patch=>{
+ response({id,chainId:31337,selection:null,...patch});
+ await expect(readPublicCampaignSource(id,new AbortController().signal)).rejects.toThrow();
+});
 it('requests a bounded public page at the selected block without credentials or cache', async () => {
   response(); const abort = new AbortController();
   expect(await readPublicRewards(id, 1, 25, 'reward', 'asc', abort.signal, '100')).toEqual(page);

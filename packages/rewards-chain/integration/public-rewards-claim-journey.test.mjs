@@ -8,6 +8,7 @@ import {sponsorClaimMessagesV4} from '../dist/sponsor-claims-v4.js';
 import {controllerReadBatch} from '../dist/canary-public-client.js';
 import {rewardUploadDigest} from '../dist/index.js';
 import {publicAwardPage} from '../../../apps/api/dist/features/rewards/public-awards-service.js';
+import {createPublicPotObserver} from '../../../apps/api/dist/features/rewards/public-pot-observation.js';
 
 // Synthetic athlete identities, synthetic source evidence and locally provisioned
 // EOAs stand in for Privy-created wallets. No Privy API, retained DB or testnet IO.
@@ -29,6 +30,7 @@ test('two fresh simulated athlete wallets claim all 12 awards and public rows tu
   // Exercise the same deployless batched read mechanism selected for public pages.
   const endpoint=chain.publicClient.transport.url;assert.match(endpoint,/^http:\/\/127\.0\.0\.1:\d+$/);
   const batched=createPublicClient({chain:chain.publicClient.chain,cacheTime:0,batch:controllerReadBatch,transport:http(endpoint,{retryCount:0})});
+  const publicObserver=createPublicPotObserver();
   const evidence={environment:'disposable-local-chain',chainId:31337,privy:'SDK creation mocked separately; locally provisioned fresh EOAs here',sportingSource:'synthetic test fixture',testnetTransactionsSent:0,programme:funded.address,depositWei:plan.budgetWei,wallets:athletes.map(a=>({address:a.address,initialBalanceWei:'0'})),pots:[]};
   const write=(child,name,args,success=true)=>chain.operatorClient.writeContract({address:child,abi,functionName:name,args,gas:2_000_000n}).then(hash=>receipt(hash,success));
   for(const pot of funded.pots){
@@ -42,7 +44,7 @@ test('two fresh simulated athlete wallets claim all 12 awards and public rows tu
    await write(child,'activate',[digest,snapshot]);await chain.testClient.mine({blocks:96,interval:1});
    const raw={chainId:31337,slot,programmeAddress:funded.address,campaignAddress:child,fundingHash:funding,uploadDigest:upload.digest,awards:awards.map(a=>({...a,amount:a.amount.toString()}))};
    const scope={id:plan.launchId,chainId:31337,slot},query={offset:0,sort:'reward',direction:'asc'};
-   let observed=await observeSponsorProgrammePot(batched,plan,deployment,funding,slot);
+   let observed=await publicObserver(batched,plan,deployment,funding,slot);
    const before=await publicAwardPage(batched,observed,scope,raw,query);assert.ok(before.rows.every(r=>r.status==='unclaimed'));
    const paid=[];
    for(let i=0;i<2;i++){
@@ -65,6 +67,10 @@ test('two fresh simulated athlete wallets claim all 12 awards and public rows tu
    const pinned=await observePublicSponsorProgrammePot(batched,plan,deployment,funding,slot,BigInt(before.blockNumber));
    const historical=await publicAwardPage(batched,pinned,scope,raw,{...query,blockNumber:before.blockNumber});
    assert.deepEqual(historical,before);
+   const cached=await publicObserver(batched,plan,deployment,funding,slot,BigInt(before.blockNumber));
+   assert.deepEqual(await publicAwardPage(batched,cached,scope,raw,{...query,blockNumber:before.blockNumber}),before);
+   const refreshed=await publicObserver(batched,plan,deployment,funding,slot);
+   assert.deepEqual(await publicAwardPage(batched,refreshed,scope,raw,query),after);
    const currentPublic=await observePublicSponsorProgrammePot(batched,plan,deployment,funding,slot);
    assert.deepEqual(await publicAwardPage(batched,currentPublic,scope,raw,query),after);
    assert.equal(observed.pots[0].remainingWei,'0');assert.equal(observed.pots[0].paidWei,pot.amountWei);

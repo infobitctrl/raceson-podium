@@ -52,6 +52,7 @@ export function hostedCopyRequestAllowed(method: string | undefined, url: URL, m
       if(/^\/api\/v1\/athlete\/rewards\/club-treasury-requests\/[0-9a-f-]{36}\/withdraw$/.test(url.pathname))return method==='POST';
     }
     if(/^\/api\/v1\/rewards\/public-campaigns\/[0-9a-f-]{36}$/.test(url.pathname)&&keys.length===0)return method==='GET'||method==='POST';
+    if(/^\/api\/v1\/rewards\/public-campaigns\/[0-9a-f-]{36}\/source$/.test(url.pathname)&&keys.length===0)return method==='GET';
     if(/^\/api\/v1\/rewards\/public-campaigns\/[0-9a-f-]{36}\/pots\/[0-5]\/awards$/.test(url.pathname)&&method==='GET')
       return keys.length<=4&&new Set(keys).size===keys.length&&keys.every(k=>['offset','sort','direction','blockNumber'].includes(k))
         &&(!url.searchParams.has('blockNumber')||/^(0|[1-9][0-9]{0,77})$/.test(url.searchParams.get('blockNumber')??''));

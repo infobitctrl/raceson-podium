@@ -1,5 +1,5 @@
 import {CampaignSponsor, CampaignSponsorProvider} from '../components/CampaignSponsor';
-import {usePublicDirectory} from '../data/publicDirectory';
+import type {PublicCampaignSource} from '@raceson/domain/rewards/public-directory';
 import OfficialSourceLinks from '../components/OfficialSourceLinks';
 import {officialSource} from '../model/officialSource';
 import {useEffect, useState} from 'react';
@@ -10,7 +10,7 @@ import {campaignStatus, type DirectoryCampaign} from '@raceson/domain/rewards/pu
 import {useI18n} from '@/shared/i18n/I18nContext';
 import {useAuth} from '@/lib/auth';
 import {ApiError} from '@/lib/api';
-import {readPublicCampaign} from '../data/publicCampaign';
+import {readPublicCampaign, readPublicCampaignSource} from '../data/publicCampaign';
 import {sponsorColors} from '../model/sponsorCatalogue';
 import {publicAmount as setupAmount} from '../model/publicAmount';
 import {statusLabel} from '../model/podiumDirectory';
@@ -24,12 +24,19 @@ const categoryColors = [...sponsorColors, '#6f8d9b'];
 export default function PublicSponsorCampaign() {
   const {id = ''} = useParams(), {locale} = useI18n(), auth = useAuth(), hr = locale === 'hr';
   const t = (en: string, local: string) => hr ? local : en;
-  const directory=usePublicDirectory(),selection=directory.data?.items.find(item=>item.campaign.id===id)?.selection;
+  const [source, setSource] = useState<PublicCampaignSource | null>(null);
+  const selection = source?.id === id ? source.selection : null;
   const [campaign, setCampaign] = useState<Campaign | null>(null), [failure, setFailure] = useState<'missing' | 'unavailable' | null>(null);
   const [attempt, setAttempt] = useState(0), [busy, setBusy] = useState(true), [copied, setCopied] = useState(false), [copyFailed, setCopyFailed] = useState(false);
   const [params, setParams] = useSearchParams(), selected = params.get('pot');
   const [sort, setSort] = useState<'name' | 'amount'>('amount'), [descending, setDescending] = useState(true);
   useEffect(() => {setCampaign(null); setCopied(false); setCopyFailed(false);}, [id]);
+  useEffect(() => {
+    const abort = new AbortController();
+    void readPublicCampaignSource(id, abort.signal).then(value => {if (!abort.signal.aborted) setSource(value);})
+      .catch(() => {if (!abort.signal.aborted) setSource(null);});
+    return () => abort.abort();
+  }, [id, attempt]);
   useEffect(() => {
     const abort = new AbortController(); setBusy(true); setFailure(null);
     void readPublicCampaign(id, abort.signal).then(c => {if (!abort.signal.aborted) setCampaign(c);})

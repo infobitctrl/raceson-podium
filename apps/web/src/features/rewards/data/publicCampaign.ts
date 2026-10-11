@@ -1,9 +1,22 @@
 import {decodePublicSponsorCampaign,decodePublicRewardPage} from '@raceson/domain/rewards/public-campaign';
+import {decodePublicCampaignSource} from '@raceson/domain/rewards/public-directory';
 import {setupId} from '@raceson/domain/rewards/distribution-setup';
 import {apiRequest,ApiError} from '@/lib/api';
 import {assertPublicEnvironmentOrigin,publicEnv} from '@/lib/public-env';
 
 export const publicCampaignPath = (id:string) => `/rewards/campaigns/${id}/public`;
+export async function readPublicCampaignSource(id:string,signal:AbortSignal) {
+ assertPublicEnvironmentOrigin();
+ const demo=publicEnv.rewardDemo;
+ if(!setupId(id)||!demo)throw Error('invalid_public_campaign');
+ const response=await fetch(`${demo.apiBaseUrl}/v1/rewards/public-campaigns/${id}/source`,{
+  method:'GET',credentials:'omit',cache:'no-store',redirect:'error',signal:AbortSignal.any([signal,AbortSignal.timeout(60000)]),headers:{Accept:'application/json'},
+ });
+ if(!response.ok)throw Error('public_campaign_source_unavailable');
+ const source=decodePublicCampaignSource((await response.json()).data);
+ if(source.id!==id||source.chainId!==demo.chainId)throw Error('invalid_public_campaign_source');
+ return source;
+}
 export async function completeSponsorSetup(id:string) {
  if(!setupId(id) || !publicEnv.rewardDemo)throw Error('invalid_public_campaign');
  return decodePublicSponsorCampaign(await apiRequest({path:`/v1/rewards/public-campaigns/${id}`,method:'POST',body:{},cache:'no-store'}));

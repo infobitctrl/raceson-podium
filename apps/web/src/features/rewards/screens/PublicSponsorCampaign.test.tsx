@@ -1,5 +1,5 @@
 vi.mock('../model/usePublicCampaignRewards',()=>({usePublicCampaignRewards:()=>({page:null,busy:false,failed:false,retry:()=>{}})}));
-vi.mock('../data/publicDirectory',()=>({usePublicDirectory:()=>({data:{items:[]}})}));
+vi.mock('../data/publicDirectory',()=>({usePublicDirectory:()=>{throw Error('Detail pages must not verify every campaign');}}));
 vi.mock('@/lib/auth',()=>({useAuth:()=>({account:{hasOrganizerAccess:access.organizer},user:access.user?{id:access.user}:null})}));
 const access=vi.hoisted(()=>({organizer:false,user:''}));
 vi.mock('../components/PublicRewardTable',()=>({default:({title,subtitle}:{title:string;subtitle:string})=> <div><h3>{title}</h3><p>{subtitle}</p>Individual rewards table</div>}));
@@ -10,12 +10,25 @@ import {beforeEach,expect,it,vi} from 'vitest';
 import {I18nProvider} from '@/shared/i18n/I18nProvider';
 import {ApiError} from '@/lib/api';
 import PublicSponsorCampaign from './PublicSponsorCampaign';
-const api=vi.hoisted(()=>vi.fn());vi.mock('../data/publicCampaign',()=>({readPublicCampaign:api,readPublicRewards:async()=>({total:0,rows:[]})}));
+import {sponsorLeague} from '../model/sponsorCatalogue';
+const {api,source}=vi.hoisted(()=>({api:vi.fn(),source:vi.fn()}));vi.mock('../data/publicCampaign',()=>({readPublicCampaign:api,readPublicCampaignSource:source,readPublicRewards:async()=>({total:0,rows:[]})}));
 const pot=(slot:number,name:string)=>({slot,name,amountWei:'5000000000000000000',state:1,paused:false,allocatedWei:'0',paidWei:'0',remainingWei:'5000000000000000000',returnedWei:'0',claimDeadline:'0',groups:[{name:'Standings',amountWei:'5000000000000000000'}]});
 const campaign={id:'campaign',name:'Synthetic league',chainId:10143,budgetWei:'10000000000000000000',address:'0x'+'11'.repeat(20),fundingHash:'0x'+'aa'.repeat(32),blockNumber:'100',blockTimestamp:'1800000000',pots:[pot(0,'League'),pot(1,'Round 1')]};
 const LocationProbe=()=> <output aria-label="Current URL">{useLocation().search}</output>;
 const ui=(query='')=> <I18nProvider initialLocale="en"><MemoryRouter initialEntries={['/rewards/campaigns/campaign/public'+query]}><LocationProbe/><Routes><Route path="/rewards/campaigns/:id/public" element={<PublicSponsorCampaign/>}/></Routes></MemoryRouter></I18nProvider>;
-beforeEach(()=>{api.mockReset();access.organizer=false;access.user='';});
+beforeEach(()=>{api.mockReset();source.mockReset().mockResolvedValue({id:'campaign',chainId:10143,selection:null});access.organizer=false;access.user='';});
+it('loads official source links independently without waiting for or refreshing the directory',async()=>{
+ api.mockResolvedValue(campaign);
+ source.mockResolvedValue({id:'campaign',chainId:10143,selection:{sourceLeagueId:sponsorLeague.sourceLeagueId,sourceSeasonId:sponsorLeague.sourceSeasonId,eventEditionId:null}});
+ render(ui('?pot=1'));
+ expect(await screen.findByRole('link',{name:'League on RacesOn'})).toHaveAttribute('href','https://www.raceson.com/leagues/sibenska-trail-liga');
+ expect(source).toHaveBeenCalledWith('campaign',expect.any(AbortSignal));
+});
+it('shows the verified campaign and chart while optional sporting context is still loading',async()=>{
+ api.mockResolvedValue(campaign);source.mockReturnValue(new Promise(()=>{}));render(ui());
+ expect(await screen.findByRole('heading',{name:'Prize pool allocation'})).toBeVisible();
+ expect(screen.getByText('Confirmed funding')).toBeVisible();
+});
 it('shows a funded campaign to guests and lets them inspect each pot without claiming awards are paid',async()=>{
  api.mockResolvedValue(campaign);render(ui());await screen.findByRole('heading',{name:'Synthetic league'});
  expect(screen.getByText('Confirmed funding')).toBeVisible();expect(screen.getAllByText('Awaiting results review').length).toBeGreaterThan(0);

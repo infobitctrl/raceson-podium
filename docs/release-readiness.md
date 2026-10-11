@@ -1,3 +1,18 @@
+## Public campaign loading follow-up — 11 October 2026
+
+Public campaign details now load sporting context through a narrow read-only
+source projection, avoiding a chain refresh of unrelated campaigns. Reward pages
+reuse an exact finalized observation for up to two minutes (64 snapshots per
+reader), with fresh chain/finality/hash checks before reuse. Each page still
+verifies its own 25 reward records and allocation commitment; complete chart
+collections retain one block. Unpinned refreshes always re-observe current state.
+No wallet, consent, private action, contract or database changes.
+
+Regression coverage includes cache isolation/expiry/eviction, provider changes,
+failed reads, public field restrictions, hosted routing, independent source
+loading and actual claims on a disposable local chain. Hosted timings depend on
+provider load and process reuse; this is not a guaranteed latency target.
+
 # Source verification — 11 October 2026
 
 Reviewed from public commit `dc5e74f2cf3479ae803051a1287e4a49efe85834` in a separate

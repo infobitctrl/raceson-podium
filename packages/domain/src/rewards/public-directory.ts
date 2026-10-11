@@ -1,5 +1,13 @@
 import {decodePublicSponsorCampaign,type PublicSponsorCampaign} from './public-campaign.js';
-import {decodeRewardSponsorSelection,type RewardSponsorSelection} from './distribution-setup.js';
+import {decodeRewardSponsorSelection,setupId,type RewardSponsorSelection} from './distribution-setup.js';
+export type PublicCampaignSource={id:string;chainId:10143|31337;selection:RewardSponsorSelection|null};
+export function decodePublicCampaignSource(value:unknown):PublicCampaignSource{
+ const r=value as PublicCampaignSource;
+ if(!r||typeof r!=='object'||Array.isArray(r)||Object.keys(r).sort().join()!=='chainId,id,selection'
+  ||!setupId(r.id)||![10143,31337].includes(r.chainId))throw Error('invalid_public_campaign_source');
+ if(r.selection!==null)decodeRewardSponsorSelection(r.selection);
+ return r;
+}
 export type DirectoryCampaign={campaign:PublicSponsorCampaign;selection:RewardSponsorSelection|null;publishedAt:string;verified:boolean};
 export type PublicDirectory={chainId:10143|31337;items:DirectoryCampaign[];sponsors:number;checkedAt:string;refreshStatus:'refreshing'|'current'|'failed'};
 export function decodePublicDirectory(value:unknown):PublicDirectory {

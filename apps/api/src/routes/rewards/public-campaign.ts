@@ -1,9 +1,11 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
-import {rewardPublicCampaign,rewardPublicAwards,rewardSponsorExecution,rewardSponsorLaunch} from '@raceson/db/rewards';
+import {rewardPublicCampaign,rewardPublicAwards,rewardPublicDirectory,rewardSponsorExecution,rewardSponsorLaunch} from '@raceson/db/rewards';
 import {setupId} from '@raceson/domain/rewards/distribution-setup';
 import {decodePublicSponsorCampaign,type PublicSponsorCampaign} from '@raceson/domain/rewards/public-campaign';
 import {sponsorLaunchPlan,type SponsorLaunch} from '@raceson/domain/rewards/sponsor-launch';
-import {observeSponsorProgramme,observePublicSponsorProgrammePot,type SponsorChainObservation,type SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
+import {observeSponsorProgramme,type SponsorChainObservation,type SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
+import {decodePublicCampaignSource} from '@raceson/domain/rewards/public-directory';
+import {observePublicPot} from '../../features/rewards/public-pot-observation.js';
 import type {Hex} from 'viem';
 import type {OrganizerRewardRouteDependencies} from './organizer.js';
 import type {RewardAccountIdentity,RewardLedgerRpc} from '@raceson/db/rewards';
@@ -32,6 +34,22 @@ export function createPublicCampaign(launch:SponsorLaunch, observation:SponsorCh
   }))},observation);
 }
 export async function dispatchPublicCampaign(req:IncomingMessage,res:ServerResponse,url:URL,deps:Deps) {
+ const source=/^\/api\/v1\/rewards\/public-campaigns\/([^/]+)\/source$/.exec(url.pathname);
+ if(source){
+  res.setHeader('Cache-Control','no-store');
+  if(req.method!=='GET'){res.setHeader('Allow','GET');deps.sendError(res,405,'method_not_allowed','Unsupported method.');return true;}
+  if(!setupId(source[1])||[...url.searchParams].length){deps.sendError(res,400,'invalid_public_campaign','Invalid campaign request.');return true;}
+  try{
+   const config=deps.config();if(!config)throw Error('unavailable');
+   // Sporting metadata is already public. It does not require refreshing every
+   // campaign's chain state and carries no accounting or execution record.
+   const directory=await rewardPublicDirectory(config.chainId,deps.publicRpc??deps.rpc);
+   const item=directory.items.find(item=>item.campaign.id===source[1]);
+   if(!item){deps.sendError(res,404,'public_campaign_not_found','Campaign not found.');return true;}
+   deps.sendSuccess(res,decodePublicCampaignSource({id:source[1],chainId:config.chainId,selection:item.selection}));
+  }catch{deps.sendError(res,503,'public_campaign_unavailable','Campaign source is temporarily unavailable.');}
+  return true;
+ }
  const awards=/^\/api\/v1\/rewards\/public-campaigns\/([^/]+)\/pots\/([0-5])\/awards$/.exec(url.pathname);
  if(awards){
   res.setHeader('Cache-Control','no-store');
@@ -42,7 +60,7 @@ export async function dispatchPublicCampaign(req:IncomingMessage,res:ServerRespo
    if(!config||!deps.sponsorReader)throw Error('public_awards_unavailable');
    const saved=await rewardPublicCampaign(config.chainId,id,undefined,deps.publicRpc??deps.rpc);
    if(!saved||!saved.campaign.pots.some(p=>p.slot===slot)){deps.sendError(res,404,'public_campaign_not_found','Prize pot not found.');return true;}
-   const [raw,observed]=await Promise.all([rewardPublicAwards(config.chainId,id,slot,deps.publicRpc??deps.rpc),observePublicSponsorProgrammePot(deps.sponsorReader,saved.record.plan,saved.record.deploymentHash as Hex,saved.record.fundingHash as Hex,slot,query.blockNumber===undefined?undefined:BigInt(query.blockNumber))]);
+   const [raw,observed]=await Promise.all([rewardPublicAwards(config.chainId,id,slot,deps.publicRpc??deps.rpc),observePublicPot(deps.sponsorReader,saved.record.plan,saved.record.deploymentHash as Hex,saved.record.fundingHash as Hex,slot,query.blockNumber===undefined?undefined:BigInt(query.blockNumber))]);
    deps.sendSuccess(res,await publicAwardPage(deps.sponsorReader,observed,{id,chainId:config.chainId,slot,groups:saved.campaign.pots.find(p=>p.slot===slot)!.groups},raw,query));
   }catch(error){const invalid=error instanceof Error&&error.message==='invalid_public_awards';deps.sendError(res,invalid?400:503,invalid?'invalid_public_awards':'public_awards_unavailable',invalid?'Invalid reward request.':'Reward status is temporarily unavailable. Please retry.');}
   return true;
