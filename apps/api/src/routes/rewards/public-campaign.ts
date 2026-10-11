@@ -4,7 +4,7 @@ import {setupId} from '@raceson/domain/rewards/distribution-setup';
 import {decodePublicSponsorCampaign,type PublicSponsorCampaign} from '@raceson/domain/rewards/public-campaign';
 import {sponsorLaunchPlan,type SponsorLaunch} from '@raceson/domain/rewards/sponsor-launch';
 import {observeSponsorProgramme,type SponsorChainObservation,type SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
-import {decodePublicCampaignSource} from '@raceson/domain/rewards/public-directory';
+import {decodePublicCampaignSource,decodePublicCampaignSnapshot} from '@raceson/domain/rewards/public-directory';
 import {observePublicPot} from '../../features/rewards/public-pot-observation.js';
 import type {Hex} from 'viem';
 import type {OrganizerRewardRouteDependencies} from './organizer.js';
@@ -34,19 +34,21 @@ export function createPublicCampaign(launch:SponsorLaunch, observation:SponsorCh
   }))},observation);
 }
 export async function dispatchPublicCampaign(req:IncomingMessage,res:ServerResponse,url:URL,deps:Deps) {
- const source=/^\/api\/v1\/rewards\/public-campaigns\/([^/]+)\/source$/.exec(url.pathname);
+ const source=/^\/api\/v1\/rewards\/public-campaigns\/([^/]+)\/(source|snapshot)$/.exec(url.pathname);
  if(source){
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='GET'){res.setHeader('Allow','GET');deps.sendError(res,405,'method_not_allowed','Unsupported method.');return true;}
   if(!setupId(source[1])||[...url.searchParams].length){deps.sendError(res,400,'invalid_public_campaign','Invalid campaign request.');return true;}
   try{
    const config=deps.config();if(!config)throw Error('unavailable');
-   // Sporting metadata is already public. It does not require refreshing every
-   // campaign's chain state and carries no accounting or execution record.
+   // Read only the existing public projection. The snapshot retains its original
+   // verification time; neither response includes the private execution record.
    const directory=await rewardPublicDirectory(config.chainId,deps.publicRpc??deps.rpc);
    const item=directory.items.find(item=>item.campaign.id===source[1]);
    if(!item){deps.sendError(res,404,'public_campaign_not_found','Campaign not found.');return true;}
-   deps.sendSuccess(res,decodePublicCampaignSource({id:source[1],chainId:config.chainId,selection:item.selection}));
+   deps.sendSuccess(res,source[2]==='snapshot'
+    ?decodePublicCampaignSnapshot({campaign:item.campaign,selection:item.selection,publishedAt:item.publishedAt})
+    :decodePublicCampaignSource({id:source[1],chainId:config.chainId,selection:item.selection}));
   }catch{deps.sendError(res,503,'public_campaign_unavailable','Campaign source is temporarily unavailable.');}
   return true;
  }
@@ -89,7 +91,7 @@ export async function dispatchPublicCampaign(req:IncomingMessage,res:ServerRespo
   } else {
    const saved=await rewardPublicCampaign(config.chainId,id,undefined,deps.publicRpc??deps.rpc);
    if(!saved){deps.sendError(res,404,'public_campaign_not_found','This campaign has not completed setup.');return true;}
-   const observation=await observeSponsorProgramme(deps.sponsorReader,saved.record.plan,saved.record.deploymentHash as Hex,saved.record.fundingHash as Hex);
+   const observation=await observePublicPot.programme(deps.sponsorReader,saved.record.plan,saved.record.deploymentHash as Hex,saved.record.fundingHash as Hex);
    deps.sendSuccess(res,publicCampaignObservation(saved.campaign,observation));
   }
  } catch(error){

@@ -1,3 +1,17 @@
+## Progressive public campaign loading
+
+Public detail pages display the existing published campaign projection while
+current chain verification runs. Published and last-verified timestamps remain
+visible. The first reward page may reuse the freshly verified campaign block;
+all canonical-chain, allocation commitment and row checks still apply. A cache
+miss performs full verification. Private action observers are unchanged.
+
+Completed reward collections are retained only in the campaign screen's memory
+(up to 12 pot collections). Revisiting a round shows its complete chart and ledger
+immediately while requesting current status. Partial collections never replace a
+verified result; failures retain the original timestamp and offer a fresh retry.
+No wallets, consent, signatures or private identities are cached or newly exposed.
+
 ## Public campaign loading follow-up — 11 October 2026
 
 Public campaign details now load sporting context through a narrow read-only

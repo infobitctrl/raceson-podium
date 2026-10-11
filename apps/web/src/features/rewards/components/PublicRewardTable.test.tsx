@@ -79,3 +79,14 @@ it('defaults to ascending position and combines exact category filters with sear
  expect(within(categories).getByRole('button',{name:'All categories'})).toHaveAttribute('aria-pressed','true');
  expect(within(club).getAllByRole('rowheader')).toHaveLength(3);expect(api).toHaveBeenCalledTimes(2);
 });
+
+it('retains the complete ledger and its verification time while refreshing and after failure',async()=>{
+ api.mockResolvedValueOnce(page).mockReturnValueOnce(new Promise(()=>{})).mockRejectedValueOnce(Error('offline'));
+ const view=render(ui());await screen.findByRole('table',{name:'Athlete rewards'});
+ view.rerender(ui(1,1));
+ expect(screen.getByRole('table',{name:'Athlete rewards'})).toBeVisible();
+ expect(screen.getByText(/Rewards last verified/)).toHaveTextContent('Showing saved status');
+ expect(screen.getByText('Checking reward status…')).toBeVisible();
+ view.rerender(ui(1,2));expect(await screen.findByRole('alert')).toHaveTextContent('last verified rewards');
+ expect(screen.getByRole('table',{name:'Athlete rewards'})).toBeVisible();
+});

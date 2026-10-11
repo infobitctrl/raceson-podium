@@ -110,3 +110,48 @@ it('does not load a disabled view', () => {
   renderHook(() => usePublicCampaignRewards(id, 1, 0, false));
   expect(read).not.toHaveBeenCalled();
 });
+
+it('uses a fresh campaign anchor for the initial page, but retry requests a new head', async () => {
+  const anchor = {blockNumber: '100', receivedAt: Date.now()};
+  read.mockRejectedValueOnce(Error('provider offline')).mockResolvedValue(page(0, 1));
+  const {result} = renderHook(() => usePublicCampaignRewards(id, 1, 0, true, undefined, anchor));
+  await act(async () => {}); expect(read.mock.calls[0][6]).toBe('100');
+  await act(async () => result.current.retry()); expect(read.mock.calls[1][6]).toBeUndefined();
+  expect(result.current.page?.total).toBe(1);
+});
+it('does not reuse an old campaign observation for a newly visited pot', async () => {
+  const anchor = {blockNumber: '100', receivedAt: Date.now()-30_001};
+  read.mockResolvedValue(page(0, 1));
+  renderHook(() => usePublicCampaignRewards(id, 1, 0, true, undefined, anchor));
+  await act(async () => {}); expect(read.mock.calls[0][6]).toBeUndefined();
+});
+it('shows a complete cached round immediately on revisit and retains it through a failed refresh', async () => {
+  const cache: import('./usePublicCampaignRewards').PublicRewardCache = new Map();
+  read.mockResolvedValueOnce(page(0, 26)).mockResolvedValueOnce(page(25, 26));
+  const first = renderHook(() => usePublicCampaignRewards(id, 1, 0, true, cache));
+  await act(async () => {}); expect(cache.get(`${id}:1`)?.page.rows).toHaveLength(26); first.unmount();
+  let reject!: () => void;
+  read.mockImplementationOnce(() => new Promise((_, fail) => {reject = () => fail(Error('offline'));}));
+  const anchor = {blockNumber: '100', receivedAt: Date.now()};
+  const revisit = renderHook(() => usePublicCampaignRewards(id, 1, 0, true, cache, anchor));
+  expect(revisit.result.current.page?.rows).toHaveLength(26); expect(revisit.result.current.busy).toBe(true);
+  expect(read.mock.calls[2][6]).toBeUndefined();
+  await act(async () => reject());
+  expect(revisit.result.current).toMatchObject({busy: false, failed: true, page: {blockNumber: '100', total: 26}});
+  expect(cache.get(`${id}:1`)?.page.rows).toHaveLength(26);
+});
+it('isolates cached campaigns and pots, keeps only completed collections and bounds retained rounds', async () => {
+  const cache: import('./usePublicCampaignRewards').PublicRewardCache = new Map();
+  read.mockImplementation(async (campaignId, slot, offset) => page(offset, 1, campaignId, slot));
+  const {result, rerender} = renderHook(p => usePublicCampaignRewards(p.id, p.slot, 0, true, cache), {initialProps: {id, slot: 0}});
+  await act(async () => {});
+  for (let n=1;n<=13;n++) {rerender({id: `${id}-${n}`, slot: n%6}); expect(result.current.page).toBeNull(); await act(async () => {});}
+  expect(cache.size).toBe(12); expect(cache.has(`${id}:0`)).toBe(false);
+});
+it('explicit campaign refresh uses its new anchor and retains old rows while waiting', async () => {
+  const cache: import('./usePublicCampaignRewards').PublicRewardCache = new Map([[`${id}:1`, {page: page(0, 1), refresh: 0}]]);
+  read.mockReturnValue(new Promise(() => {}));
+  const anchor = {blockNumber: '101', receivedAt: Date.now()};
+  const {result} = renderHook(() => usePublicCampaignRewards(id, 1, 1, true, cache, anchor));
+  expect(result.current.page?.blockNumber).toBe('100'); expect(read.mock.calls[0][6]).toBe('101');
+});

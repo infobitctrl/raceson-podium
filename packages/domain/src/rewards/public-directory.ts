@@ -9,6 +9,16 @@ export function decodePublicCampaignSource(value:unknown):PublicCampaignSource{
  return r;
 }
 export type DirectoryCampaign={campaign:PublicSponsorCampaign;selection:RewardSponsorSelection|null;publishedAt:string;verified:boolean};
+/** Historical public projection. Its block timestamp is not a fresh status check. */
+export type PublicCampaignSnapshot=Omit<DirectoryCampaign,'verified'>;
+export function decodePublicCampaignSnapshot(value:unknown):PublicCampaignSnapshot{
+ const r=value as PublicCampaignSnapshot;
+ if(!r||typeof r!=='object'||Array.isArray(r)||Object.keys(r).sort().join()!=='campaign,publishedAt,selection'
+  ||typeof r.publishedAt!=='string'||!Number.isFinite(Date.parse(r.publishedAt)))throw Error('invalid_public_campaign_snapshot');
+ decodePublicSponsorCampaign(r.campaign);
+ if(r.selection!==null)decodeRewardSponsorSelection(r.selection);
+ return r;
+}
 export type PublicDirectory={chainId:10143|31337;items:DirectoryCampaign[];sponsors:number;checkedAt:string;refreshStatus:'refreshing'|'current'|'failed'};
 export function decodePublicDirectory(value:unknown):PublicDirectory {
  const bad=()=>{throw Error('invalid_public_directory');};

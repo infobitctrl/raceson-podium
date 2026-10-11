@@ -1,16 +1,14 @@
 import {CampaignSponsor, CampaignSponsorProvider} from '../components/CampaignSponsor';
-import type {PublicCampaignSource} from '@raceson/domain/rewards/public-directory';
 import OfficialSourceLinks from '../components/OfficialSourceLinks';
 import {officialSource} from '../model/officialSource';
 import {useEffect, useState} from 'react';
 import {Link, useParams, useSearchParams} from 'react-router-dom';
 import {ArrowLeft, Copy, ArrowUpDown, ArrowRight, RefreshCw, ShieldCheck} from 'lucide-react';
-import type {PublicSponsorCampaign as Campaign} from '@raceson/domain/rewards/public-campaign';
 import {campaignStatus, type DirectoryCampaign} from '@raceson/domain/rewards/public-directory';
 import {useI18n} from '@/shared/i18n/I18nContext';
 import {useAuth} from '@/lib/auth';
-import {ApiError} from '@/lib/api';
-import {readPublicCampaign, readPublicCampaignSource} from '../data/publicCampaign';
+import {usePublicCampaignOverview} from '../model/usePublicCampaignOverview';
+import type {PublicRewardCache} from '../model/usePublicCampaignRewards';
 import {sponsorColors} from '../model/sponsorCatalogue';
 import {publicAmount as setupAmount} from '../model/publicAmount';
 import {statusLabel} from '../model/podiumDirectory';
@@ -24,26 +22,12 @@ const categoryColors = [...sponsorColors, '#6f8d9b'];
 export default function PublicSponsorCampaign() {
   const {id = ''} = useParams(), {locale} = useI18n(), auth = useAuth(), hr = locale === 'hr';
   const t = (en: string, local: string) => hr ? local : en;
-  const [source, setSource] = useState<PublicCampaignSource | null>(null);
-  const selection = source?.id === id ? source.selection : null;
-  const [campaign, setCampaign] = useState<Campaign | null>(null), [failure, setFailure] = useState<'missing' | 'unavailable' | null>(null);
-  const [attempt, setAttempt] = useState(0), [busy, setBusy] = useState(true), [copied, setCopied] = useState(false), [copyFailed, setCopyFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0), [copied, setCopied] = useState(false), [copyFailed, setCopyFailed] = useState(false);
+  const {campaign, selection, busy, failure, live, anchor} = usePublicCampaignOverview(id, attempt);
+  const [rewardCache] = useState<PublicRewardCache>(() => new Map());
   const [params, setParams] = useSearchParams(), selected = params.get('pot');
   const [sort, setSort] = useState<'name' | 'amount'>('amount'), [descending, setDescending] = useState(true);
-  useEffect(() => {setCampaign(null); setCopied(false); setCopyFailed(false);}, [id]);
-  useEffect(() => {
-    const abort = new AbortController();
-    void readPublicCampaignSource(id, abort.signal).then(value => {if (!abort.signal.aborted) setSource(value);})
-      .catch(() => {if (!abort.signal.aborted) setSource(null);});
-    return () => abort.abort();
-  }, [id, attempt]);
-  useEffect(() => {
-    const abort = new AbortController(); setBusy(true); setFailure(null);
-    void readPublicCampaign(id, abort.signal).then(c => {if (!abort.signal.aborted) setCampaign(c);})
-      .catch(e => {if (!abort.signal.aborted) setFailure(e instanceof ApiError && e.status === 404 ? 'missing' : 'unavailable');})
-      .finally(() => {if (!abort.signal.aborted) setBusy(false);});
-    return () => abort.abort();
-  }, [id, attempt]);
+  useEffect(() => {setCopied(false); setCopyFailed(false);}, [id]);
   if (!campaign) return <article className={s.page}>
     <Link className={s.back} to="/rewards/campaigns"><ArrowLeft size={16}/>{t('Campaigns', 'Kampanje')}</Link><h1>{t('Campaign', 'Kampanja')}</h1>
     {failure ? <div className={s.empty} role="alert"><p>{failure === 'missing' ? t('This campaign has not completed setup yet.', 'Postavljanje ove kampanje još nije dovršeno.') : t('Campaign status is temporarily unavailable. Try again.', 'Stanje kampanje trenutačno nije dostupno. Pokušajte ponovno.')}</p><button className={s.secondary} onClick={() => setAttempt(n => n + 1)}>{t('Try again', 'Pokušaj ponovno')}</button></div> : <p role="status">{t('Loading campaign and confirmed funding…', 'Učitavanje kampanje i potvrđene uplate…')}</p>}
@@ -68,7 +52,7 @@ export default function PublicSponsorCampaign() {
   return <article className={`${s.page} ${detail.page}`}>
     <CampaignSponsorProvider><header className={detail.heading}>
       <div><span className={detail.eyebrow}>{t('Public campaign', 'Javna kampanja')}</span><h1>{campaign.name}</h1><Link className={detail.subtitle} to="/rewards/campaigns">{t('All campaigns', 'Sve kampanje')} <ArrowRight size={14}/></Link></div>
-      <span className={s.badge} data-state={campaignStatus(item)}>{statusLabel(item, hr)}</span>
+      <span className={s.badge} data-state={live ? campaignStatus(item) : 'unavailable'}>{live ? statusLabel(item, hr) : t('Published snapshot', 'Objavljeni pregled')}</span>
     </header>
     <section className={detail.sponsor} aria-label={t('Sponsor', 'Sponzor')}>
       <CampaignSponsor id={id} hr={hr} backing={officialSource(selection)?.name??campaign.name} fundingVerified/>
@@ -85,11 +69,12 @@ export default function PublicSponsorCampaign() {
       {!pot ? <div className={s.notice} role="alert"><h3>{t('Prize pot not found', 'Fond nagrada nije pronađen')}</h3><p>{t('This link does not identify an available prize pot. Choose one above to view its allocation and payments.', 'Ova poveznica ne upućuje na dostupan fond nagrada. Odaberite fond iznad za pregled raspodjele i isplata.')}</p></div> : null}
       {campaign.pots.length>1?<p className={detail.poolContext}>{t('Campaign budget','Proračun kampanje')}: <strong>{amount(campaign.budgetWei)}</strong> · {pot?potLabel(pot.slot):'—'}</p>:null}
       <dl className={detail.metrics}>{metrics.map(metric => <div key={metric.label}><dt>{metric.label}</dt><dd>{metric.value === undefined ? '—' : <>{setupAmount(BigInt(metric.value), hr)} <small>test MON</small></>}</dd><p>{metric.note}</p></div>)}</dl>
-      <div className={detail.verification}><ShieldCheck size={16}/><span>{t('Last verified', 'Posljednja provjera')}: {new Date(Number(campaign.blockTimestamp) * 1000).toLocaleString(hr ? 'hr-HR' : 'en-GB')}</span><button className={detail.smallButton} disabled={busy} aria-label={t('Refresh status', 'Osvježi stanje')} onClick={() => setAttempt(n => n + 1)}><RefreshCw size={14}/>{busy ? t('Refreshing…', 'Osvježavanje…') : t('Refresh', 'Osvježi')}</button></div>
+      <div className={detail.verification}><ShieldCheck size={16}/><span>{live ? t('Last verified', 'Posljednja provjera') : t('Published status as of', 'Objavljeno stanje na') }: {new Date(Number(campaign.blockTimestamp) * 1000).toLocaleString(hr ? 'hr-HR' : 'en-GB')}</span><button className={detail.smallButton} disabled={busy} aria-label={t('Refresh status', 'Osvježi stanje')} onClick={() => setAttempt(n => n + 1)}><RefreshCw size={14}/>{busy ? t('Refreshing…', 'Osvježavanje…') : t('Refresh', 'Osvježi')}</button></div>
       {failure ? <p role="alert">{t('Refresh failed. Showing the last verified status below.', 'Osvježavanje nije uspjelo. Prikazano je posljednje provjereno stanje.')}</p> : null}
     </section>
+    {!live || busy ? <p className={s.muted} role="status">{busy ? t('Checking current status. Published amounts and budgets remain visible.', 'Provjera trenutačnog stanja. Objavljeni iznosi i proračuni ostaju vidljivi.') : t('Showing the published snapshot. Current status is unavailable.', 'Prikazan je objavljeni pregled. Trenutačno stanje nije dostupno.')}</p> : null}
     {pot ? <>
-      <PublicDistribution key={`${id}:${pot.slot}`} campaign={campaign} pot={pot} hr={hr} refresh={attempt} subtitle={potLabel(pot.slot)} onSelectPot={slot=>select(String(slot))} startAtPot={selected!==null}/>
+      <PublicDistribution key={`${id}:${pot.slot}`} campaign={campaign} pot={pot} hr={hr} refresh={attempt} ready={!busy} rewardCache={rewardCache} anchor={anchor} subtitle={potLabel(pot.slot)} onSelectPot={slot=>select(String(slot))} startAtPot={selected!==null}/>
       <details key={pot.slot} className={detail.budgets} open={pot.allocatedWei === '0'}><summary><span>{t('Saved category budgets', 'Spremljeni fondovi kategorija')}</span><span className={detail.summaryAmount}>{potLabel(pot.slot)} · {amount(pot.amountWei)}</span></summary><div className={detail.disclosureBody}>
         <div className={s.scroll}><table className={`${s.table} ${detail.categories}`}><caption className="sr-only">{t('Saved category budgets', 'Spremljeni fondovi kategorija')}</caption><thead><tr><th scope="col" aria-sort={sort === 'name' ? descending ? 'descending' : 'ascending' : 'none'}><button onClick={() => changeSort('name')}>{t('Category', 'Kategorija')}<ArrowUpDown size={14}/></button></th><th scope="col" aria-sort={sort === 'amount' ? descending ? 'descending' : 'ascending' : 'none'}><button onClick={() => changeSort('amount')}>{t('Budget', 'Fond')}<ArrowUpDown size={14}/></button></th></tr></thead><tbody>{groups.map(g => <tr key={g.id}><td><span className={detail.category}><i aria-hidden="true" style={{background: g.color}}/>{g.name}</span></td><td>{amount(g.amountWei)}</td></tr>)}</tbody></table></div><p className={s.muted}>{t('These are the saved budget splits. Individual awards depend on approved results.', 'Ovo su spremljeni udjeli proračuna. Pojedinačne nagrade ovise o odobrenim rezultatima.')}</p>
       </div></details>

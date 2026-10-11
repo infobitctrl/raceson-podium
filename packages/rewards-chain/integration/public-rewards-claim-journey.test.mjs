@@ -44,7 +44,9 @@ test('two fresh simulated athlete wallets claim all 12 awards and public rows tu
    await write(child,'activate',[digest,snapshot]);await chain.testClient.mine({blocks:96,interval:1});
    const raw={chainId:31337,slot,programmeAddress:funded.address,campaignAddress:child,fundingHash:funding,uploadDigest:upload.digest,awards:awards.map(a=>({...a,amount:a.amount.toString()}))};
    const scope={id:plan.launchId,chainId:31337,slot},query={offset:0,sort:'reward',direction:'asc'};
-   let observed=await publicObserver(batched,plan,deployment,funding,slot);
+   const programme=await publicObserver.programme(batched,plan,deployment,funding);
+   let observed=await publicObserver(batched,plan,deployment,funding,slot,BigInt(programme.blockNumber));
+   assert.deepEqual(observed.pots,[programme.pots.find(p=>p.slot===slot)]);
    const before=await publicAwardPage(batched,observed,scope,raw,query);assert.ok(before.rows.every(r=>r.status==='unclaimed'));
    const paid=[];
    for(let i=0;i<2;i++){

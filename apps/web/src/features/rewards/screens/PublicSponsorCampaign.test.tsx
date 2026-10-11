@@ -11,15 +11,15 @@ import {I18nProvider} from '@/shared/i18n/I18nProvider';
 import {ApiError} from '@/lib/api';
 import PublicSponsorCampaign from './PublicSponsorCampaign';
 import {sponsorLeague} from '../model/sponsorCatalogue';
-const {api,source}=vi.hoisted(()=>({api:vi.fn(),source:vi.fn()}));vi.mock('../data/publicCampaign',()=>({readPublicCampaign:api,readPublicCampaignSource:source,readPublicRewards:async()=>({total:0,rows:[]})}));
+const {api,source}=vi.hoisted(()=>({api:vi.fn(),source:vi.fn()}));vi.mock('../data/publicCampaign',()=>({readPublicCampaign:api,readPublicCampaignSnapshot:source,readPublicRewards:async()=>({total:0,rows:[]})}));
 const pot=(slot:number,name:string)=>({slot,name,amountWei:'5000000000000000000',state:1,paused:false,allocatedWei:'0',paidWei:'0',remainingWei:'5000000000000000000',returnedWei:'0',claimDeadline:'0',groups:[{name:'Standings',amountWei:'5000000000000000000'}]});
 const campaign={id:'campaign',name:'Synthetic league',chainId:10143,budgetWei:'10000000000000000000',address:'0x'+'11'.repeat(20),fundingHash:'0x'+'aa'.repeat(32),blockNumber:'100',blockTimestamp:'1800000000',pots:[pot(0,'League'),pot(1,'Round 1')]};
 const LocationProbe=()=> <output aria-label="Current URL">{useLocation().search}</output>;
 const ui=(query='')=> <I18nProvider initialLocale="en"><MemoryRouter initialEntries={['/rewards/campaigns/campaign/public'+query]}><LocationProbe/><Routes><Route path="/rewards/campaigns/:id/public" element={<PublicSponsorCampaign/>}/></Routes></MemoryRouter></I18nProvider>;
-beforeEach(()=>{api.mockReset();source.mockReset().mockResolvedValue({id:'campaign',chainId:10143,selection:null});access.organizer=false;access.user='';});
+beforeEach(()=>{api.mockReset();source.mockReset().mockRejectedValue(Error('snapshot unavailable'));access.organizer=false;access.user='';});
 it('loads official source links independently without waiting for or refreshing the directory',async()=>{
  api.mockResolvedValue(campaign);
- source.mockResolvedValue({id:'campaign',chainId:10143,selection:{sourceLeagueId:sponsorLeague.sourceLeagueId,sourceSeasonId:sponsorLeague.sourceSeasonId,eventEditionId:null}});
+ source.mockResolvedValue({campaign,publishedAt:'2026-10-11T00:00:00Z',selection:{sourceLeagueId:sponsorLeague.sourceLeagueId,sourceSeasonId:sponsorLeague.sourceSeasonId,eventEditionId:null}});
  render(ui('?pot=1'));
  expect(await screen.findByRole('link',{name:'League on RacesOn'})).toHaveAttribute('href','https://www.raceson.com/leagues/sibenska-trail-liga');
  expect(source).toHaveBeenCalledWith('campaign',expect.any(AbortSignal));
@@ -121,4 +121,15 @@ it('keeps the ledger and selected accounting pot synchronized when a league circ
  expect(within(screen.getByRole('group',{name:'Prize pots'})).getByRole('button',{name:/Round 1/})).toHaveAttribute('aria-pressed','true');
  expect(within(screen.getByRole('region',{name:'Selected prize pot'})).getByText('Round 1')).toBeVisible();
  expect(screen.getByRole('navigation',{name:'Allocation path'})).toHaveTextContent('Round 1');
+});
+
+it('shows published details and a saved-budget chart before the slow live observation finishes',async()=>{
+ api.mockReturnValue(new Promise(()=>{}));source.mockResolvedValue({campaign,publishedAt:'2026-10-11T00:00:00Z',selection:null});
+ render(ui('?pot=1'));
+ expect(await screen.findByRole('heading',{name:'Synthetic league'})).toBeVisible();
+ expect(screen.getByRole('heading',{name:'Prize pool allocation'})).toBeVisible();
+ expect(screen.getByText('Published snapshot')).toBeVisible();
+ expect(screen.getByText(/Published status as of/)).toHaveTextContent(new Date(Number(campaign.blockTimestamp)*1000).toLocaleString('en-GB'));
+ expect(screen.getByText(/Checking current status. Published amounts/)).toBeVisible();
+ expect(screen.queryByText('Claims open')).not.toBeInTheDocument();
 });

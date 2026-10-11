@@ -1,10 +1,22 @@
 import {decodePublicSponsorCampaign,decodePublicRewardPage} from '@raceson/domain/rewards/public-campaign';
-import {decodePublicCampaignSource} from '@raceson/domain/rewards/public-directory';
+import {decodePublicCampaignSource,decodePublicCampaignSnapshot} from '@raceson/domain/rewards/public-directory';
 import {setupId} from '@raceson/domain/rewards/distribution-setup';
 import {apiRequest,ApiError} from '@/lib/api';
 import {assertPublicEnvironmentOrigin,publicEnv} from '@/lib/public-env';
 
 export const publicCampaignPath = (id:string) => `/rewards/campaigns/${id}/public`;
+export async function readPublicCampaignSnapshot(id:string,signal:AbortSignal) {
+ assertPublicEnvironmentOrigin();
+ const demo=publicEnv.rewardDemo;
+ if(!setupId(id)||!demo)throw Error('invalid_public_campaign');
+ const response=await fetch(`${demo.apiBaseUrl}/v1/rewards/public-campaigns/${id}/snapshot`,{
+  method:'GET',credentials:'omit',cache:'no-store',redirect:'error',signal:AbortSignal.any([signal,AbortSignal.timeout(60000)]),headers:{Accept:'application/json'},
+ });
+ if(!response.ok)throw Error('public_campaign_snapshot_unavailable');
+ const snapshot=decodePublicCampaignSnapshot((await response.json()).data);
+ if(snapshot.campaign.id!==id||snapshot.campaign.chainId!==demo.chainId)throw Error('invalid_public_campaign_snapshot');
+ return snapshot;
+}
 export async function readPublicCampaignSource(id:string,signal:AbortSignal) {
  assertPublicEnvironmentOrigin();
  const demo=publicEnv.rewardDemo;

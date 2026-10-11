@@ -4,15 +4,20 @@ import type {PublicSponsorCampaign} from '@raceson/domain/rewards/public-campaig
 import {useDistributionViewport} from '../model/useDistributionViewport';
 import {radialDistribution} from '../model/radialDistribution';
 import {publicDistributionTree, type DistributionNode} from '../model/publicDistribution';
-import {usePublicCampaignRewards} from '../model/usePublicCampaignRewards';
+import {usePublicCampaignRewards, type PublicRewardCache, type PublicRewardAnchor} from '../model/usePublicCampaignRewards';
 import {publicAmount as setupAmount} from '../model/publicAmount';
 import {prizePercent} from '../model/prizeDisplay';
 import PublicRewardTable from './PublicRewardTable';
 import s from './PublicDistribution.module.css';
-export default function PublicDistribution({campaign, pot, hr, refresh, subtitle, onSelectPot, startAtPot=false}: {campaign: PublicSponsorCampaign; pot: PublicSponsorCampaign['pots'][number]; hr: boolean; refresh: number; subtitle: string;onSelectPot:(slot:number)=>void;startAtPot?:boolean}) {
-  const rewards = usePublicCampaignRewards(campaign.id, pot.slot, refresh);
+export default function PublicDistribution({campaign, pot, hr, refresh, subtitle, onSelectPot, startAtPot=false, ready=true, rewardCache, anchor}: {campaign: PublicSponsorCampaign; pot: PublicSponsorCampaign['pots'][number]; hr: boolean; refresh: number; subtitle: string;onSelectPot:(slot:number)=>void;startAtPot?:boolean;ready?:boolean;rewardCache?:PublicRewardCache;anchor?:PublicRewardAnchor}) {
+  const loaded = usePublicCampaignRewards(campaign.id, pot.slot, refresh, ready, rewardCache, anchor);
+  const rewards = {...loaded, busy: loaded.busy || !ready};
   const tree = useMemo(() => publicDistributionTree(campaign, pot, rewards.page?.rows ?? null, hr), [campaign, pot, rewards.page, hr]);
-  return <><DistributionExplorer key={`${campaign.id}:${pot.slot}`} tree={tree} hr={hr} busy={rewards.busy} failed={rewards.failed} onSelectPot={onSelectPot} initialPath={campaign.pots.length>1&&startAtPot?[`pot-${pot.slot}`]:[]}/>
+  return <>
+    <p className={s.hint} role="status">{rewards.page
+      ? `${hr ? 'Nagrade posljednji put provjerene' : 'Rewards last verified'}: ${new Date(Number(rewards.page.blockTimestamp)*1000).toLocaleString(hr?'hr-HR':'en-GB')}${rewards.busy||!ready ? hr?' · Provjera trenutačnog stanja…':' · Checking current status…' : rewards.failed ? hr?' · Osvježavanje nije uspjelo; prikazano je spremljeno stanje.':' · Refresh failed; showing saved status.' : ''}`
+      : hr?'Spremljeni proračuni prikazani su dok se provjeravaju nagrade.':'Saved budgets are shown while rewards are verified.'}</p>
+    <DistributionExplorer key={`${campaign.id}:${pot.slot}`} tree={tree} hr={hr} busy={rewards.busy||!ready} failed={rewards.failed} onSelectPot={onSelectPot} initialPath={campaign.pots.length>1&&startAtPot?[`pot-${pot.slot}`]:[]}/>
     <section className={s.ledger} aria-label={hr ? 'Odabrani fond' : 'Selected prize pot'}><PublicRewardTable id={campaign.id} key={pot.slot} slot={pot.slot} hr={hr} refresh={refresh} title={hr ? 'Pregled nagrada' : 'Reward ledger'} subtitle={subtitle} rewards={rewards}/></section></>;
 }
 export function DistributionExplorer({tree, hr, busy, failed, onSelectPot, initialPath=[]}: {tree: DistributionNode; hr: boolean; busy: boolean; failed: boolean; onSelectPot?:(slot:number)=>void;initialPath?:string[]}) {

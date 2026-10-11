@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
-import {readPublicRewards,readPublicCampaignSource} from './publicCampaign';
+import {readPublicRewards,readPublicCampaignSource,readPublicCampaignSnapshot} from './publicCampaign';
 const mocks = vi.hoisted(() => ({origin: vi.fn(), fetch: vi.fn()}));
 vi.mock('@/lib/public-env', () => ({assertPublicEnvironmentOrigin: mocks.origin,
   publicEnv: {rewardDemo: {chainId: 31337, apiBaseUrl: 'https://isolated.invalid/api'}}}));
@@ -46,4 +46,14 @@ it('preserves origin validation and sanitizes provider errors', async () => {
   expect(mocks.fetch).not.toHaveBeenCalled();
   mocks.fetch.mockResolvedValue({ok: false, status: 503});
   await expect(readPublicRewards(id, 1, 25, 'reward', 'asc', new AbortController().signal)).rejects.toMatchObject({status: 503, code: 'public_awards_unavailable'});
+});
+
+it('loads the strict historical snapshot without cookies and rejects private or foreign projections',async()=>{
+ const campaign={id,name:'Synthetic',chainId:31337,budgetWei:'100',address:'0x'+'11'.repeat(20),fundingHash:'0x'+'bb'.repeat(32),blockNumber:'100',blockTimestamp:'1800000000',pots:[{slot:0,name:'League',amountWei:'100',state:1,paused:false,allocatedWei:'0',paidWei:'0',remainingWei:'100',returnedWei:'0',claimDeadline:'0',groups:[{name:'Open',amountWei:'100'}]}]};
+ const snapshot={campaign,selection:null,publishedAt:'2026-10-11T00:00:00Z'};
+ response(snapshot);expect(await readPublicCampaignSnapshot(id,new AbortController().signal)).toEqual(snapshot);
+ expect(mocks.fetch).toHaveBeenLastCalledWith(`https://isolated.invalid/api/v1/rewards/public-campaigns/${id}/snapshot`,expect.objectContaining({credentials:'omit',cache:'no-store',redirect:'error'}));
+ for(const patch of [{record:{private:true}},{campaign:{...campaign,id:'72000000-0000-4000-8000-000000000002'}},{campaign:{...campaign,chainId:10143}},{campaign:{...campaign,wallet:'private'}}]){
+  response({...snapshot,...patch});await expect(readPublicCampaignSnapshot(id,new AbortController().signal)).rejects.toThrow();
+ }
 });
