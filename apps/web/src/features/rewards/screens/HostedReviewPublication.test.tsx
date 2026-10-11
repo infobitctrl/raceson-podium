@@ -1,4 +1,4 @@
-import {act,fireEvent,render,screen} from '@testing-library/react';
+import {act,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {beforeEach,expect,it,vi} from 'vitest';
 import HostedReviewPublication from './HostedReviewPublication';
 const mocks=vi.hoisted(()=>({read:vi.fn(),authorize:vi.fn(),enable:vi.fn(),connected:true,status:'ready',session:'one'}));
@@ -12,7 +12,7 @@ beforeEach(()=>{vi.clearAllMocks();mocks.connected=true;mocks.status='ready';moc
 it('reconnects the owned reviewer after a reload before allowing any publication reservation',async()=>{
  mocks.connected=false;mocks.status='off';const {rerender}=render(<HostedReviewPublication {...props}/>);
  const publish=await screen.findByRole('button',{name:'Resume approved publication'});
- expect(mocks.enable).toHaveBeenCalledOnce();expect(publish).toBeDisabled();fireEvent.click(publish);
+ await waitFor(()=>expect(mocks.enable).toHaveBeenCalledOnce());expect(publish).toBeDisabled();fireEvent.click(publish);
  expect(mocks.read).toHaveBeenCalledOnce();expect(mocks.authorize).not.toHaveBeenCalled();
  mocks.status='loading';rerender(<HostedReviewPublication {...props}/>);
  expect(screen.getByRole('status')).toHaveTextContent('Connecting your existing reviewer wallet');
