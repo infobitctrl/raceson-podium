@@ -14,7 +14,8 @@ Public browsing allows five seconds beyond the server deadline to receive partia
 verified updates; private callers retain their existing request behavior. A failed
 check keeps dated figures visible and offers retry. Late publications never replace
 newer live data. The freshness notice precedes the campaign cards, pagination
-returns focus to results, and below-fold Home images load lazily.
+returns focus to results, and below-fold Home images load lazily. The header uses
+its compact navigation earlier and lets the logo shrink to avoid horizontal overflow.
 
 Tests cover deferred/failing reads, retry, deduplication, publication privacy,
 route restrictions, timestamps, pagination focus and unchanged private loading.
