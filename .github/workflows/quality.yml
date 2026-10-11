@@ -51,6 +51,16 @@ jobs:
           cache: npm
       - run: npm ci --include=dev --ignore-scripts --no-audit --no-fund
       - run: npm ci --prefix contracts --ignore-scripts --no-audit --no-fund
+      - name: Start disposable PostgreSQL 16
+        run: |
+          sudo systemctl stop postgresql
+          PG_BIN=/usr/lib/postgresql/16/bin
+          "$PG_BIN/initdb" -D "$RUNNER_TEMP/podium-postgres" --auth=trust
+          if ! "$PG_BIN/pg_ctl" -D "$RUNNER_TEMP/podium-postgres" -l "$RUNNER_TEMP/podium-postgres.log" -o "-h 127.0.0.1 -p 5432 -k $RUNNER_TEMP/podium-postgres" -w start; then
+            cat "$RUNNER_TEMP/podium-postgres.log"
+            exit 1
+          fi
+          echo "PG_BIN=$PG_BIN" >> "$GITHUB_ENV"
       - name: Install pinned Foundry
         run: |
           curl --fail --location --retry 3 --output "$RUNNER_TEMP/foundry.tar.gz" https://github.com/foundry-rs/foundry/releases/download/v1.8.0/foundry_v1.8.0_linux_amd64.tar.gz
@@ -64,13 +74,6 @@ jobs:
       - run: npm run check:contracts
       - run: npm run api:build
       - run: npm --workspace @raceson/rewards-chain run test:integration
-      - name: Start disposable PostgreSQL 16
-        run: |
-          sudo systemctl stop postgresql
-          PG_BIN=/usr/lib/postgresql/16/bin
-          "$PG_BIN/initdb" -D "$RUNNER_TEMP/podium-postgres" --auth=trust
-          "$PG_BIN/pg_ctl" -D "$RUNNER_TEMP/podium-postgres" -l "$RUNNER_TEMP/podium-postgres.log" -o "-h 127.0.0.1 -p 5432" -w start
-          echo "PG_BIN=$PG_BIN" >> "$GITHUB_ENV"
       - run: npm run check:rewards:db
       - name: Stop disposable PostgreSQL
         if: always()
@@ -87,9 +90,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
       - name: Scan complete history with pinned Gitleaks
         run: |
           curl --fail --location --retry 3 --output "$RUNNER_TEMP/gitleaks.tar.gz" https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
           echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum --check
           tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
+          node scripts/check-secret-scanner.mjs "$RUNNER_TEMP/gitleaks"
           "$RUNNER_TEMP/gitleaks" git --redact --no-banner --log-opts='--all' .

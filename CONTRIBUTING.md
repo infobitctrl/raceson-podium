@@ -31,6 +31,8 @@ Chain integration uses owned local Anvil instances, never public broadcasting.
 
 Before publication, review the exact staged diff, run `git diff --check`,
 `npm run check:publication`, and Gitleaks against the full history and candidate.
+With Gitleaks 8.30.1 installed, `node scripts/check-secret-scanner.mjs` also
+checks that the reviewed exceptions reject new values on the same line.
 Use synthetic fixtures for negative authorization, consent and payment cases.
 Never weaken checks merely to make a suite green.
 
