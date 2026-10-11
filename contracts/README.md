@@ -4,7 +4,7 @@ Use Foundry 1.8.0, commit `61ae26af36320d4fa1020f7db53785885e29eeb5`, Solidity `
 
 ```sh
 npm ci --prefix contracts --ignore-scripts --no-audit --no-fund
-forge install --root contracts foundry-rs/forge-std@rev=bf647bd6046f2f7da30d0c2bf435e5c76a780c1b --no-git
+forge install --root "$PWD/contracts" foundry-rs/forge-std@rev=bf647bd6046f2f7da30d0c2bf435e5c76a780c1b --no-git
 forge build --root contracts
 npm run check:contracts
 ```

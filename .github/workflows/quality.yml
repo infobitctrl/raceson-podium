@@ -58,7 +58,7 @@ jobs:
           mkdir -p contracts/.toolchain/foundry-v1.8.0
           tar -xzf "$RUNNER_TEMP/foundry.tar.gz" -C contracts/.toolchain/foundry-v1.8.0
           echo "$GITHUB_WORKSPACE/contracts/.toolchain/foundry-v1.8.0" >> "$GITHUB_PATH"
-      - run: forge install --root contracts foundry-rs/forge-std@rev=bf647bd6046f2f7da30d0c2bf435e5c76a780c1b --no-git
+      - run: forge install --root "$PWD/contracts" foundry-rs/forge-std@rev=bf647bd6046f2f7da30d0c2bf435e5c76a780c1b --no-git
       - run: forge build --root contracts
       - run: npm run check:contracts
       - run: npm run api:build
