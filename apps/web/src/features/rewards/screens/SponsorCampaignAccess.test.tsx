@@ -1,6 +1,6 @@
 import {ApiError} from "@/lib/api";
 import {createGuidedSetup,addGuidedGroup} from "@raceson/domain/rewards/guided-setup-editor";
-import {act,fireEvent,render,screen,waitFor,within} from "@testing-library/react";
+import {fireEvent,render,screen,waitFor,within} from "@testing-library/react";
 import {MemoryRouter,useLocation,Route,Routes} from "react-router-dom";
 import {beforeEach,expect,it,vi} from "vitest";
 import {I18nProvider} from "@/shared/i18n/I18nProvider";

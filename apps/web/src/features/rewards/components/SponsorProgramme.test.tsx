@@ -34,7 +34,7 @@ it('connects exact review, upload preparation, publication and activation contro
 });
 it('saves a wallet hash and verifies it without automatically sending another transaction',async()=>{
  const transaction={from:'0xoperator',action:'activate',start:2,end:2};
- m.request.mockImplementation(async(_id,_slot,step,_a,body)=>step==='review'?{...base,approval:{id:approval,decision:'approved',current:true}}:step==='upload'?{approvalId:approval,prepared:{id}}:
+ m.request.mockImplementation(async(_id,_slot,step,_a,_body)=>step==='review'?{...base,approval:{id:approval,decision:'approved',current:true}}:step==='upload'?{approvalId:approval,prepared:{id}}:
   {approvalId:approval,current:true,publication:{id},pot:{state:2},transaction,receipts:[]});
  m.send.mockResolvedValue('0x'+'a'.repeat(64));render(ui());fireEvent.click(screen.getByRole('button',{name:/Review selected pot/}));
  fireEvent.click(await screen.findByRole('button',{name:'Connect operator'}));fireEvent.click(screen.getByRole('button',{name:'Open claims'}));

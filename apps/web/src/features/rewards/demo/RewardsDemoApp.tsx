@@ -29,7 +29,6 @@ const HostedCopyPreview = lazy(() => import("../screens/HostedCopyPreview"));
 const RewardReviewQueue = lazy(() => import("../screens/RewardReviewQueue"));
 const SponsorResultsHandoff = lazy(() => import("../screens/SponsorResultsHandoff"));
 const PublicSponsorCampaign = lazy(() => import("../screens/PublicSponsorCampaign"));
-const CopySponsorCampaign = lazy(() => import("../screens/CopySponsorCampaign"));
 const HostedSponsorFunding = lazy(() => import("../screens/HostedSponsorFunding"));
 const SponsorLaunch = lazy(() => import("../screens/SponsorLaunch"));
 const RewardsHome = lazy(() => import("../screens/PodiumHome"));

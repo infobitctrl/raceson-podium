@@ -1,6 +1,6 @@
 # Hackathon contribution history
 
-Scope: the public RacesOn Podium repository through `62d27c880e3d33e80d894597c893e69b31df424f`, reviewed 8 October 2026. This ledger describes source history; a commit by itself does not prove a deployed or consented user flow.
+Scope: the public RacesOn Podium repository through `dc5e74f2cf3479ae803051a1287e4a49efe85834`, reviewed 11 October 2026. This ledger describes source history; a commit by itself does not prove a deployed or consented user flow.
 
 ## Pre-existing foundation
 
@@ -29,13 +29,24 @@ The published history begins on 4 October, within the hackathon's September–Oc
 | 2026-10-08 | [2664e4a](https://github.com/infobitctrl/raceson-podium/commit/2664e4aaa94aba22d2b10dd46e79a50a95b2f37a) | Finalized-revert creation recovery, dependency fixes, small-club guidance and tested V6 source; V6 app activation remains pending. |
 | 2026-10-08 | [62d27c8](https://github.com/infobitctrl/raceson-podium/commit/62d27c880e3d33e80d894597c893e69b31df424f) | Publish an already-deployed reviewer-boundary migration; a source-packaging correction, not a new hosted feature. |
 
+Additional source changes after the 8 October checkpoint:
+
+| Date | Public commit | Contribution |
+| --- | --- | --- |
+| 2026-10-10 | `97a0381` | Membership-based club and treasury signing access |
+| 2026-10-10 | `4f1b1f9` | Sponsored club registration and claim fees |
+| 2026-10-10 | `ebc0a6c` | Longer club approval windows and future-contract policy |
+| 2026-10-10 | `dc8d746` | Separate public athlete and club sporting ledgers |
+| 2026-10-10 | `5d3a021` | Recorded multisig owner labels in private treasury reviews |
+| 2026-10-11 | `dc5e74f` | Compact public reward charts and extended zoom controls |
+
 The [complete public history](https://github.com/infobitctrl/raceson-podium/commits/main/) contains the intervening UI, authorization, recovery and workflow changes. The table is a navigational sample, not an exhaustive list of authors or every contribution.
 
 ## What the submission claims
 
 The rewards contribution connects existing sporting facts to sponsor-defined economics, saved immutable plans, separately funded Monad escrow, reviewed awards and explicitly confirmed recipient claims. The new hosted integration and subsequent fixes are reviewable in the commit diffs above. The project does not claim to have invented its inherited sporting platform or that all imported source was newly written during the build window.
 
-Tests with synthetic accounts and local chains, real testnet observations, and actual participant consent are different forms of evidence. In particular, V6 contracts/Registry V2 in source do not establish active V6 app behavior; deployed V5 contracts retain their existing policy. Neither this ledger nor commit counts certify the hackathon's substantial-majority eligibility requirement. The disclosed pre-existing scope and dated changes are provided for judges to assess that requirement.
+Tests with synthetic accounts and local chains, real testnet observations, and actual participant consent are different forms of evidence. Current source includes V6/Registry V2 integration and future V7 contract support. Source availability does not prove activation of every version or campaign; retained deployments preserve their existing policy. Neither this ledger nor commit counts certify the hackathon's substantial-majority eligibility requirement. The disclosed pre-existing scope and dated changes are provided for judges to assess that requirement.
 
 ## AI assistance and attribution
 

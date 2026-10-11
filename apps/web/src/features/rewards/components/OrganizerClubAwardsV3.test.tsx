@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/shared/i18n/I18nProvider";
 import OrganizerClubAwardsV3 from "./OrganizerClubAwardsV3";

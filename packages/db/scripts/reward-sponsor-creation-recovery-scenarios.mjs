@@ -53,8 +53,8 @@ export async function sponsorCreationRecoveryScenarios({harness:h,scenario}){
   const resumed=await rewardSponsorCreation(owner,setup,{...reserve,transaction:{...transaction,nonce:'999'}},h.rpc);
   assert.equal(resumed.transaction.nonce,'8');
  });
- await scenario('creation retry history counts toward the unchanged ten-attempt limit',async()=>{
-  for(let i=2;i<10;i++)await rewardSponsorCreation(owner,await make(),{...reserve,leaseId:next()},h.rpc);
+ await scenario('creation retry history counts toward the twenty-attempt limit',async()=>{
+  for(let i=2;i<20;i++)await rewardSponsorCreation(owner,await make(),{...reserve,leaseId:next()},h.rpc);
   await assert.rejects(rewardSponsorCreation(owner,await make(),{...reserve,leaseId:next()},h.rpc),/sponsor_creation_capacity/);
   await rewardSponsorCreation(owner,setup,{action:'signed',leaseId,signedTransaction:'0xbeef',hash:'0x'+'bb'.repeat(32)},h.rpc);
   await assert.rejects(rewardSponsorCreation(owner,setup,{...retry,hash:'0x'+'bb'.repeat(32),transaction:{replacement:{...transaction,nonce:'20'},failure:{...failure,nonceAfter:'20'}}},h.rpc),/sponsor_creation_capacity/);

@@ -16,7 +16,6 @@ import {decodeControllerSession,decodeControllerCampaigns,decodeControllerExecut
   type ControllerRequest,type ControllerSession,type ControllerCampaign,type ControllerAllocation} from "../data/controller";
 import type {RewardWalletProvider} from "../data/browserWallet";
 import {setupAmount} from "../model/setupAmount";
-import RewardExplorerLink from "../components/RewardExplorerLink";
 import s from "./RewardsControl.module.css";
 import PodiumOperationsHeader,{type OperationsAccount} from '../components/PodiumOperationsHeader';
 

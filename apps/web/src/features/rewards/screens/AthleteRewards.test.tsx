@@ -22,7 +22,10 @@ const controls = vi.hoisted(() => ({
 vi.mock("@/lib/public-env", () => ({ publicEnv: { get hostedOperations(){return controls.hosted;}, get rewardPortalEnabled() { return controls.enabled; }, get rewardDemo() { return { mode: controls.mode }; } } }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: { id: controls.userId },
   account: { userId: controls.accountId, hasAthleteAccess: true }, session: controls.session, isLoading: controls.loading }) }));
-vi.mock("../data/sponsorProgramme",()=>({sponsorAwards:controls.sponsorAwards}));
+vi.mock("../data/sponsorProgramme", async importOriginal => ({
+  ...await importOriginal<typeof import("../data/sponsorProgramme")>(),
+  sponsorAwards: controls.sponsorAwards,
+}));
 vi.mock("../data/hostedAthleteAwards",()=>({getHostedAthleteAwards:controls.getHostedAwards}));
 vi.mock("../data/athleteRewards", () => ({ getOwnRewardAllocations: controls.getAllocations }));
 vi.mock("../data/athleteAllocationsV3", () => ({ getOwnAllocationsV3: controls.getAllocationsV3 }));

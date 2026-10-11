@@ -1,0 +1,121 @@
+# Retain every default detector. Each exception requires both an exact file and
+# the full reviewed non-secret line; a changed value is scanned again.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Reviewed synthetic idempotency value or non-secret display/enum text"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^apps/api/test/reward\-calculation\-service\.test\.mjs$''']
+regexes = [
+  '''\s*const\ reserveInput\ =\ \(f\)\ =>\ \(\{\ campaignId:\ f\.campaignId,\ reviewId:\ f\.reviewId,\ idempotencyKey:\ "synthetic\-reserve\-01"\ \}\);$''',
+]
+
+[[allowlists]]
+description = "Reviewed synthetic idempotency value or non-secret display/enum text"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^apps/api/test/reward\-funding\-intents\.test\.mjs$''']
+regexes = [
+  '''\s*createdByUserId:actorUserId,createdAt:'2026\-09\-08T01:00:02Z',idempotencyKey:'funding\-test\-01'\}\};$''',
+  '''\s*const\ input=\{campaignId,idempotencyKey:'funding\-test\-01'\};\ const\ scope=\{campaignId,actorUserId,intentId\};\ const\ calls=\[\];$''',
+]
+
+[[allowlists]]
+description = "Reviewed synthetic idempotency value or non-secret display/enum text"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^apps/api/test/reward\-record\-approvals\.test\.mjs$''']
+regexes = [
+  '''\s*return\ \{\ \.\.\.f,\ candidate,\ approval,\ approveInput:\ \{\ \.\.\.f\.input,\ priorSnapshotId:\ f\.priorSnapshot\.snapshotId,\ idempotencyKey:\ "synthetic\-approval\-01"\ \}\ \};$''',
+  '''\s*const\ reserveInput\ =\ \(f\)\ =>\ \(\{\ campaignId:\ f\.campaignId,\ reviewId:\ f\.reviewId,\ idempotencyKey:\ "synthetic\-reserve\-01"\ \}\);$''',
+  '''\s*assert\.equal\(h\.calls\[2\]\.args\.p_idempotency_key,\ "synthetic\-approval\-01"\);$''',
+  '''\s*const\ request\ =\ \{\ \.\.\.expected\(f\),\ idempotencyKey:\ "synthetic\-withdraw\-01",\ reason:\ "\ \ Corrected\ prior\ result\ requires\ a\ new\ review\.\ \ ",\ amountWei:\ "1"\ \};$''',
+]
+
+[[allowlists]]
+description = "Reviewed synthetic idempotency value or non-secret display/enum text"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^apps/web/src/lib/ranking\-config\.ts$''']
+regexes = [
+  '''\s*\{\ key:\ "senior\-65\-plus",\ label:\ "Senior\ 65\+",\ gender:\ null,\ minimumAge:\ 65,\ maximumAge:\ null\ \},$''',
+]
+
+[[allowlists]]
+description = "Reviewed synthetic idempotency value or non-secret display/enum text"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^apps/web/src/shared/i18n/messages\.ts$''']
+regexes = [
+  '''\s*"rewards\.claimV3\.unmatched":\ "The\ matching\ allocation\ is\ not\ available\ for\ consent\ review\.\ Refresh\ or\ load\ more\ allocations;\ recorded\ payment\ history\ remains\ accessible\.",\s*"rewards\.claimV3\.collected":\ "Signature\ collected\ in\ this\ tab\.\ Save\ it\ to\ record\ your\ consent;\ no\ payment\ has\ been\ sent\.",$''',
+  '''\s*"rewards\.depositV3\.help":\ "Local\ simulation\ only\.\ Use\ a\ wallet\ you\ control\ on\ chain\ 31337\.\ This\ calls\ the\ programme\ deposit\ function;\ it\ does\ not\ route\ pots\ or\ pay\ athletes\.\ Never\ enter\ a\ private\ key\ here\.",\s*"rewards\.depositV3\.testnet":\ "Public\-testnet\ programme\ deposits\ are\ not\ enabled\ yet\.\ This\ is\ separate\ from\ the\ funded\ 0\.1\-MON\ trial\.\ Programme\ execution\ approval\ and\ wallet\ acceptance\ are\ still\ required\.",$''',
+  '''\s*"rewards\.depositV3\.noWallet":\ "No\ compatible\ wallet\ found\ in\ this\ browser\.\ Open\ the\ isolated\ demo\ in\ your\ wallet\-enabled\ browser;\ never\ import\ a\ production\ wallet\ or\ enter\ its\ secret\ into\ RacesOn\.",\s*"rewards\.depositV3\.consent":\ "I\ checked\ the\ amount,\ local\ network\ and\ addresses\.\ I\ control\ the\ approved\ funder\ wallet\ and\ authorize\ this\ deposit\ plus\ the\ network\ fee\ shown\ in\ my\ wallet\.",$''',
+]
+
+[[allowlists]]
+description = "Reviewed synthetic idempotency value or non-secret display/enum text"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^packages/db/scripts/reward\-athlete\-claims\-v3\-scenarios\.mjs$''']
+regexes = [
+  '''\s*const\ destination=await\ submitAthleteRewardDestination\(athlete,\{challengeId:challenge\.challengeId,athleteProfileId:row\.profileId,idempotencyKey:"claim\-v3\-destination"\},deps\);$''',
+]
+
+[[allowlists]]
+description = "Reviewed synthetic idempotency value or non-secret display/enum text"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^packages/db/scripts/reward\-db\-integration\.mjs$''']
+regexes = [
+  '''\s*const\ fundingAttemptInput=\{campaignId:campaign\(1\)\.id,actorUserId:id\(4\),intentId:fundingContext\.intent\.id,idempotencyKey:'funding\-attempt\-01',attempt:fundingBody\};$''',
+]
+
+[[allowlists]]
+description = "Reviewed synthetic idempotency value or non-secret display/enum text"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^packages/db/scripts/reward\-sponsor\-lifecycle\-v4\-scenarios\.mjs$''']
+regexes = [
+  '''\s*const\ challenge=await\ prepareAthleteWalletProof\(who,\{address:signer\.address,idempotencyKey:'sponsor\-claim\-v4\-wallet'\},walletDeps\);$''',
+  '''\s*const\ destination=await\ submitAthleteRewardDestination\(who,\{challengeId:challenge\.challengeId,athleteProfileId:r\.beneficiaryId,idempotencyKey:'sponsor\-claim\-v4\-destination'\},walletDeps\);$''',
+]
+
+[[allowlists]]
+description = "Reviewed synthetic idempotency value or non-secret display/enum text"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^packages/db/src/organization\-team\.ts$''']
+regexes = [
+  '''\s*export\ const\ TEMPORARY_ACCOUNT_PASSWORD_MODE\ =\ "temporary\-short\-v1";$''',
+]
+
+[[allowlists]]
+description = "Reviewed synthetic idempotency value or non-secret display/enum text"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^packages/db/src/race\-ops\.ts$''']
+regexes = [
+  '''\s*\{\ key:\ "senior\-65\-plus",\ label:\ "Senior\ 65\+",\ gender:\ null,\ minimumAge:\ 65,\ maximumAge:\ null\ \},$''',
+]
+
+[[allowlists]]
+description = "Reviewed synthetic idempotency value or non-secret display/enum text"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^packages/rewards\-chain/integration/sponsor\-direct\-claims\-v5\.test\.mjs$''']
+regexes = [
+  '''\s*issuedAt:new\ Date\(Number\(current\)\*1000\)\.toISOString\(\),expiresAt:new\ Date\(Number\(current\+600n\)\*1000\)\.toISOString\(\),idempotencyKey:'synthetic\-v5\-proof',checkedAt:new\ Date\(Number\(current\)\*1000\)\.toISOString\(\)\};$''',
+]

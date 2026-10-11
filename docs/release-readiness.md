@@ -1,61 +1,72 @@
-# Direct claims — 8 October 2026
+# Source verification — 11 October 2026
 
-V5 support is opt-in and **not activated on testnet**. Athletes explicitly create
-or connect their own wallets. Login and award publication never create wallets;
-walletless beneficiaries retain their shares. After reviewer publication, the
-recipient claims with automatic account/wallet verification and no further human
-reviewer, sponsor or controller approval. Existing V4 campaigns retain their
-immutable requirements.
+Reviewed from public commit `dc5e74f2cf3479ae803051a1287e4a49efe85834` in a separate
+release checkout. Canonical application source matched the fetched remote; public
+packaging and sanitized historical migrations were preserved.
 
-Hosted V5 club claims now use the club's recorded original Safe, current owners
-and two separate owner signatures. The claim pays the Safe, and only a finalized,
-matching receipt marks the award paid. Club ownership consent remains separate
-from award approval. No private signatures are persisted in browser storage.
-The creation-gas upgrade preserves the old grant for retained V4 transactions and
-requires the actual gas-wallet owner's approval before V5 activation. Saved V4
-plans also retain the V4 factory before a creation transaction is reserved.
+## Corrections in this release
 
-This release passed 33 scoped API tests, 38 disposable SQL scenarios, five owned
-local-chain integration tests, 37 scoped UI tests, 27 Privy adapter tests, API/web
-types, scoped frontend lint and a full production build. Local-chain tests include
-actual original-Safe execution, wrong/duplicate owner and nonce rejection,
-duplicate claim rejection and an unchanged reviewer nonce after recipient claims.
-The deployed issuer provider produced a synthetic identity signature that was
-independently verified. No real beneficiary consent was fabricated.
+- Restore the already approved 20-attempt creation migration to public source.
+  The hosted limit had changed on 9 October while the public snapshot still used
+  ten. No hosted database change is made by this release.
+- Repair a partial UI mock and a stale club projection expectation. Update SQL
+  capacity assertions to the approved limit and include recovery/claim scenarios
+  in the standard database command.
+- Remove unused imports and an unused lazy entry; make the numeric rounding test
+  explicit; restore scoped rewards lint and portable PostgreSQL tool selection.
+- Add CI for application checks, local contracts/database integration, full-history
+  secret scanning, publication paths, dependency advisories and synthetic builds.
+- Replace superseded submission/status prose with current setup, architecture,
+  privacy and reviewer guidance. Preserve license, inherited-code and AI disclosures.
 
-Chrome desktop/mobile checks exercised the real claim component with clearly
-labelled synthetic wallet/API responses, including reload recovery and two-owner
-submission gates. This is interface evidence, not a testnet payment. Existing
-provider dependency build warnings remain. These checks are not a security audit.
+## Local evidence
 
-The isolated demo database migration and non-secret setup configuration are
-applied. Activation still needs gas funding for the two pinned contract
-deployments, explicit approval to store the server-only identity-signing
-credential, the gas-wallet owner's restricted V5 grant and runtime activation.
-A fresh hosted campaign, reviewer publication and recipient payment remain
-unverified on testnet. Retained Subi001 and its funds have not been reset.
+Environment: Node 22.23.2, locked npm dependencies, macOS, PostgreSQL 16 on loopback,
+Foundry 1.8.0, Solidity 0.8.36 and owned Anvil instances. No public transaction,
+provider setting, production dataset or beneficiary consent was changed.
 
----
+| Check | Result |
+| --- | --- |
+| API/domain/repository suite | 1,209 cases covered; the socket-dependent file passed separately after the sandbox denied local sockets |
+| Rewards UI | 1,801 tests across 258 files |
+| Wallet adapters | 63 tests |
+| Chain-client unit tests | 207 tests |
+| Contract checks | 257 tests per EVM/Monad configuration, including fuzz/invariant suites; pinned Safe artifacts and formatting verified |
+| Owned local-chain integration | Full run plus corrected direct-claim file; all 224 cases covered |
+| SQL migration isolation | 6 tests |
+| Disposable database integration | 297 scenarios plus 5 creation-recovery and 49 current operation/claim scenarios |
+| Types and rewards lint | Types pass; zero lint errors, ten existing React dependency warnings retained for review |
+| Dependency audit | Zero known vulnerabilities in application and contract lockfiles at review time |
+| Secrets | All 107 starting commits scanned; 18 initial alerts reviewed as non-secrets; exact allowlists preserve default detectors |
+| Build | Real Next.js production build with inert credentials; server-only sentinel absent from client assets |
 
-# Source release verification — 5 October 2026
+GitHub CI records checks against the published commit; local evidence is not a
+substitute for a green remote run. Counts include negative authorization and
+failure cases and do not represent real athlete payments.
 
-The full local Podium application is included in this release. Build dependencies are installed explicitly with `--include=dev` because the production environment sets `NODE_ENV=production`. The configured Vercel output directory `.next-build` matches the app's production `distDir`. The existing Vercel project is connected to this repository's `main` branch and configured to build `demo/rewards/web` with the root lockfile.
+## Remaining limits
 
-Verified before publication:
+Semantic security review focused on authentication, ownership, public projection,
+signing, claim, current contract and SQL boundaries. Inherited compatibility code
+and historical versions were not exhaustively reviewed line by line. No validated
+vulnerability was found in that scope; this is not formal verification or an
+independent external audit.
 
-- Clean locked install and full Next.js 16.3.8 production build.
-- API regression suite: 1,054 passed; after the event-scope fix, all 25 hosted-copy tests passed, including the new selected-event/track case.
-- Rewards UI: 1,343 tests exercised. Two provider-dependent test files were repaired and their 27 tests passed; the other 200 files passed in the full run.
-- Wallet boundary: 53 passed. Dependency compatibility regressions: seven passed. npm dependency audits: zero known vulnerabilities in the installed app and contract locks.
-- Contract formatting, pinned tool/dependency versions and original Safe artifact hashes; offline EVM and Monad suites passed.
-- Disposable database integration: all 294 scenarios passed, including actual overlapping lock/session checks. Six migration-isolation tests and 171 chain-client tests passed.
-- GitHub secret scanning, push protection and confidential vulnerability reporting enabled; no secret alerts before publication.
-- Copy-specific live database acceptance: selected event/course save, exact retry and reopen; wrong round/course, combined-club injection and changed-source writes rejected. The entire test transaction was rolled back.
-- Frozen isolated source: five completed rounds, ten courses, seven classifications, 471 rows, 444 finishes, 274 athlete aliases and 41 renamed clubs. Combined scope counts 443 finishes under the existing reviewed decision; 196 null-club finishes are unaffiliated per race.
-- Whole-publication Gitleaks scan: 17 reviewed false positives. Six known credential values: zero source matches. Server key/password/synthetic server-sentinel comparison against browser build: zero matches.
-- Eight historical migrations replaced by reviewed fresh-database templates to omit identity repairs and private identity values. Private runtime/evidence, source-to-alias mapping, database contents and populated environment files are excluded.
-- Focused source security review of hosted session/ownership, projection, draft revision and dormant spending boundaries: no validated finding. Coverage is partial across copied compatibility and contract internals; this is not a certification or deployed penetration test.
+Existing React effect-dependency warnings remain in legacy claim/editor components
+and stale-request guards. Provider dependencies emit build warnings. Refactoring
+those lifecycle paths requires focused behavior evidence; dependencies must not be
+added mechanically where doing so could repeat requests or discard unsaved work.
 
-Supabase's advisor reports intentionally closed RLS tables without client policies and disabled leaked-password checking. See [password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) and [closed-table RLS advice](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy). Shared judge credentials remain private; public signup is closed.
+Read-only UI checks cover public entry/navigation and private-route rejection.
+This review does not re-execute a sponsor-to-recipient testnet payment, recheck all
+mobile/accessibility flows, prove real-user consent, or finish outstanding cohort
+claims. Earlier testnet evidence must retain its original date and contract version.
 
-The broader hackathon release still needs a complete hosted sponsor-to-claim walkthrough, authorized Privy/testnet configuration, real user consent where applicable, video and final submission review. Publishing this source does not submit an application, apply to a track, create a wallet or authorize spending.
+A prior measured large campaign still required minutes for sequential winner
+verification. Safe follow-up optimization should batch public observations with
+bounded concurrency and immutable block context; measure before and after and
+preserve fail-closed receipt checks. Never cache authorization or signing readiness
+merely to accelerate display.
+
+See the [submission checklist](submission-preparation.md) for product walkthrough,
+media, support, rights and portal items requiring separate completion.

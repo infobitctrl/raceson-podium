@@ -31,7 +31,8 @@ export async function sponsorCreationScenarios({harness:h,scenario}){
   await assert.rejects(rewardControllerTransaction(actor,'signed',{id:pendingId,signed:'0xbabe',hash:'0x'+'cc'.repeat(32)},h.rpc),/controller_transaction_invalid/);
   await rewardControllerTransaction(actor,'confirm',{id:pendingId,hash:'0x'+'bb'.repeat(32)},h.rpc);
   for(const role of ['anon','authenticated'])assert.equal(await h.scalar(`select has_function_privilege('${role}','public.service_reward_controller_transaction(text,text,text,uuid,jsonb,jsonb,text,text)','execute')`),false);
-  const third=await make();await assert.rejects(rewardSponsorCreation(owner,third,{...reserve,leaseId:next()},h.rpc),/sponsor_creation_capacity/);
+  for(let attempt=2;attempt<20;attempt++)await rewardSponsorCreation(owner,await make(),{...reserve,leaseId:next()},h.rpc);
+  const twentyFirst=await make();await assert.rejects(rewardSponsorCreation(owner,twentyFirst,{...reserve,leaseId:next()},h.rpc),/sponsor_creation_capacity/);
   await h.query(`update app_private.reward_sponsor_auto_deployments set lease_until=now()-interval '1 second' where setup_id=${literal(setup)};`);
   const newLease=next();const resumed=await rewardSponsorCreation(owner,setup,{...reserve,leaseId:newLease,transaction:{...transaction,nonce:'999'}},h.rpc);assert.equal(resumed.transaction.nonce,'7');assert.equal(resumed.signedTransaction,'0xdead');
   for(const role of ['anon','authenticated'])assert.equal(await h.scalar(`select has_function_privilege('${role}','public.service_reward_sponsor_auto_deployment(uuid,uuid,uuid,text,uuid,text,jsonb,text,text)','execute')`),false);

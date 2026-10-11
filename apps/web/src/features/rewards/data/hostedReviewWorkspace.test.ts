@@ -21,5 +21,5 @@ it('retains exact source evidence and rejects duplicate result identifiers or ro
  const evidence={...data,groups:[{...group,results:[row]}]};request.mockResolvedValue(evidence);
  expect((await readHostedReviewWorkspace(id,3)).groups[0].results[0]).toEqual(row);
  request.mockResolvedValue({...evidence,groups:[{...group,results:[row,row]}]});await expect(readHostedReviewWorkspace(id,3)).rejects.toThrow('invalid_review');
- request.mockResolvedValue({...evidence,groups:[{...group,results:[{...row,finishTimeMs:9007199254740993}]}]});await expect(readHostedReviewWorkspace(id,3)).rejects.toThrow();
+ request.mockResolvedValue({...evidence,groups:[{...group,results:[{...row,finishTimeMs:Number(row.finishTimeMs)}]}]});await expect(readHostedReviewWorkspace(id,3)).rejects.toThrow();
 });

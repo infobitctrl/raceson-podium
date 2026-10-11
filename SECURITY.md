@@ -1,13 +1,63 @@
-# Security
+# Security and privacy
 
-This is an isolated testnet demonstration. Shared test accounts do not establish real athlete ownership or consent. No production security or funds-safety certification is claimed.
+Podium is an isolated testnet demonstration. Shared demo accounts do not establish
+real athlete ownership or consent. No production funds-safety certification or
+independent external audit is claimed.
 
-Do not include passwords, API secrets, seeds, private keys, signed private payloads, Auth exports, database dumps, source-to-alias mappings or real participant contact data in Git, issues or pull requests. Exact historical race times can remain linkable even after names are replaced. Public test fixtures must use invented identities.
+## Public and private information
 
-Keep suspected vulnerabilities confidential. Use GitHub private vulnerability reporting when available, or an existing private contact with the repository owner. Do not publish exploit details in a public issue.
+| Information | Boundary |
+| --- | --- |
+| Contract source, ABI, bytecode and public deployment addresses | Public and reviewable. Source is not a signing credential. |
+| Broadcast transactions, contract state, recipient addresses and amounts | Public blockchain facts; removing them from Git cannot make them private. |
+| Pseudonymized approved sporting display and reward totals | Deliberately public through narrow projections. Exact sporting times remain linkable. |
+| Account-to-wallet mappings, identity proofs, consent records, unpublished allocations and signing journals | Restricted server/database records, excluded from public source and public API projections. |
+| Passwords, tokens, seeds, private keys, provider credentials and private signed payloads | Never commit, expose in client bundles, print in logs or include in issues. |
 
-The 5 October source release received locked dependency audits, secret and known-credential comparisons, focused source review of hosted authentication/ownership/isolation/payment boundaries, regression tests and a clean Next.js build. Seventeen secret-pattern alerts were inspected and were test idempotency constants or ordinary enum/localization text. No actual secret was identified in the reviewed export.
+Public fixtures use synthetic identities. Real participant contacts, database or
+Auth exports, identity-to-alias mappings, keystores and populated environment files
+must remain outside Git. Browser-visible `NEXT_PUBLIC_` variables are public; a
+service-role or signer credential must never have that prefix.
 
-The source review is partial: it does not certify every copied compatibility file or provide a deployed penetration test. Hosted money/provider actions are blocked by an explicit method/path allowlist. Database source projections are server-only and bound to the isolated five-round copy. Sponsor writes recheck live sessions, ownership, source fingerprint, canonical structure and saved revision.
+## Controls
 
-Supabase advisory review reported deliberately closed RLS tables without client policies, and disabled leaked-password checking on the free demo project. Closed signup and separately provisioned test identities remain in place. See [password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+The hosted API has an explicit method/path allowlist. Allowed money and provider
+actions still require their own session, role, ownership, source, consent and
+receipt checks. Database projections are service-only. Sponsor writes bind to the
+current session, saved revision and canonical sporting source. Integer money
+calculations run on the server; browser amounts are previews.
+
+Claims bind identity, destination, contract, chain, amount and replay context.
+Historical contract versions preserve their terms. Funding, allocation approval,
+activation and finalized payment remain separate states. Creation reservations
+count failed attempts toward 20 global and per-sponsor attempts per rolling day;
+the unchanged per-attempt cap is 3 test MON.
+
+GitHub secret scanning and push protection are enabled. Source quality CI scans
+full Git history with Gitleaks, checks tracked paths, runs locked dependency
+advisory checks and verifies a synthetic server key is absent from browser assets.
+The Gitleaks allowlist is restricted to exact reviewed lines in named files;
+it does not exempt test directories or arbitrary credential-like values.
+
+## Review scope and limits
+
+The 11 October 2026 review inventoried tracked source and scanned all 107 existing
+commits. Eighteen initial pattern alerts were reviewed as synthetic idempotency
+values, classification labels or localization text; no actual secret was found.
+GitHub had no open secret alerts, and both npm locks had zero known advisories at
+review time. These checks cannot prove that an undiscovered credential never existed.
+
+Semantic review covered hosted authentication and ownership, public projections,
+signing policy, wallet/claim state, current contract and service-only SQL
+boundaries. Coverage of inherited compatibility code and historical versions is
+partial. Local tests are not a deployed penetration test, formal verification or
+proof of real-user consent. See [release verification](docs/release-readiness.md)
+for repeatable checks and outstanding product evidence.
+
+## Reporting
+
+Use GitHub's private vulnerability reporting for this repository or an existing
+private contact with its owner. Include affected version, reproduction and impact
+without credentials or real personal data. Do not post exploit details or secrets
+in public issues. If a credential is exposed, revoke or rotate it; deleting a file
+or adding an ignore rule is insufficient.

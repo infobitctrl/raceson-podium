@@ -1,6 +1,6 @@
 import {it,expect,vi} from 'vitest';
 import {privateKeyToAccount} from 'viem/accounts';
-import {toHex,type Hex} from 'viem';
+import {toHex} from 'viem';
 import {sponsorClaimMessagesV4,sponsorSafeConsentMessageV4,encodeSponsorClaimV4} from '@raceson/rewards-chain/sponsor-claims-v4';
 import {safeRewardConsentMessageV3} from '@raceson/rewards-chain/campaign-v3';
 import {signSponsorClubConsent,combineSponsorClubSignatures,verifySponsorClubSignatures} from './sponsorClubWallet';

@@ -34,7 +34,7 @@
     "check:rewards": "npm run api:check && node --test apps/api/test/reward-*.test.mjs",
     "check:rewards:chain": "npm --workspace @raceson/rewards-chain run test",
     "check:rewards:integration": "npm run api:check && npm run check:contracts && npm --workspace @raceson/rewards-chain run test:integration",
-    "check:rewards:db": "npm run api:check && node --test apps/api/test/reward-migration-isolation.test.mjs && node apps/api/test/reward-sponsor-source-db.mjs --all-rewards",
+    "check:rewards:db": "npm run api:check && node --test apps/api/test/reward-migration-isolation.test.mjs && node apps/api/test/reward-sponsor-source-db.mjs --all-rewards && node apps/api/test/reward-sponsor-source-db.mjs --creation && node apps/api/test/reward-sponsor-source-db.mjs --operations",
     "check:rewards:system": "npm run check:contracts && npm run check:rewards:db && npm --workspace @raceson/rewards-chain run test:integration",
     "check:contracts": "node contracts/scripts/check.mjs",
     "build:rewards:web": "npm --workspace @raceson/rewards-demo-web run build",
@@ -56,7 +56,10 @@
     "test:rewards:ui": "npm --workspace @raceson/web run test -- src/features/rewards src/lib/reward-demo-runtime.test.ts",
     "check:api": "npm run check:rewards",
     "check": "npm run api:check && npm run check:web",
-    "check:dependencies": "node --test vendor/security/test/*.test.cjs"
+    "check:dependencies": "node --test vendor/security/test/*.test.cjs",
+    "check:publication": "node --test scripts/check-publication.test.mjs && node scripts/check-publication.mjs",
+    "check:build": "node scripts/check-build.mjs",
+    "check:lint": "npm --workspace @raceson/web run lint"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

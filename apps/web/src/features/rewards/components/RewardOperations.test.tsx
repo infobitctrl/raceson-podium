@@ -1,4 +1,4 @@
-import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {render,screen,fireEvent} from '@testing-library/react';
 import {beforeEach,it,expect,vi} from 'vitest';
 import RewardReviewIssues from './RewardReviewIssues';
 import RewardSupportSettings from './RewardSupportSettings';

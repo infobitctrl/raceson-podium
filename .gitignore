@@ -36,3 +36,18 @@ coverage/
 contracts/.toolchain/
 contracts/lib/
 contracts/cache/
+
+# Local wallets, broadcasts, exports and review output
+**/broadcast/
+**/keystore/
+**/keystores/
+*.keystore
+*.wallet
+*.log
+/audits/
+/output/
+/outputs/
+/.artifacts/
+/.migration-work/
+/.worktree-hold/
+/.sitrail-cli-sync/

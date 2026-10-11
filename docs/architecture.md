@@ -1,24 +1,43 @@
 # Architecture and trust boundaries
 
-The sponsor selects an existing event, chooses reward categories and ratios, saves
-rules, explicitly creates a reward contract and deposits the prize budget.
-Authorized review turns official results into exact approved allocations. Verified
-athletes or club representatives register wallets, authorize and claim awards.
+A sponsor chooses existing sporting facts and reward economics. Reviewed official
+results become exact allocations. Contracts hold escrow and enforce claims;
+wallets provide explicit control proofs and signatures.
 
-| Boundary | Responsibility |
+| Source area | Responsibility |
 | --- | --- |
-| Upstream sporting platform | Event, route, classification, registration and official-result truth |
-| Sponsor | Prize budget and reward ratios |
-| Rewards domain/API | Integer calculations, authorization, immutable source/rule binding |
-| Sporting reviewer and controller | Review and attest the exact allocation |
-| Contract | Escrow, approved distribution and replay-safe claims |
-| Privy or external wallet | Supported wallet access, control proofs and explicit signatures |
-| Athlete or club representative | Verified ownership and recipient consent |
+| `demo/rewards/web` | Isolated Next.js entry point, server routes and wallet provider adapters |
+| `apps/web/src/features/rewards` | Sponsor, reviewer, athlete, club and public interfaces |
+| `apps/api/src/features/rewards` | Session/role/ownership checks, workflow orchestration, provider and receipt verification |
+| `packages/domain/src/rewards` | Canonical sporting/rule models and integer allocations |
+| `packages/db/src/rewards` | Typed repository operations and restricted database projections |
+| `packages/rewards-chain` | Contract encoding, signature domains, receipt checks and chain clients |
+| `contracts` | Versioned escrow, factories, registries and claim enforcement |
+| `demo/rewards/supabase/migrations` | Demo-only overlay above compatibility base migrations |
 
-Creation gas, sponsor balances and deposited prizes are distinct. Walletless
-beneficiaries retain their shares. Private identity records stay outside public
-chain instructions. Existing contracts retain their original versions and terms.
+Thin routes delegate to feature services. The browser previews economics; server
+facts and integer arithmetic determine money. The upstream RacesOn platform owns
+events, routes, classifications and official results. Sponsors cannot invent
+sporting classifications or enter results to award themselves prizes.
 
-The planned source layout preserves the standalone demo app, rewards features,
-API, domain, database and chain packages, contracts and isolation tests. Retained
-`@raceson/*` compatibility names do not make this the production sporting portal.
+A saved plan freezes source/rule context. Creation reserves a recoverable nonce
+and private execution journal. Prize funding does not approve an allocation;
+review does not pay a beneficiary. Publication and activation precede explicit
+claims. Only a matching successful, canonical and finalized receipt establishes
+payment. Walletless beneficiaries keep their shares.
+
+Athlete identity/consent and account-wallet mappings stay private. Public views
+expose approved pseudonymized display and accounting through limited projections.
+Blockchain addresses, transactions and state remain publicly observable. Club
+ownership consent is distinct from allocation review and payment signatures.
+
+Contract versions, budgets, operators and policy terms remain immutable for
+existing deployments. New source or runtime support is not evidence of activation
+on a particular campaign. The application supports retained versions; test and
+release evidence must name the version actually exercised.
+
+Retained `@raceson/*` names and copied non-rewards components serve compatibility.
+They do not expand Podium into a second registration or event-management platform.
+The public migration snapshot is for fresh disposable databases; historical
+private identity repairs are intentionally omitted or replaced with schema-only
+versions.

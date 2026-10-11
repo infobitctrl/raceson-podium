@@ -1,48 +1,82 @@
 # RacesOn Podium
 
-Sponsor-funded sporting rewards on Monad. RacesOn supplies official sporting facts; sponsors choose prize economics; controllers review allocations; verified beneficiaries explicitly claim. Walletless beneficiaries retain their shares.
+Sponsor-funded sporting rewards on Monad. RacesOn supplies official results;
+sponsors choose prize economics; reviewers approve allocations; verified athletes
+and clubs explicitly claim. Walletless beneficiaries retain their shares.
 
-This repository contains the actual Podium application: the Next.js entry point in `demo/rewards/web`, the existing rewards UI in `apps/web/src/features/rewards`, and its API, database, domain and contract layers. Vercel builds this source from `main` for [podium.raceson.com](https://podium.raceson.com).
+[Hosted demonstration](https://podium.raceson.com) ·
+[Architecture](docs/architecture.md) · [Verification](docs/release-readiness.md) ·
+[Security and privacy](SECURITY.md) · [Reviewer guide](docs/submission-preparation.md)
 
-## Hosted demonstration
+## Product
 
-The hosted app uses only the isolated Supabase project `niklhlmljiikwbkrmapw`: Šibenik Trail League closed after five completed rounds, ten courses, seven classifications, 471 result records and 274 demo athlete aliases. Participant and club names are replaced. Exact times remain linkable to published sporting results; this is pseudonymized data, not anonymous data. No database dump or identity-to-alias mapping is published here.
+1. Select an existing RacesOn event and its races and classifications.
+2. Choose reward ratios and save the rules.
+3. Explicitly create the contract using RacesOn-funded gas, then fund prizes.
+4. Review allocations derived from official results and publish approved awards.
+5. Verify wallet ownership and explicitly claim an athlete or club award.
 
-Visitors browse the completed events in the existing Podium interface. Provisioned test accounts can inspect copied results; the sponsor can save and reopen prize rules and review exact integer allocations. The Round 3 duplicate uses the reviewed Long result/Races Club29 for combined scope; 196 finishes with no club remain unaffiliated per race.
+The isolated demo uses Monad testnet **10143** and test MON. The application
+supports retained contract versions and direct athlete and club claims, with
+Privy wallet integration and sponsored claim fees. Existing deployments retain
+their immutable terms; new contract source does not upgrade them. Gas reserves,
+sponsor balances and deposited prizes are separate. A transaction hash alone is
+not proof of payment.
 
-The hosted V5 demonstration supports sponsor contract creation, separate prize funding, reviewer publication and explicit athlete claims. Privy provides embedded wallets and signing, including sponsored athlete claim fees. Dated testnet evidence includes finalized athlete payments; these are demonstration executions, not proof of real-athlete consent or production readiness. V6 club-signature contracts and Registry V2 are included as tested source but are not yet integrated or active in the application. Existing V5 deployments retain their original terms. Judge access is distributed privately, never through this repository.
+The demonstration dataset contains five completed rounds, 471 result records and
+274 athlete aliases. Names are replaced, but exact times can be correlated with
+published results: this is **pseudonymized, not anonymous**. The five-round fixture
+is not a product requirement. Judge accounts and private operational records are
+not distributed in this repository.
 
-## Hackathon scope and pre-existing work
+## Quick verification
 
-RacesOn's event administration, registrations, timing, official results, sporting identities and shared scoring/application primitives predate this submission. This repository contains compatibility copies of some of that foundation; they are not presented as new hackathon inventions. The separate RacesOn.com platform and its production data are outside this submission's source/deployment scope.
-
-Podium adds sponsor reward economics, reviewed allocations, Monad escrow/claims and Privy wallet/signing integration. The public repository began with documentation on 4 October 2026 and imported the application on 5 October. That import contains existing work and is not evidence that every imported line was written then. The subsequent public commits document substantial rewards integration and product changes. See the [dated contribution ledger](docs/hackathon-contributions.md) for exact commits, inherited boundaries and evidence limitations. No private upstream history, credentials or participant mappings are published.
-
-## AI coding tools
-
-OpenAI Codex was used to assist source development, debugging, test creation/execution and documentation, including these submission materials. The project owner directed product decisions and release authorization. AI-assisted work remains subject to the repository's tests, review and stated limitations; this disclosure does not imply an independent external security audit or formal verification. Contribution history records code changes, not a claim that every line was manually authored.
-
-## License and attribution
-
-First-party software and accompanying developer documentation in this repository are available under the [MIT License](LICENSE), an [OSI-approved license](https://opensource.org/license/mit). See [license scope](LICENSE-STATUS.md) for the boundaries of the grant and [third-party notices](THIRD_PARTY_NOTICES.md) for separately licensed dependencies and assets. Existing third-party notices are preserved. Branding, photographs, sporting data and unpublished platform code are not included in the software grant.
-
-## Build and test
-
-Use Node 22 and the committed npm lockfile:
+Use Node 22 (see `.nvmrc`) and the committed lockfiles. No account, wallet or real
+credential is needed for the source checks:
 
 ```sh
-npm ci
+npm ci --include=dev --ignore-scripts --no-audit --no-fund
 npm ci --prefix contracts --ignore-scripts --no-audit --no-fund
+npm run check:publication
 npm run check:api
+npm run check:web
+npm run check:lint
 npm run test:rewards:ui
 npm run test:wallet
+npm run check:rewards:chain
 npm run check:dependencies
+npm run check:build
 ```
 
-For the hosted-mode build, copy `demo/rewards/web/.env.example` to the ignored `.env.local` in the same directory, supply authorized project keys privately, then run `npm run build`. The server service-role key must never use a `NEXT_PUBLIC_` name. Build guards require matching browser/server mode, origin and isolated database. This copy intentionally fails closed without its provisioned database and source pin; it never falls back to production.
+`check:build` constructs an environment with inert credentials, builds the real
+Next.js application, and checks browser assets for a server-only sentinel. It
+needs network access for build-time fonts. It verifies compilation and secret
+separation, not authenticated database or payment behavior.
 
-Vercel settings: Next.js, Node 22, root `demo/rewards/web`, install `npm ci --include=dev --prefix ../../..`, build `npm run build`, output `.next-build`, include files outside the root directory. Deployment configuration is held in the existing Vercel project, not a local prebuilt upload.
+See [contract setup](contracts/README.md) for pinned Foundry/Solidity dependencies
+and local-chain tests. `npm run check:rewards:db` replays base migrations and the
+demo overlay into scratch databases on a disposable loopback PostgreSQL 16
+server at port 5432. Set `PG_BIN` to its binary directory outside Homebrew. Never
+replay this public, fresh-database snapshot into a retained or production database.
 
-See [contract setup](contracts/README.md) for the pinned Foundry toolchain. `npm run check:rewards:db` replays base migrations plus the demo overlay into a disposable loopback PostgreSQL database and runs authorization scenarios with owned local chains. It needs local PostgreSQL and the built contract artifacts. The published base migrations are for fresh databases: historical identity repairs are omitted or replaced by schema-only versions. Never replay this public snapshot into an existing RacesOn database.
+For authorized development, use the blank environment examples and keep populated
+files ignored. The hosted entry point is `demo/rewards/web`; shared rewards UI is
+in `apps/web/src/features/rewards`. Missing or mismatched mode, origin and isolated
+database configuration fails closed. See [contributing](CONTRIBUTING.md).
 
-See [release verification](docs/release-readiness.md), [architecture](docs/architecture.md), [security](SECURITY.md), [third-party notices](THIRD_PARTY_NOTICES.md) and [license status](LICENSE-STATUS.md).
+## Scope, attribution and license
+
+RacesOn's event administration, registrations, timing, official results and shared
+application primitives predate this submission. Compatibility copies support
+Podium; the separate RacesOn.com platform is outside this repository's deployment
+scope. The public application import does not establish original authorship dates.
+See the [contribution history](docs/hackathon-contributions.md).
+
+OpenAI Codex assisted implementation, debugging, tests and documentation. The owner
+provided product direction and release decisions. This disclosure is retained;
+AI assistance and passing tests do not constitute independent security assurance.
+
+First-party software and developer documentation use the [MIT License](LICENSE).
+See [license scope](LICENSE-STATUS.md) and [third-party notices](THIRD_PARTY_NOTICES.md)
+for separately licensed dependencies and assets. Branding, photographs, sporting
+data and unpublished platform code are outside the software grant.

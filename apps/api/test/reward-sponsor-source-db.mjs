@@ -43,5 +43,5 @@ if ! "$PG_BIN/psql" -X --echo-errors -h "$PGHOST" -p 5432 -d "$LOCAL_DB_NAME" -v
 node ${quote(runner)} "$PG_BIN/psql" "$PGHOST" "$LOCAL_DB_NAME"
 `;
  const path=join(directory,'validate.sh');writeFileSync(path,script);
- execFileSync('sh',[path],{cwd:root,stdio:'inherit',env:{PATH:process.env.PATH,LANG:'C',RACESON_REWARD_DEMO_VALIDATION:'1',RACESON_REWARD_CHAIN_REHEARSAL:'0'}});
+ execFileSync('sh',[path],{cwd:root,stdio:'inherit',env:{PATH:process.env.PATH,...(process.env.PG_BIN?{PG_BIN:process.env.PG_BIN}:{}),LANG:'C',RACESON_REWARD_DEMO_VALIDATION:'1',RACESON_REWARD_CHAIN_REHEARSAL:'0'}});
 } finally {rmSync(directory,{recursive:true,force:true});}

@@ -201,7 +201,7 @@ for(const version of [5,6])for(const chainId of [31337,10143])test(`V${version} 
      const clubChallenge={...challenge,address:clubActor.address.toLowerCase()},clubMessage=rewardWalletControlMessage(clubChallenge);
      clubChallenge.proof={...challenge.proof,messageHash:hashMessage(clubMessage),signature:await clubActor.signMessage({message:clubMessage})};
      let clubReceipt=null;
-     const clubRpc=async(name,args)=>{assert.equal(name,'service_reward_demo_copy_club_direct_claim_v5');assert.equal(args.p_creation_id,creationId);
+     const clubRpc=async(name,args)=>{assert.equal(name,'service_reward_demo_copy_club_direct_claim_display');assert.equal(args.p_creation_id,creationId);
       if(args.p_receipt)clubReceipt=args.p_receipt;
       return {error:null,data:{approvalId,slot:0,plan:p,deploymentHash:i.deploymentHash,fundingHash:i.fundingHash,award:{...clubrow,amount:clubrow.amount.toString()},
        challenge:args.p_proof_id?clubChallenge:null,receipt:clubReceipt,rehearsalPolicy:'podium-demo-alias-rehearsal-v1',
