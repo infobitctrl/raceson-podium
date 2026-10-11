@@ -48,10 +48,10 @@ export async function readPublicCampaign(id:string,signal:AbortSignal) {
  return campaign;
 }
 
-export async function readPublicRewards(id:string,slot:number,offset:number,sort:'reward'|'amount',direction:'asc'|'desc',signal:AbortSignal,blockNumber?:string,limit:25|100=25) {
+export async function readPublicRewards(id:string,slot:number,offset:number,sort:'reward'|'amount',direction:'asc'|'desc',signal:AbortSignal,blockNumber?:string,limit:25|100|500=25) {
  assertPublicEnvironmentOrigin();
  const demo=publicEnv.rewardDemo;
- if(!setupId(id)||!demo||!Number.isInteger(slot)||slot<0||slot>5||![25,100].includes(limit))throw Error('invalid_public_awards');
+ if(!setupId(id)||!demo||!Number.isInteger(slot)||slot<0||slot>5||![25,100,500].includes(limit))throw Error('invalid_public_awards');
  if(blockNumber!==undefined&&!/^(0|[1-9][0-9]{0,77})$/.test(blockNumber))throw Error('invalid_public_awards');
  const snapshot=blockNumber===undefined?'':`&blockNumber=${blockNumber}`;
  const batch=limit===25?'':`&limit=${limit}`;

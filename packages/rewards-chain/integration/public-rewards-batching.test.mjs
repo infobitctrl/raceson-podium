@@ -47,8 +47,8 @@ test('302 league rewards keep identical verified rows while batching cuts repeat
    for(let offset=0;offset<302;offset+=limit)await read(offset);
    return {rows:pages.flatMap(p=>p.rows),requests:pages.length,rpc:rpc.length,calls:rpc.filter(method=>method==='eth_call').length};
   }
-  const legacy=await collect(25),batch=await collect(100);
-  assert.equal(legacy.requests,13);assert.equal(batch.requests,4);
+  const legacy=await collect(25),batch=await collect(500);
+  assert.equal(legacy.requests,13);assert.equal(batch.requests,1);
   assert.equal(batch.rows.length,302);assert.deepEqual(batch.rows,legacy.rows);
   assert.ok(batch.rpc<=legacy.rpc*0.4,JSON.stringify({legacy,batch},(key,value)=>key==='rows'?undefined:value));
   assert.ok(batch.calls<=legacy.calls*0.4);

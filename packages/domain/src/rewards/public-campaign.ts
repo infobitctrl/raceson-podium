@@ -55,12 +55,12 @@ export type PublicRewardPage = {
 };
 export const PUBLIC_REWARD_PAGE_SIZE = 25;
 // Network batches are independent of the ledger's visible 25-row pages.
-export const PUBLIC_REWARD_FETCH_SIZE = 100;
-export function decodePublicRewardPage(value: unknown, size: 25 | 100 = PUBLIC_REWARD_PAGE_SIZE): PublicRewardPage {
+export const PUBLIC_REWARD_FETCH_SIZE = 500;
+export function decodePublicRewardPage(value: unknown, size: 25 | 100 | 500 = PUBLIC_REWARD_PAGE_SIZE): PublicRewardPage {
   const fail = (): never => {throw Error('invalid_public_awards');};
   const exact = (v: unknown, keys: string) => Boolean(v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).sort().join() === keys.split(',').sort().join());
   const uint = (v: unknown): v is string => typeof v === 'string' && /^(0|[1-9][0-9]{0,77})$/.test(v);
-  if (![PUBLIC_REWARD_PAGE_SIZE,PUBLIC_REWARD_FETCH_SIZE].includes(size)
+  if (![PUBLIC_REWARD_PAGE_SIZE,100,PUBLIC_REWARD_FETCH_SIZE].includes(size)
     || !exact(value,'campaignId,slot,chainId,blockNumber,blockTimestamp,total,offset,sort,direction,availability,rows')) return fail();
   const p=value as PublicRewardPage;
   if (!setupId(p.campaignId) || ![10143,31337].includes(p.chainId) || !Number.isInteger(p.slot) || p.slot<0 || p.slot>5

@@ -133,3 +133,17 @@ test('fetch size is opt-in, bounded, strict and cannot relax response/privacy ch
  f.reader.readContract=async args=>{const row=await read(args);return args.functionName==='entitlements'&&args.args[0]===h(91)?[...row.slice(0,1),999n,...row.slice(2)]:row;};
  await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,limit:100}));
 });
+
+test('500-row public batches remain bounded and reject a mismatch beyond the old page size',async()=>{
+ const f=fixture(501),p=await publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,limit:500});
+ assert.equal(p.rows.length,500);assert.equal(f.reads(),500);
+ assert.deepEqual(decodePublicRewardPage(p,500),p);assert.throws(()=>decodePublicRewardPage(p,100));
+ const tail=await publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,offset:500,limit:500});
+ assert.equal(tail.rows.length,1);assert.equal(tail.rows[0].number,501);
+ assert.deepEqual(publicAwardQuery(new URLSearchParams('limit=500&offset=500')),{...query,offset:500,limit:500});
+ assert.throws(()=>publicAwardQuery(new URLSearchParams('limit=501')));
+ const read=f.reader.readContract;
+ f.reader.readContract=async args=>{const row=await read(args);return args.functionName==='entitlements'&&args.args[0]===h(491)?[...row.slice(0,1),999n,...row.slice(2)]:row;};
+ await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,limit:500}));
+ assert.throws(()=>decodePublicRewardPage({...p,rows:p.rows.map((r,i)=>i===490?{...r,recipient:address}:r)},500));
+});

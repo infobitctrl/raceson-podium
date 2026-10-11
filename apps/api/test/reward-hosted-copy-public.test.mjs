@@ -96,8 +96,8 @@ test('hosted gate admits the public finalized snapshot query without opening pri
 test('public award batching admits only bounded GET sizes and keeps private actions closed',()=>{
  const path=`/api/v1/rewards/public-campaigns/${id}/pots/0/awards`;
  const allowed=(method,url)=>hostedCopyRequestAllowed(method,new URL(url,'https://podium.raceson.com'),'sponsor-drafts-v1',true);
- for(const limit of ['25','100'])assert.equal(allowed('GET',path+'?offset=100&sort=reward&direction=asc&blockNumber=123&limit='+limit),true);
- for(const limit of ['','0','50','101','10000','0100','1e2','100&limit=25'])assert.equal(allowed('GET',path+'?limit='+limit),false);
+ for(const limit of ['25','100','500'])assert.equal(allowed('GET',path+'?offset=100&sort=reward&direction=asc&blockNumber=123&limit='+limit),true);
+ for(const limit of ['','0','50','101','501','10000','0100','1e2','100&limit=25'])assert.equal(allowed('GET',path+'?limit='+limit),false);
  for(const method of ['POST','PATCH','DELETE'])assert.equal(allowed(method,path+'?limit=100'),false);
  assert.equal(allowed('GET','/api/v1/rewards/admin/wallets?limit=100'),false);
 });

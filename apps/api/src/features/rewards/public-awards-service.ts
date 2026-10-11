@@ -7,23 +7,23 @@ const abi=parseAbi([
  'function entitlements(bytes32) view returns(bytes32 beneficiaryId,uint256 amount,bytes32 explanationHash,uint256 authorizationNonce,address recipient,uint8 pot,bool paid,uint8 beneficiaryKind)',
 ]);
 function check(v:unknown):asserts v {if(!v)throw Error('public_awards_unavailable');}
-export type PublicAwardQuery={offset:number;sort:'reward'|'amount';direction:'asc'|'desc';blockNumber?:string;limit?:25|100};
+export type PublicAwardQuery={offset:number;sort:'reward'|'amount';direction:'asc'|'desc';blockNumber?:string;limit?:25|100|500};
 export function publicAwardQuery(params:URLSearchParams):PublicAwardQuery {
  if([...params.keys()].some(k=>!['offset','sort','direction','blockNumber','limit'].includes(k)||params.getAll(k).length!==1))throw Error('invalid_public_awards');
  const limit=params.get('limit');
- if(limit!==null&&!['25','100'].includes(limit))throw Error('invalid_public_awards');
+ if(limit!==null&&!['25','100','500'].includes(limit))throw Error('invalid_public_awards');
  const blockNumber=params.get('blockNumber');
  if(blockNumber!==null&&!/^(0|[1-9][0-9]{0,77})$/.test(blockNumber))throw Error('invalid_public_awards');
  const offset=params.get('offset')??'0',sort=params.get('sort')??'reward',direction=params.get('direction')??'asc';
  if(!/^(0|[1-9][0-9]{0,4})$/.test(offset)||Number(offset)>10000||Number(offset)%PUBLIC_REWARD_PAGE_SIZE!==0||!['reward','amount'].includes(sort)||!['asc','desc'].includes(direction))throw Error('invalid_public_awards');
- return {offset:Number(offset),sort:sort as 'reward'|'amount',direction:direction as 'asc'|'desc',...(blockNumber===null?{}:{blockNumber}),...(limit===null?{}:{limit:Number(limit) as 25|100})};
+ return {offset:Number(offset),sort:sort as 'reward'|'amount',direction:direction as 'asc'|'desc',...(blockNumber===null?{}:{blockNumber}),...(limit===null?{}:{limit:Number(limit) as 25|100|500})};
 }
 /** No additional wallet authority: reads bounded rows at one finalized block.
  * An absent/mismatched chain record never becomes a claimed/unclaimed assertion. */
 export async function publicAwardPage(reader:SponsorChainReader,observed:SponsorChainObservation,
  scope:{id:string;chainId:10143|31337;slot:number;groups?:{name:string;amountWei:string}[]},raw:unknown,query:PublicAwardQuery):Promise<PublicRewardPage> {
  const size=query.limit??PUBLIC_REWARD_PAGE_SIZE;
- check(size===25||size===100);
+ check(size===25||size===100||size===500);
  const pot=observed.pots.find(p=>p.slot===scope.slot);
  check(observed.funded&&!observed.cancelled&&pot&&(query.blockNumber===undefined||query.blockNumber===observed.blockNumber));
  const base={campaignId:scope.id,slot:scope.slot,chainId:scope.chainId,blockNumber:observed.blockNumber,blockTimestamp:observed.blockTimestamp,offset:query.offset,sort:query.sort,direction:query.direction};

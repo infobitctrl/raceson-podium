@@ -14,7 +14,7 @@ it('shows every reward with distinct claim status and hides private identities',
 });
 it('keeps clubs in a separate ledger and sorts and paginates the complete athlete ledger',async()=>{
  const all=Array.from({length:31},(_,i)=>({...row(i+1,i===29?'claimed':'unclaimed'),amountWei:String(i+1),kind:i===30?'club':'athlete',display:{name:i===30?'Demo club':'Runner '+(i+1),club:i===30?null:'Running club',timeMs:i===30?null:String((i+1)*1000)},breakdown:[{category:'Open',place:i+1,amountWei:String(i+1)}]}));
- api.mockImplementation(async(_id,_slot,offset)=>({...page,total:31,offset,rows:all.slice(offset,offset+100)}));
+ api.mockImplementation(async(_id,_slot,offset)=>({...page,total:31,offset,rows:all.slice(offset,offset+500)}));
  render(ui());await screen.findByText('Runner 1');expect(api).toHaveBeenCalledOnce();
  const table=screen.getByRole('table',{name:'Athlete rewards'}),club=screen.getByRole('table',{name:'Club rewards'});
  expect(within(club).getByText('Demo club')).toBeVisible();expect(within(table).queryByText('Demo club')).not.toBeInTheDocument();
@@ -41,7 +41,7 @@ it('shows a meaningful empty allocation state',async()=>{api.mockResolvedValue({
 
 it('searches and filters the complete ledger, including rewards beyond the first page',async()=>{
  const all=Array.from({length:30},(_,i)=>row(i+1,i===29?'claimed':'unclaimed'));
- api.mockImplementation(async(_id,_slot,offset)=>({...page,total:30,offset,rows:all.slice(offset,offset+100)}));render(ui());await screen.findByRole('table',{name:'Athlete rewards'});
+ api.mockImplementation(async(_id,_slot,offset)=>({...page,total:30,offset,rows:all.slice(offset,offset+500)}));render(ui());await screen.findByRole('table',{name:'Athlete rewards'});
  fireEvent.change(screen.getByLabelText('Athlete rewards · Reward status'),{target:{value:'claimed'}});
  expect(within(screen.getByRole('table',{name:'Athlete rewards'})).getByText('Athlete reward 30')).toBeVisible();
  expect(screen.queryByRole('button',{name:'Next'})).not.toBeInTheDocument();
@@ -57,7 +57,7 @@ it('fails closed when a response is incomplete instead of rendering a partial di
 it('defaults to ascending position and combines exact category filters with search and status independently per ledger',async()=>{
  const athletes=Array.from({length:30},(_,i)=>({...row(i+1,i===28?'claimed':'unclaimed'),breakdown:[{category:i===29?'Open masters':'Open',place:30-i,amountWei:'3000000000000000'}]}));
  const clubs=[3,1,2].map((place,i)=>({...row(31+i),kind:'club',breakdown:[{category:'Combined clubs',place,amountWei:'3000000000000000'}]}));
- const all=[...athletes,...clubs];api.mockImplementation(async(_id,_slot,offset)=>({...page,total:all.length,offset,rows:all.slice(offset,offset+100)}));
+ const all=[...athletes,...clubs];api.mockImplementation(async(_id,_slot,offset)=>({...page,total:all.length,offset,rows:all.slice(offset,offset+500)}));
  render(ui());const table=await screen.findByRole('table',{name:'Athlete rewards'}),club=screen.getByRole('table',{name:'Club rewards'});
  const names=()=>within(table).getAllByRole('rowheader').map(h=>h.textContent);
  const categories=screen.getByRole('group',{name:'Athlete rewards · Category filters'});

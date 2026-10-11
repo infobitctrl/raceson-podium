@@ -1,8 +1,9 @@
 ## Full league verification uses larger bounded batches
 
-The public chart collector requests up to 100 rewards per response, reducing a
-302-reward league from 13 requests to four. Legacy requests still default to 25
-and the visible ledger still shows 25 rows. The finalized-block, complete
+The public chart collector requests up to 500 rewards per response, reducing a
+302-reward league from 13 requests to one. The 100-row option stays supported;
+legacy requests still default to 25 and the visible ledger still shows 25 rows.
+The finalized-block, complete
 allocation commitment, per-reward and privacy checks remain mandatory. Failed or
 inconsistent batches never replace a complete verified collection.
 
