@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, readFileSync, readdirSync, lstatSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, lstatSync, rmSync, realpathSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { request as nativeRequest } from "node:http";
 import { encodeFunctionData, keccak256 } from "viem";
 import { startOwnedRewardChain, fixtureSigner } from "./owned-chain.mjs";
@@ -47,9 +48,10 @@ test("wallet RPC schema is exact, bounded, local-only and never grants node/sign
 });
 
 test("owned wallet RPC -> signed deposit -> exact finalized receipt and durable uncertain-send recovery", { timeout: 120000 }, async t => {
-  const chain = await startOwnedRewardChain(), directory = mkdtempSync("/private/tmp/raceson-wallet-rpc-");
-  let gateway;
+  const directory = mkdtempSync(join(realpathSync(tmpdir()), "raceson-wallet-rpc-"));
+  let chain, gateway;
   try {
+    chain = await startOwnedRewardChain();
     const c = chain.publicClient, context = programmeDeploymentFixtureV3(chain.operator.address, funder.address);
     context.intent.nonce = "0";
     const plan = programmeDeploymentPlanV3(decodeProgrammeDeploymentV3(context));
@@ -173,5 +175,5 @@ test("owned wallet RPC -> signed deposit -> exact finalized receipt and durable 
       refused(await send(fourth)); alive = false; release(); refused(await pending);
       assert.equal(sends, 4); assert.equal(readdirSync(directory).length, 3);
     });
-  } finally { gateway?.stop(); await chain.stop(); rmSync(directory, { recursive: true }); }
+  } finally { gateway?.stop(); await chain?.stop(); rmSync(directory, { recursive: true }); }
 });

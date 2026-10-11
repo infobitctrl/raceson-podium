@@ -14,6 +14,8 @@ packaging and sanitized historical migrations were preserved.
   in the standard database command.
 - Remove unused imports and an unused lazy entry; make the numeric rounding test
   explicit; restore scoped rewards lint and portable PostgreSQL tool selection.
+- Use platform temporary directories for local-chain tests and guarantee cleanup
+  if setup fails; retain strict directory ownership and loopback restrictions.
 - Add CI for application checks, local contracts/database integration, full-history
   secret scanning, publication paths, dependency advisories and synthetic builds.
 - Replace superseded submission/status prose with current setup, architecture,
@@ -32,7 +34,7 @@ provider setting, production dataset or beneficiary consent was changed.
 | Wallet adapters | 63 tests |
 | Chain-client unit tests | 207 tests |
 | Contract checks | 257 tests per EVM/Monad configuration, including fuzz/invariant suites; pinned Safe artifacts and formatting verified |
-| Owned local-chain integration | Full run plus corrected direct-claim file; all 224 cases covered |
+| Owned local-chain integration | Full run plus corrected direct-claim file; 224 original cases covered, plus the new directory-boundary regression |
 | SQL migration isolation | 6 tests |
 | Disposable database integration | 297 scenarios plus 5 creation-recovery and 49 current operation/claim scenarios |
 | Types and rewards lint | Types pass; zero lint errors, ten existing React dependency warnings retained for review |

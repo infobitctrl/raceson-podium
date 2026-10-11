@@ -7,12 +7,12 @@ import { programmeDeploymentFixtureV3, programmeTestId as id } from "../../../ap
 import { decodeProgrammeDeploymentV3 } from "../../db/dist/rewards/index.js";
 import { programmeDeploymentPlanV3 } from "../../../apps/api/dist/features/rewards/programme-deployment-v3-service.js";
 import { encodeRewardProgrammeDeploymentV3, readVerifiedRewardProgrammeV3, rewardProgrammeV3Abi } from "../dist/programme-v3.js";
-import { startProgrammeLocalChain } from "../../../demo/rewards/scripts/programme-local-chain.mjs";
+import { LOCAL_PROGRAMME_TEMP_PREFIX, startProgrammeLocalChain } from "../../../demo/rewards/scripts/programme-local-chain.mjs";
 
 // Actual owned runtime + exact contract + signed deposit. The private review
 // callback is a synthetic fixture; real Auth/SQL acceptance is a separate check.
 test("wallet-session clock finalizes a real local deposit without manual mining and stops on close", { timeout: 130000 }, async () => {
-  const directory = mkdtempSync("/private/tmp/raceson-programme-chain-");
+  const directory = mkdtempSync(LOCAL_PROGRAMME_TEMP_PREFIX);
   let runtime, connection;
   try {
     runtime = await startProgrammeLocalChain({ directory, readPort: 0 });

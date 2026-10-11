@@ -18,7 +18,7 @@ test('paced testnet IPC keeps an explicit bounded transport deadline', () => {
 });
 function directory(t) {
   // Short real path also works with macOS's small Unix-socket path limit.
-  const path = mkdtempSync(join(realpathSync(tmpdir()).length < 55 ? realpathSync(tmpdir()) : '/private/tmp', 'rwh-'));
+  const path = mkdtempSync(join(realpathSync(tmpdir()).length < 55 ? realpathSync(tmpdir()) : realpathSync('/tmp'), 'rwh-'));
   chmodSync(path, 0o700); t.after(() => rmSync(path, { recursive: true, force: true })); return path;
 }
 

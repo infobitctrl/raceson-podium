@@ -7,7 +7,7 @@ import { rewardHistoricalSourceV3, readRewardPublishedPreviewV2, rewardFrozenPro
 import { compactPilotSeedSql } from "../../../demo/rewards/scripts/seed-compact-pilot.mjs";
 import { integrationFixtureSql, literal as q } from "./reward-integration-fixture.mjs";
 import { fundCompactPilot } from "../../../demo/rewards/scripts/compact-pilot-funding.mjs";
-import { startProgrammeLocalChain } from "../../../demo/rewards/scripts/programme-local-chain.mjs";
+import { LOCAL_PROGRAMME_TEMP_PREFIX, startProgrammeLocalChain } from "../../../demo/rewards/scripts/programme-local-chain.mjs";
 import { openCanaryJournal } from "../../../demo/rewards/scripts/canary-journal.mjs";
 import { executeCompactRoundOne } from "../../../demo/rewards/scripts/compact-round-one.mjs";
 import { rewardRoundPublicationV3 } from "../dist/rewards/index.js";
@@ -66,7 +66,7 @@ export async function syntheticPilotV3Scenarios({ harness, scenario }) {
     await assert.rejects(query(`begin; ${insertV2} rollback;`), /invalid_reward_planning_request/);
   });
   await scenario("saved compact pilot funds six real V3 pots through actual SQL and recovers an accepted deposit without a duplicate", async () => {
-    const directory = mkdtempSync("/private/tmp/raceson-programme-chain-compact-");
+    const directory = mkdtempSync(`${LOCAL_PROGRAMME_TEMP_PREFIX}compact-`);
     let runtime, journal;
     try {
       runtime = await startProgrammeLocalChain({ directory, readPort: 0 });

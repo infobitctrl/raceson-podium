@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 import { createPublicClient, http } from "viem";
-import { startProgrammeLocalChain, validateLocalProgrammeRead } from "../../../demo/rewards/scripts/programme-local-chain.mjs";
+import { LOCAL_PROGRAMME_TEMP_PREFIX, startProgrammeLocalChain, validateLocalProgrammeRead } from "../../../demo/rewards/scripts/programme-local-chain.mjs";
 
 test("local programme gateway rejects mutations, batches, foreign hosts and browser origins", () => {
   const request = { jsonrpc: "2.0", id: 1, method: "eth_chainId", params: [] };
@@ -16,8 +16,13 @@ test("local programme gateway rejects mutations, batches, foreign hosts and brow
   assert.throws(() => validateLocalProgrammeRead([request], undefined, "127.0.0.1:18546"));
 });
 
+test("local programme runtime rejects state outside its owned directory prefixes", async () => {
+  await assert.rejects(startProgrammeLocalChain({directory: "/tmp/unrelated-podium-state", readPort: 0}));
+  await assert.rejects(startProgrammeLocalChain({directory: `${LOCAL_PROGRAMME_TEMP_PREFIX}fixture/../../unrelated`, readPort: 0}));
+});
+
 test("owned persistent local chain preserves exact historical receipts after restart and exposes reads only", async () => {
-  const directory = mkdtempSync("/private/tmp/raceson-programme-chain-");
+  const directory = mkdtempSync(LOCAL_PROGRAMME_TEMP_PREFIX);
   let runtime;
   try {
     runtime = await startProgrammeLocalChain({ directory, readPort: 0 });
@@ -64,7 +69,7 @@ test("owned persistent local chain preserves exact historical receipts after res
 });
 
 test("local block failure closes only the wallet endpoint, retains the read runtime and does not retry mining", async () => {
-  const directory = mkdtempSync("/private/tmp/raceson-programme-chain-");
+  const directory = mkdtempSync(LOCAL_PROGRAMME_TEMP_PREFIX);
   let runtime;
   try {
     runtime = await startProgrammeLocalChain({ directory, readPort: 0 });

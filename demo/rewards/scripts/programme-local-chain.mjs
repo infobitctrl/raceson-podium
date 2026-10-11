@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
 import { mkdirSync, realpathSync, existsSync, lstatSync, openSync, closeSync, unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { createServer } from "node:http";
 import { createPublicClient, createTestClient, createWalletClient, defineChain, http } from "viem";
 import { fixtureSigner } from "../../../packages/rewards-chain/integration/owned-chain.mjs";
 import { root, cleanEnvironment } from "./local-demo.mjs";
 
+export const LOCAL_PROGRAMME_TEMP_PREFIX = join(realpathSync(tmpdir()), "raceson-programme-chain-");
 export const LOCAL_PROGRAMME_READ_PORT = 18546;
 export const LOCAL_PROGRAMME_READ_URL = `http://127.0.0.1:${LOCAL_PROGRAMME_READ_PORT}`;
 const methods = new Set(["eth_chainId", "eth_call", "eth_getBlockByNumber", "eth_getBlockByHash", "eth_getCode",
@@ -25,7 +27,8 @@ export function validateLocalProgrammeRead(request, origin, host) {
  * directory/port overrides exist only for disposable integration tests. */
 export async function startProgrammeLocalChain({ directory = join(root, "demo/rewards/local/.artifacts/programme-chain-v3"), readPort = LOCAL_PROGRAMME_READ_PORT } = {}) {
   assert.equal(resolve(directory), directory);
-  assert.ok(directory.startsWith(join(root, "demo/rewards/local/.artifacts/") ) || directory.startsWith("/private/tmp/raceson-programme-chain-"));
+  assert.ok(directory.startsWith(join(root, "demo/rewards/local/.artifacts/") ) || directory.startsWith(LOCAL_PROGRAMME_TEMP_PREFIX)
+    || process.platform === "darwin" && directory.startsWith("/private/tmp/raceson-programme-chain-"));
   assert.ok(Number.isInteger(readPort) && (readPort === 0 || readPort === LOCAL_PROGRAMME_READ_PORT));
   const previousMask = process.umask(0o077);
   let node, server, walletRpc, walletClock, lock, stopped = false, openingWallet = false;
