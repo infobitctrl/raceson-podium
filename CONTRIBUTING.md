@@ -36,6 +36,20 @@ checks that the reviewed exceptions reject new values on the same line.
 Use synthetic fixtures for negative authorization, consent and payment cases.
 Never weaken checks merely to make a suite green.
 
+## Dependency updates and previews
+
+Routine Dependabot version proposals are paused (`open-pull-requests-limit: 0`).
+Security update proposals remain enabled and both lockfiles are audited in CI.
+Plan major upgrades as reviewed changes with compatibility tests; a newer version
+alone is not a reason to merge. See [GitHub's update options](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#open-pull-requests-limit).
+
+Dependabot branches run the complete credential-free GitHub checks, including a
+build with inert configuration. They do not create hosted previews. The Vercel
+configuration [excludes `dependabot/**`](https://vercel.com/docs/project-configuration/git-configuration#git.deploymentenabled)
+from automatic deployments. Hosted preview environments require separately
+approved isolated configuration; do not copy live credentials or weaken the
+`reward_demo_configuration_required` guard to make a dependency preview build.
+
 ## Review and release
 
 State the source revision, environment, changes, tests and remaining limits.

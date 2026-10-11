@@ -18,6 +18,8 @@ packaging and sanitized historical migrations were preserved.
   if setup fails; retain strict directory ownership and loopback restrictions.
 - Add CI for application checks, local contracts/database integration, full-history
   secret scanning, publication paths, dependency advisories and synthetic builds.
+- Pause unsolicited routine dependency-upgrade PRs and exclude Dependabot branches
+  from hosted previews; retain security updates and credential-free CI builds.
 - Replace superseded submission/status prose with current setup, architecture,
   privacy and reviewer guidance. Preserve license, inherited-code and AI disclosures.
 
