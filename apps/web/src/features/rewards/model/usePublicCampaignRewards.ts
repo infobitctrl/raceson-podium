@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {PUBLIC_REWARD_PAGE_SIZE, type PublicRewardPage} from '@raceson/domain/rewards/public-campaign';
+import {PUBLIC_REWARD_FETCH_SIZE, type PublicRewardPage} from '@raceson/domain/rewards/public-campaign';
 import {readPublicRewards} from '../data/publicCampaign';
 export type PublicCampaignRewards = {page: PublicRewardPage | null; busy: boolean; failed: boolean; retry: () => void};
 /** Public, completed collections only; owned by the campaign screen, never persisted. */
@@ -25,23 +25,23 @@ export function usePublicCampaignRewards(id: string, slot: number, refresh: numb
     // campaign refresh may share the campaign's just-completed observation.
     const initialBlock = attempt === 0 && saved?.refresh !== refresh && anchor && Date.now()-anchor.receivedAt < 30_000 ? anchor.blockNumber : undefined;
     void (async () => {
-      const first = await readPublicRewards(id, slot, 0, 'reward', 'asc', abort.signal, initialBlock);
+      const first = await readPublicRewards(id, slot, 0, 'reward', 'asc', abort.signal, initialBlock, PUBLIC_REWARD_FETCH_SIZE);
       abort.signal.throwIfAborted();
       const pages = [first];
-      let nextOffset = PUBLIC_REWARD_PAGE_SIZE;
+      let nextOffset = PUBLIC_REWARD_FETCH_SIZE;
       async function worker() {
         while (nextOffset < first.total) {
           abort.signal.throwIfAborted();
           const offset = nextOffset;
-          nextOffset += PUBLIC_REWARD_PAGE_SIZE;
-          const next = await readPublicRewards(id, slot, offset, 'reward', 'asc', abort.signal, first.blockNumber);
+          nextOffset += PUBLIC_REWARD_FETCH_SIZE;
+          const next = await readPublicRewards(id, slot, offset, 'reward', 'asc', abort.signal, first.blockNumber, PUBLIC_REWARD_FETCH_SIZE);
           abort.signal.throwIfAborted();
           if (next.total !== first.total || next.availability !== first.availability
             || next.blockNumber !== first.blockNumber || next.blockTimestamp !== first.blockTimestamp) throw Error('public_rewards_changed');
-          pages[offset / PUBLIC_REWARD_PAGE_SIZE] = next;
+          pages[offset / PUBLIC_REWARD_FETCH_SIZE] = next;
         }
       }
-      await Promise.all(Array.from({length: Math.min(PAGE_CONCURRENCY, Math.ceil(first.total / PUBLIC_REWARD_PAGE_SIZE) - 1)}, worker));
+      await Promise.all(Array.from({length: Math.min(PAGE_CONCURRENCY, Math.ceil(first.total / PUBLIC_REWARD_FETCH_SIZE) - 1)}, worker));
       const rows = pages.flatMap(page => page.rows);
       if (rows.length !== first.total || new Set(rows.map(r => r.id)).size !== rows.length
         || new Set(rows.map(r => r.number)).size !== rows.length) throw Error('public_rewards_changed');

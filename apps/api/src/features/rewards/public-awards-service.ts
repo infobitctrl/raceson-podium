@@ -7,23 +7,27 @@ const abi=parseAbi([
  'function entitlements(bytes32) view returns(bytes32 beneficiaryId,uint256 amount,bytes32 explanationHash,uint256 authorizationNonce,address recipient,uint8 pot,bool paid,uint8 beneficiaryKind)',
 ]);
 function check(v:unknown):asserts v {if(!v)throw Error('public_awards_unavailable');}
-export type PublicAwardQuery={offset:number;sort:'reward'|'amount';direction:'asc'|'desc';blockNumber?:string};
+export type PublicAwardQuery={offset:number;sort:'reward'|'amount';direction:'asc'|'desc';blockNumber?:string;limit?:25|100};
 export function publicAwardQuery(params:URLSearchParams):PublicAwardQuery {
- if([...params.keys()].some(k=>!['offset','sort','direction','blockNumber'].includes(k)||params.getAll(k).length!==1))throw Error('invalid_public_awards');
+ if([...params.keys()].some(k=>!['offset','sort','direction','blockNumber','limit'].includes(k)||params.getAll(k).length!==1))throw Error('invalid_public_awards');
+ const limit=params.get('limit');
+ if(limit!==null&&!['25','100'].includes(limit))throw Error('invalid_public_awards');
  const blockNumber=params.get('blockNumber');
  if(blockNumber!==null&&!/^(0|[1-9][0-9]{0,77})$/.test(blockNumber))throw Error('invalid_public_awards');
  const offset=params.get('offset')??'0',sort=params.get('sort')??'reward',direction=params.get('direction')??'asc';
  if(!/^(0|[1-9][0-9]{0,4})$/.test(offset)||Number(offset)>10000||Number(offset)%PUBLIC_REWARD_PAGE_SIZE!==0||!['reward','amount'].includes(sort)||!['asc','desc'].includes(direction))throw Error('invalid_public_awards');
- return {offset:Number(offset),sort:sort as 'reward'|'amount',direction:direction as 'asc'|'desc',...(blockNumber===null?{}:{blockNumber})};
+ return {offset:Number(offset),sort:sort as 'reward'|'amount',direction:direction as 'asc'|'desc',...(blockNumber===null?{}:{blockNumber}),...(limit===null?{}:{limit:Number(limit) as 25|100})};
 }
 /** No additional wallet authority: reads bounded rows at one finalized block.
  * An absent/mismatched chain record never becomes a claimed/unclaimed assertion. */
 export async function publicAwardPage(reader:SponsorChainReader,observed:SponsorChainObservation,
  scope:{id:string;chainId:10143|31337;slot:number;groups?:{name:string;amountWei:string}[]},raw:unknown,query:PublicAwardQuery):Promise<PublicRewardPage> {
+ const size=query.limit??PUBLIC_REWARD_PAGE_SIZE;
+ check(size===25||size===100);
  const pot=observed.pots.find(p=>p.slot===scope.slot);
  check(observed.funded&&!observed.cancelled&&pot&&(query.blockNumber===undefined||query.blockNumber===observed.blockNumber));
  const base={campaignId:scope.id,slot:scope.slot,chainId:scope.chainId,blockNumber:observed.blockNumber,blockTimestamp:observed.blockTimestamp,offset:query.offset,sort:query.sort,direction:query.direction};
- if(raw===null){check(pot.entitlementCount==='0'&&pot.allocatedWei==='0');return decodePublicRewardPage({...base,total:0,availability:'awaiting_approval',rows:[]});}
+ if(raw===null){check(pot.entitlementCount==='0'&&pot.allocatedWei==='0');return decodePublicRewardPage({...base,total:0,availability:'awaiting_approval',rows:[]},size);}
  const p=raw as {chainId:number;slot:number;programmeAddress:string;campaignAddress:string;fundingHash:string;uploadDigest:Hex;awards:{entitlementId:Hex;beneficiaryId:Hex;explanationHash:Hex;amount:string;pot:0|1;beneficiaryKind:0|1;breakdown?:PublicRewardBreakdown[];display?:PublicRewardDisplay}[]};
  check(p && p.chainId===scope.chainId && p.slot===scope.slot && p.programmeAddress===observed.address && p.campaignAddress===pot.address && p.fundingHash===observed.fundingHash && Array.isArray(p.awards) && p.awards.length<=10000);
  const commitment=rewardUploadDigest(p.awards.map(r=>({...r,amount:BigInt(r.amount)})),scope.slot===0?1:0,BigInt(pot.amountWei));
@@ -54,7 +58,7 @@ export async function publicAwardPage(reader:SponsorChainReader,observed:Sponsor
   const n=query.sort==='amount'?(BigInt(a.award.amount)<BigInt(b.award.amount)?-1:BigInt(a.award.amount)>BigInt(b.award.amount)?1:0):a.number-b.number;
   return (query.direction==='desc'?-n:n)||a.number-b.number;
  });
- const rows:PublicRewardPage['rows']=await Promise.all(sorted.slice(query.offset,query.offset+PUBLIC_REWARD_PAGE_SIZE).map(async({award:r,number})=>{
+ const rows:PublicRewardPage['rows']=await Promise.all(sorted.slice(query.offset,query.offset+size).map(async({award:r,number})=>{
   const row=await reader.readContract({...args,functionName:'entitlements',args:[r.entitlementId]});
   const missing=row[1]===0n;
   if(missing)check(pot.state===1&&row[0]==='0x'+'0'.repeat(64)&&row[2]==='0x'+'0'.repeat(64)&&row[3]===0n&&BigInt(row[4])===0n&&!row[6]);
@@ -64,5 +68,5 @@ export async function publicAwardPage(reader:SponsorChainReader,observed:Sponsor
  }));
  const after=await reader.getBlock({blockNumber:args.blockNumber});
  check(after.hash===observed.blockHash&&after.timestamp.toString()===observed.blockTimestamp&&await reader.getChainId()===scope.chainId);
- return decodePublicRewardPage({...base,total:p.awards.length,rows,availability:pot.state>=4?'closed':pot.paused?'paused':pot.state===3?(BigInt(pot.claimDeadline)>BigInt(observed.blockTimestamp)?'open':'closed'):'awaiting_distribution'});
+ return decodePublicRewardPage({...base,total:p.awards.length,rows,availability:pot.state>=4?'closed':pot.paused?'paused':pot.state===3?(BigInt(pot.claimDeadline)>BigInt(observed.blockTimestamp)?'open':'closed'):'awaiting_distribution'},size);
 }

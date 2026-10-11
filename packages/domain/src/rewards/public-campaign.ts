@@ -54,18 +54,21 @@ export type PublicRewardPage = {
   rows: {id: string; number: number; kind: 'athlete' | 'club'; amountWei: string; status: 'planned' | 'unclaimed' | 'claimed'; breakdown?: PublicRewardBreakdown[]; display?: PublicRewardDisplay}[];
 };
 export const PUBLIC_REWARD_PAGE_SIZE = 25;
-export function decodePublicRewardPage(value: unknown): PublicRewardPage {
+// Network batches are independent of the ledger's visible 25-row pages.
+export const PUBLIC_REWARD_FETCH_SIZE = 100;
+export function decodePublicRewardPage(value: unknown, size: 25 | 100 = PUBLIC_REWARD_PAGE_SIZE): PublicRewardPage {
   const fail = (): never => {throw Error('invalid_public_awards');};
   const exact = (v: unknown, keys: string) => Boolean(v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).sort().join() === keys.split(',').sort().join());
   const uint = (v: unknown): v is string => typeof v === 'string' && /^(0|[1-9][0-9]{0,77})$/.test(v);
-  if (!exact(value,'campaignId,slot,chainId,blockNumber,blockTimestamp,total,offset,sort,direction,availability,rows')) return fail();
+  if (![PUBLIC_REWARD_PAGE_SIZE,PUBLIC_REWARD_FETCH_SIZE].includes(size)
+    || !exact(value,'campaignId,slot,chainId,blockNumber,blockTimestamp,total,offset,sort,direction,availability,rows')) return fail();
   const p=value as PublicRewardPage;
   if (!setupId(p.campaignId) || ![10143,31337].includes(p.chainId) || !Number.isInteger(p.slot) || p.slot<0 || p.slot>5
     || !uint(p.blockNumber) || !uint(p.blockTimestamp) || !Number.isInteger(p.total) || p.total<0 || p.total>10000
     || !Number.isInteger(p.offset) || p.offset<0 || p.offset>10000 || p.offset%PUBLIC_REWARD_PAGE_SIZE!==0
     || !['reward','amount'].includes(p.sort) || !['asc','desc'].includes(p.direction)
     || !['awaiting_approval','awaiting_distribution','open','paused','closed'].includes(p.availability)
-    || !Array.isArray(p.rows) || p.rows.length!==Math.min(PUBLIC_REWARD_PAGE_SIZE,Math.max(0,p.total-p.offset))) return fail();
+    || !Array.isArray(p.rows) || p.rows.length!==Math.min(size,Math.max(0,p.total-p.offset))) return fail();
   const ids=new Set<string>(),numbers=new Set<number>();
   for (const r of p.rows) {
     if (!exact(r,'id,number,kind,amountWei,status'+(r.breakdown===undefined?'':',breakdown')+(r.display===undefined?'':',display')) || !sponsorTxHash(r.id) || BigInt(r.id)===0n || ids.has(r.id)

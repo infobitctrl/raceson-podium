@@ -57,3 +57,14 @@ it('loads the strict historical snapshot without cookies and rejects private or 
   response({...snapshot,...patch});await expect(readPublicCampaignSnapshot(id,new AbortController().signal)).rejects.toThrow();
  }
 });
+
+it('requests and validates 100-row batches while legacy callers retain 25-row pages',async()=>{
+ const rows=Array.from({length:100},(_,i)=>({...page.rows[0],id:`0x${(i+1).toString(16).padStart(64,'0')}`,number:i+1}));
+ const batch={...page,total:302,offset:0,rows};
+ response(batch);
+ expect(await readPublicRewards(id,1,0,'reward','asc',new AbortController().signal,'100',100)).toEqual(batch);
+ expect(mocks.fetch.mock.calls[0][0]).toContain('&blockNumber=100&limit=100');
+ for(const invalid of [{...batch,rows:rows.slice(0,25)},{...batch,rows:[...rows,rows[0]]},{...batch,rows:rows.map((r,i)=>i===99?{...r,wallet:'private'}:r)}]){
+  response(invalid);await expect(readPublicRewards(id,1,0,'reward','asc',new AbortController().signal,'100',100)).rejects.toThrow();
+ }
+});

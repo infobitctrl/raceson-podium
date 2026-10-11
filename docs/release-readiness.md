@@ -1,3 +1,17 @@
+## Full league verification uses larger bounded batches
+
+The public chart collector requests up to 100 rewards per response, reducing a
+302-reward league from 13 requests to four. Legacy requests still default to 25
+and the visible ledger still shows 25 rows. The finalized-block, complete
+allocation commitment, per-reward and privacy checks remain mandatory. Failed or
+inconsistent batches never replace a complete verified collection.
+
+A disposable EVM regression compares all 302 records at the same block using
+the hosted deployless read batching configuration, checks identical results and
+bounds the RPC overhead. This reduces repeated work; hosted elapsed time still
+depends on network load and function reuse. Wallet, consent, payment and provider
+configuration are unchanged.
+
 ## Progressive public campaign loading
 
 Public detail pages display the existing published campaign projection while

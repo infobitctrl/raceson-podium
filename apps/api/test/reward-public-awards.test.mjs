@@ -6,9 +6,9 @@ import {decodePublicRewardPage} from '@raceson/domain/rewards/public-campaign';
 const h=n=>'0x'+n.toString(16).padStart(64,'0'),address='0x'+'11'.repeat(20),scope={id:'73000000-0000-4000-8000-000000000001',slot:1,chainId:10143};
 function fixture(count=2){
  const awards=Array.from({length:count},(_,i)=>({entitlementId:h(i+1),beneficiaryId:h(i+100),explanationHash:h(i+200),amount:String(i+1),pot:0,beneficiaryKind:0}));
- const commit=rewardUploadDigest(awards.map(r=>({...r,amount:BigInt(r.amount)})),0,10000n);
+ const commit=rewardUploadDigest(awards.map(r=>({...r,amount:BigInt(r.amount)})),0,1000000n);
  const raw={...scope,programmeAddress:address,campaignAddress:address,fundingHash:h(400),uploadDigest:commit.digest,awards};
- const observed={address,funded:true,cancelled:false,fundingHash:h(400),blockNumber:'10',blockHash:h(10),blockTimestamp:'100',pots:[{slot:1,address,amountWei:'10000',state:3,paused:false,allocatedWei:String(commit.total),paidWei:'1',remainingWei:'9999',returnedWei:'0',claimDeadline:'200',entitlementCount:String(count)}]};
+ const observed={address,funded:true,cancelled:false,fundingHash:h(400),blockNumber:'10',blockHash:h(10),blockTimestamp:'100',pots:[{slot:1,address,amountWei:'1000000',state:3,paused:false,allocatedWei:String(commit.total),paidWei:'1',remainingWei:'999999',returnedWei:'0',claimDeadline:'200',entitlementCount:String(count)}]};
  let reads=0;
  const reader={getChainId:async()=>10143,getBlock:async()=>({hash:h(10),timestamp:100n}),readContract:async({functionName,args,blockNumber})=>{
   assert.equal(blockNumber,10n);
@@ -95,4 +95,41 @@ test('a requested snapshot must match the verified observation and never adds pu
  const first=await publicAwardPage(f.reader,f.observed,scope,f.raw,query);
  assert.deepEqual(await publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,blockNumber:'10'}),first);
  await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,blockNumber:'11'}));
+});
+
+
+test('100-row fetches verify the same complete 302-row league with four bounded requests',async()=>{
+ const f=fixture(302),get=f.reader.readContract;
+ let digestReads=0,canonicalReads=0,chainReads=0;
+ f.reader.readContract=async args=>{if(args.functionName==='uploadDigest')digestReads++;return get(args);};
+ f.reader.getBlock=async()=>{canonicalReads++;return {hash:h(10),timestamp:100n};};
+ f.reader.getChainId=async()=>{chainReads++;return 10143;};
+ const collect=async size=>{
+  const pages=[];
+  for(let offset=0;offset<302;offset+=size)pages.push(await publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,offset,limit:size,blockNumber:'10'}));
+  return pages.flatMap(p=>p.rows);
+ };
+ const legacy=await collect(25);
+ assert.deepEqual([digestReads,canonicalReads,chainReads,f.reads()],[13,13,13,302]);
+ digestReads=canonicalReads=chainReads=0;
+ const batched=await collect(100);
+ assert.deepEqual(batched,legacy);
+ assert.deepEqual([digestReads,canonicalReads,chainReads,f.reads()],[4,4,4,604]);
+ const sorted=await publicAwardPage(f.reader,f.observed,scope,f.raw,{offset:100,sort:'amount',direction:'desc',limit:100});
+ assert.equal(sorted.rows.length,100);assert.equal(sorted.rows[0].number,202);assert.equal(sorted.rows.at(-1).number,103);
+});
+test('fetch size is opt-in, bounded, strict and cannot relax response/privacy checks',async()=>{
+ assert.deepEqual(publicAwardQuery(new URLSearchParams('limit=100&offset=100')),{...query,offset:100,limit:100});
+ assert.deepEqual(publicAwardQuery(new URLSearchParams('limit=25')),{...query,limit:25});
+ for(const value of ['','0','1','50','101','1000','0100','1e2','100&limit=25'])assert.throws(()=>publicAwardQuery(new URLSearchParams('limit='+value)));
+ const f=fixture(101),wide=await publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,limit:100});
+ assert.throws(()=>decodePublicRewardPage(wide));
+ assert.deepEqual(decodePublicRewardPage(wide,100),wide);
+ assert.throws(()=>decodePublicRewardPage({...wide,rows:wide.rows.slice(0,25)},100));
+ assert.throws(()=>decodePublicRewardPage({...wide,rows:[...wide.rows,wide.rows[0]]},100));
+ assert.throws(()=>decodePublicRewardPage(wide,10000));
+ assert.throws(()=>decodePublicRewardPage({...wide,rows:wide.rows.map((r,i)=>i===90?{...r,recipient:address}:r)},100));
+ const read=f.reader.readContract;
+ f.reader.readContract=async args=>{const row=await read(args);return args.functionName==='entitlements'&&args.args[0]===h(91)?[...row.slice(0,1),999n,...row.slice(2)]:row;};
+ await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,limit:100}));
 });
