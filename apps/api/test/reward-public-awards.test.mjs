@@ -84,3 +84,15 @@ test('category contributions reconcile to each entitlement, retain place and exp
   f.raw.awards[0].breakdown=[bad];await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scoped,f.raw,query));
  }
 });
+
+test('public pagination accepts only a single canonical unsigned snapshot block',()=>{
+ assert.deepEqual(publicAwardQuery(new URLSearchParams('offset=25&blockNumber=123')), {offset:25,sort:'reward',direction:'asc',blockNumber:'123'});
+ for(const value of ['','-1','01','1.5','1e2','0x10','1'.repeat(79),'123&blockNumber=124'])
+  assert.throws(()=>publicAwardQuery(new URLSearchParams(`blockNumber=${value}`)),/invalid_public_awards/);
+});
+test('a requested snapshot must match the verified observation and never adds public fields',async()=>{
+ const f=fixture();
+ const first=await publicAwardPage(f.reader,f.observed,scope,f.raw,query);
+ assert.deepEqual(await publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,blockNumber:'10'}),first);
+ await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,blockNumber:'11'}));
+});

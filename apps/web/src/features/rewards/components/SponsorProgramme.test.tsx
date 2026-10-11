@@ -188,3 +188,12 @@ it('does not present a stale saved publication as a ready controller handoff',as
  expect(screen.queryByRole('link',{name:'Check distribution status'})).not.toBeInTheDocument();
  expect(m.send).not.toHaveBeenCalled();
 });
+it('preserves an explicit review checkbox across presentation-only rerenders without approving or sending',async()=>{
+ m.request.mockResolvedValue({...base,results:resultRows});
+ const page=render(<MemoryRouter><SponsorProgramme setupId={id} slot={1} chainId={31337} hr={false} sourceOnly/></MemoryRouter>);
+ fireEvent.click(await screen.findByRole('checkbox'));
+ const reads=m.request.mock.calls.length;
+ page.rerender(<MemoryRouter><SponsorProgramme setupId={id} slot={1} chainId={31337} hr sourceOnly/></MemoryRouter>);
+ expect(screen.getByRole('checkbox')).toBeChecked();expect(m.request).toHaveBeenCalledTimes(reads);
+ expect(m.request.mock.calls.every(c=>!c[4])).toBe(true);expect(m.send).not.toHaveBeenCalled();
+});

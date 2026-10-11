@@ -127,11 +127,21 @@ export async function observeSponsorProgrammePot(reader:SponsorChainReader,input
   check(Number.isInteger(slot)&&slot>=0&&slot<6&&BigInt(decodeSponsorExecutionPlan(input).caps[slot]!)>0n);
   return observeSponsorProgrammeScope(reader,input,deploymentHash,fundingHash,slot);
 }
-async function observeSponsorProgrammeScope(reader:SponsorChainReader,input:SponsorExecutionPlan,deploymentHash:Hex,fundingHash?:Hex,selectedSlot?:number):Promise<SponsorChainObservation>{
+/** Public pagination may revisit its first finalized block. Private actions above
+ * always obtain a fresh finalized anchor and never accept a caller-selected block. */
+export async function observePublicSponsorProgrammePot(reader:SponsorChainReader,input:SponsorExecutionPlan,deploymentHash:Hex,fundingHash:Hex,slot:number,blockNumber?:bigint):Promise<SponsorChainObservation>{
+  check(Number.isInteger(slot)&&slot>=0&&slot<6&&BigInt(decodeSponsorExecutionPlan(input).caps[slot]!)>0n);
+  return observeSponsorProgrammeScope(reader,input,deploymentHash,fundingHash,slot,blockNumber);
+}
+async function observeSponsorProgrammeScope(reader:SponsorChainReader,input:SponsorExecutionPlan,deploymentHash:Hex,fundingHash?:Hex,selectedSlot?:number,publicBlockNumber?:bigint):Promise<SponsorChainObservation>{
   const p = decodeSponsorExecutionPlan(input), c = sponsorContractConfiguration(p);
   check(await reader.getChainId() === p.chainId);
-  const anchor = await reader.getBlock({blockTag: "finalized"});
-  check(anchor.number !== null && anchor.hash !== null);
+  const finalized = await reader.getBlock({blockTag: "finalized"});
+  check(finalized.number !== null && finalized.hash !== null);
+  check(publicBlockNumber === undefined || publicBlockNumber >= 0n && publicBlockNumber <= finalized.number);
+  const anchor = publicBlockNumber === undefined || publicBlockNumber === finalized.number
+    ? finalized : await reader.getBlock({blockNumber: publicBlockNumber});
+  check(anchor.number !== null && anchor.hash !== null && (publicBlockNumber === undefined || anchor.number === publicBlockNumber));
   const blockNumber = anchor.number!;
   const receiptAnchor = {number: blockNumber, hash: anchor.hash!};
   const lookup = <T>(hash: Hex, get: () => Promise<T>) => receiptLookup(get, reader, p.chainId, receiptAnchor, hash);

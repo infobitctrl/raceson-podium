@@ -31,7 +31,7 @@ export default function ProgrammeClubAllocationsV3({ clubId, onAccessLost }: { c
       }
     } finally { if (ticket === epoch.current) flight.current = false; }
   }, [clubId]);
-  useEffect(() => { void load(); return () => { epoch.current++; flight.current = false; }; }, [load]);
+  useEffect(() => { void load(); return () => { epoch.current += 1; flight.current = false; }; }, [load]);
   const ordered = [...view.items].sort((a, b) => a.draftId.localeCompare(b.draftId) || a.slot - b.slot || a.entitlementId.localeCompare(b.entitlementId));
   function selection(award: ClubAllocationV3): ClubConsentSelectionV3 | null {
     if (!chainId || view.loading || view.error || award.allocationRevision !== "latest" || award.claimAccess !== "available"

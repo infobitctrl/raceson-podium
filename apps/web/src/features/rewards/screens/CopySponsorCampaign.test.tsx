@@ -1,5 +1,5 @@
 import {act,fireEvent,render,screen,waitFor} from '@testing-library/react';
-import {MemoryRouter,Route,Routes,useLocation} from 'react-router-dom';
+import {MemoryRouter,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
 import {beforeEach,expect,it,vi} from 'vitest';
 import {createGuidedSetup} from '@raceson/domain/rewards/guided-setup-editor';
 import CopySponsorCampaign from './CopySponsorCampaign';
@@ -12,7 +12,7 @@ vi.mock('../data/distributionSetups',()=>({readRewardSetup:mocks.read,saveReward
 vi.mock('../data/copyCatalogue',()=>({useSponsorCatalogue:()=>({copy:{name:'Copied event',sourceSeasonId:'season',categories:[],rounds:[]},loading:false,error:false})}));
 vi.mock('../components/SponsorCampaignStudio',()=>({default:(props)=> <>{props.sponsorDetails?.editor}<p>{props.saveStatus}</p><button onClick={()=>props.onChange({...props.configuration,budgetMon:'200'})}>Change budget</button><button disabled={props.busy} onClick={props.onFinish}>Continue to funding</button>{props.error}{props.saveAction}</>}));
 const id='72000000-0000-4000-8000-000000000001';
-function RouteProbe(){const location=useLocation();return <output aria-label="Route">{location.pathname}</output>;}
+function RouteProbe(){const location=useLocation(),navigate=useNavigate();return <><output aria-label="Route">{location.pathname}</output><button onClick={()=>navigate(`${location.pathname}${location.search}&step=2`)}>Next editor query</button></>;}
 function view(){return <MemoryRouter initialEntries={[`/rewards/create?setup=${id}`]}><Routes><Route path="/rewards/create" element={<CopySponsorCampaign/>}/><Route path="/rewards/campaigns/:id" element={<h1>Funding</h1>}/></Routes><RouteProbe/></MemoryRouter>;}
 beforeEach(()=>{
  mocks.read.mockReset();mocks.save.mockReset();mocks.brandingRead.mockReset();mocks.brandingSave.mockReset();mocks.brandingRead.mockResolvedValue([{id,name:null,logo:null,website:null,promotion:null,revision:0}]);mocks.brandingSave.mockImplementation(async(_id,body)=>({id,...body,revision:body.expectedRevision+1}));mocks.userId='sponsor';mocks.session={access_token:'test-only'};
@@ -74,4 +74,12 @@ it('blocks incomplete promotion fields before any save',async()=>{
  render(view());await screen.findByText('Saved · revision 2');fireEvent.change(screen.getByLabelText('Website'),{target:{value:'javascript:alert(1)'}});
  expect(await screen.findByRole('alert')).toHaveTextContent('sponsor name');fireEvent.click(screen.getByText('Continue to funding'));
  expect(mocks.brandingSave).not.toHaveBeenCalled();expect(mocks.save).not.toHaveBeenCalled();expect(screen.getByLabelText('Route')).toHaveTextContent('/rewards/create');
+});
+
+it('preserves unsaved rules through editor query navigation and catalogue object rerenders',async()=>{
+ const page=render(view());await screen.findByText('Saved · revision 2');
+ fireEvent.click(screen.getByText('Change budget'));fireEvent.click(screen.getByText('Next editor query'));page.rerender(view());
+ expect(mocks.read).toHaveBeenCalledOnce();expect(mocks.save).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByText('Save campaign'));await screen.findByText('Saved · revision 3');
+ expect(mocks.save.mock.calls[0][1].configuration.budgetMon).toBe('200');
 });

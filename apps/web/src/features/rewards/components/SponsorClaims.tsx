@@ -25,9 +25,11 @@ export default function SponsorClaims({role,approvalId,hr,chainId,shared,onAcces
  const [awards,setAwards]=useState<SponsorAward[]>([]),[selected,setSelected]=useState<string|null>(null),[busy,setBusy]=useState(false),[failed,setFailed]=useState(false);
  const [destinations,setDestinations]=useState<Awaited<ReturnType<typeof getOwnRewardDestinations>>["items"]>([]);
  const active=useRef(true),flight=useRef(false),requests=useRef(new Map<string,string>()),t=(en:string,local:string)=>hr?local:en;
- async function load(){setFailed(false);setAwards([]);setBusy(true);try{if(shared){await shared.refresh();return;}const a=await sponsorAwards(role,approvalId);const d=role==="recipient"?await getOwnRewardDestinations():null;
-  if(active.current){setAwards(a);setDestinations(d?.items??[]);}}catch(e){if(active.current){setFailed(true);if(e&&typeof e==="object"&&"status"in e&&[401,403].includes(Number(e.status)))onAccessError?.(e);}}finally{if(active.current)setBusy(false);}}
- useEffect(()=>{active.current=true;if(!shared)void load();return()=>{active.current=false;};},[role,approvalId]);
+ const callbacks=useRef({shared,onAccessError});callbacks.current={shared,onAccessError};
+ const hasShared=shared!==undefined;
+ const load=useCallback(async()=>{setFailed(false);setAwards([]);setBusy(true);try{if(callbacks.current.shared){await callbacks.current.shared.refresh();return;}const a=await sponsorAwards(role,approvalId);const d=role==="recipient"?await getOwnRewardDestinations():null;
+  if(active.current){setAwards(a);setDestinations(d?.items??[]);}}catch(e){if(active.current){setFailed(true);if(e&&typeof e==="object"&&"status"in e&&[401,403].includes(Number(e.status)))callbacks.current.onAccessError?.(e);}}finally{if(active.current)setBusy(false);}},[role,approvalId]);
+ useEffect(()=>{active.current=true;if(!hasShared)void load();return()=>{active.current=false;};},[load,hasShared]);
  async function request(a:SponsorAward,destinationId:string){if(flight.current)return;flight.current=true;setBusy(true);setFailed(false);
   const key=`${a.entitlementId}:${destinationId}`;if(!requests.current.has(key))requests.current.set(key,crypto.randomUUID());const id=requests.current.get(key)!;
   try{await sponsorClaim(role,id,{action:"request",approvalId:a.approvalId,entitlementId:a.entitlementId,destinationId});requests.current.delete(key);if(active.current){setPreview(null);setSelected(id);await load();}}
@@ -60,7 +62,12 @@ export default function SponsorClaims({role,approvalId,hr,chainId,shared,onAcces
  </section>;
 }
 export function ClaimDetail({id,role,hr,chainId,onAccessError,onDone,onBusy,claimRequest,reviewerOnly=false,recordedAward,athletePresentation=false}:{athletePresentation?:boolean;id:string;role:"recipient"|"operator";hr:boolean;chainId:number;onAccessError?:(error:unknown)=>void;onDone?:()=>void;onBusy?:(busy:boolean)=>void;claimRequest?:(id:string,body?:unknown)=>Promise<SponsorClaim>;reviewerOnly?:boolean;recordedAward?:SponsorAward}){
- const request=claimRequest??((claimId:string,body?:unknown)=>body===undefined?sponsorClaim(role,claimId):sponsorClaim(role,claimId,body));
+ const callbacks=useRef({claimRequest,onAccessError});callbacks.current={claimRequest,onAccessError};
+ const request=useCallback((claimId:string,body?:unknown)=>{
+  const transport=callbacks.current.claimRequest;
+  if(transport)return body===undefined?transport(claimId):transport(claimId,body);
+  return body===undefined?sponsorClaim(role,claimId):sponsorClaim(role,claimId,body);
+ },[role]);
  const [view,setView]=useState<SponsorClaim|null>(null),[wallet,setWallet]=useState<{wallet:DetectedRewardWallet;address:string}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(false),[ack,setAck]=useState(false);
  useEffect(()=>{onBusy?.(busy);},[busy,onBusy]);
  const walletRef=useRef(wallet);walletRef.current=wallet;
@@ -68,9 +75,9 @@ export function ClaimDetail({id,role,hr,chainId,onAccessError,onDone,onBusy,clai
  const [pending,setPending]=useState<string|null>(null),[privyPolicy,setPrivyPolicy]=useState(false),[evidence,setEvidence]=useState({verifiedDateOfBirth:"",identityEvidenceRef:"",adultEvidenceRef:"",walletMfaEvidenceRef:"",walletRecoveryEvidenceRef:""});
  const active=useRef(true),flight=useRef(false),signature=useRef<string|null>(null),t=(en:string,local:string)=>hr?local:en,storage=`raceson:sponsor-claim:${chainId}:${id}`;
  const chooseWallet=useCallback((value:{wallet:DetectedRewardWallet;address:string}|null)=>{setWallet(value);setAck(false);signature.current=null;},[]);
- async function load(){setView(null);setAck(false);const v=await request(id);if(active.current){setView(v);if(v.status==="paid"&&v.receipt){setPending(old=>old===v.receipt!.transactionHash?null:old);try{if(sessionStorage.getItem(storage)===v.receipt.transactionHash)sessionStorage.removeItem(storage);}catch{/* Optional recovery. */}}}}
- async function run(task:()=>Promise<void>,kind:"refresh"|"prepare"|"sign"|"send"|"verify"="refresh"){if(flight.current)return;flight.current=true;setBusy(true);setError(false);setAction(kind);setPhase(0);try{await task();if(active.current)setPhase(kind==="send"?2:kind==="verify"?4:2);}catch(e){if(active.current){setView(null);setError(true);if(e&&typeof e==="object"&&"status"in e&&[401,403].includes(Number(e.status)))onAccessError?.(e);}}finally{flight.current=false;if(active.current)setBusy(false);}}
- useEffect(()=>{active.current=true;try{const h=sessionStorage.getItem(storage);if(h&&/^0x[0-9a-f]{64}$/.test(h))setPending(h);}catch{/* Optional recovery. */}void run(load);return()=>{active.current=false;};},[id,role]);
+ const load=useCallback(async()=>{setView(null);setAck(false);const v=await request(id);if(active.current){setView(v);if(v.status==="paid"&&v.receipt){setPending(old=>old===v.receipt!.transactionHash?null:old);try{if(sessionStorage.getItem(storage)===v.receipt.transactionHash)sessionStorage.removeItem(storage);}catch{/* Optional recovery. */}}}},[id,request,storage]);
+ const run=useCallback(async(task:()=>Promise<void>,kind:"refresh"|"prepare"|"sign"|"send"|"verify"="refresh")=>{if(flight.current)return;flight.current=true;setBusy(true);setError(false);setAction(kind);setPhase(0);try{await task();if(active.current)setPhase(kind==="send"?2:kind==="verify"?4:2);}catch(e){if(active.current){setView(null);setError(true);if(e&&typeof e==="object"&&"status"in e&&[401,403].includes(Number(e.status)))callbacks.current.onAccessError?.(e);}}finally{flight.current=false;if(active.current)setBusy(false);}},[]);
+ useEffect(()=>{active.current=true;try{const h=sessionStorage.getItem(storage);if(h&&/^0x[0-9a-f]{64}$/.test(h))setPending(h);}catch{/* Optional recovery. */}void run(load);return()=>{active.current=false;};},[load,run,storage]);
  async function prepare(){if(!view)return;const v=await request(id,{action:"prepare",sourceStamp:view.sourceStamp,profileFingerprint:view.profileFingerprint,attestation:view.rehearsalPolicy?{schemaVersion:4,policy:view.rehearsalPolicy,chainId:10143,claimId:id}:privyPolicy?{schemaVersion:2,policy:"operator-observed-privy-testnet-no-mfa-v1",chainId:10143,privyAppId:"cmtx921we00fu0cifaab7exez",verifiedDateOfBirth:evidence.verifiedDateOfBirth,identityEvidenceRef:evidence.identityEvidenceRef,adultEvidenceRef:evidence.adultEvidenceRef,walletProviderEvidenceRef:evidence.walletMfaEvidenceRef,walletRecoveryEvidenceRef:evidence.walletRecoveryEvidenceRef}:{schemaVersion:1,policy:"operator-observed-external-wallet-v1",...evidence}});if(active.current)setView(v);}
  async function sign(){if(!view||!wallet||!ack)return;const fresh=await request(id);if(JSON.stringify(fresh.signing)!==JSON.stringify(view.signing))throw Error("changed");
   signature.current??=await signProgrammeClaim(wallet.wallet.provider,fresh,()=>active.current&&walletRef.current===wallet);

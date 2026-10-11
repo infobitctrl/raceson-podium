@@ -19,7 +19,7 @@ export default function PilotAcceptanceV3() {
       if (ticket === epoch.current) setView(decodePilotViewV3(value, round));
     }).catch(() => { if (ticket === epoch.current) setFailed(true); })
       .finally(() => { if (ticket === epoch.current) setBusy(false); });
-    return () => { epoch.current++; };
+    return () => { epoch.current += 1; };
   }, [path, round, refresh]);
   async function advance() {
     if (flight.current || busy || !checked || !view?.nextAction) return;

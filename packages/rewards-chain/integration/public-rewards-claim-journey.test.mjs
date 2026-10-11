@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {createPublicClient,http} from 'viem';
 import {startOwnedRewardChain,fixtureSigner} from './owned-chain.mjs';
-import {sponsorDeploymentData,sponsorFundingData,observeSponsorProgramme,observeSponsorProgrammePot} from '../dist/sponsor-v4.js';
+import {sponsorDeploymentData,sponsorFundingData,observeSponsorProgramme,observeSponsorProgrammePot,observePublicSponsorProgrammePot} from '../dist/sponsor-v4.js';
 import {sponsorClaimMessagesV4} from '../dist/sponsor-claims-v4.js';
 import {controllerReadBatch} from '../dist/canary-public-client.js';
 import {rewardUploadDigest} from '../dist/index.js';
@@ -60,6 +60,13 @@ test('two fresh simulated athlete wallets claim all 12 awards and public rows tu
    }
    await chain.testClient.mine({blocks:96,interval:1});observed=await observeSponsorProgrammePot(batched,plan,deployment,funding,slot);
    const after=await publicAwardPage(batched,observed,scope,raw,query);assert.ok(after.rows.every(r=>r.status==='claimed'));
+   // Paginated public readers retain their verified snapshot after a payment;
+   // fresh private observations and a public refresh see the new receipts.
+   const pinned=await observePublicSponsorProgrammePot(batched,plan,deployment,funding,slot,BigInt(before.blockNumber));
+   const historical=await publicAwardPage(batched,pinned,scope,raw,{...query,blockNumber:before.blockNumber});
+   assert.deepEqual(historical,before);
+   const currentPublic=await observePublicSponsorProgrammePot(batched,plan,deployment,funding,slot);
+   assert.deepEqual(await publicAwardPage(batched,currentPublic,scope,raw,query),after);
    assert.equal(observed.pots[0].remainingWei,'0');assert.equal(observed.pots[0].paidWei,pot.amountWei);
    evidence.pots.push({slot,before:before.rows.map(r=>r.status),after:after.rows.map(r=>r.status),payments:paid});
   }

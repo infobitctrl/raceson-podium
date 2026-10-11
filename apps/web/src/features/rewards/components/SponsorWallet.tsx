@@ -24,12 +24,12 @@ export default function SponsorWallet({chainId, hr, onWallet, requiredAddress, c
   useEffect(() => {onWallet?.(address && selected ? {wallet: selected, address: address.toLowerCase()} : null);}, [address, selected, onWallet]);
   useEffect(() => () => {onWallet?.(null);}, [onWallet]);
   useEffect(() => {
-    epoch.current++; setConnection(null); setBusy(false); flight.current = false; setFailed(false);
+    epoch.current += 1; setConnection(null); setBusy(false); flight.current = false; setFailed(false);
     const provider = selected?.provider;
-    const changed = () => {if (requestingAccess.current === epoch.current) return; epoch.current++; setConnection(null); setBusy(false); flight.current = false;};
+    const changed = () => {if (requestingAccess.current === epoch.current) return; epoch.current += 1; setConnection(null); setBusy(false); flight.current = false;};
     const events = ["accountsChanged", "chainChanged", "disconnect"];
     events.forEach(e => provider?.on(e, changed));
-    return () => {epoch.current++; events.forEach(e => provider?.removeListener(e, changed));};
+    return () => {epoch.current += 1; events.forEach(e => provider?.removeListener(e, changed));};
   }, [selected?.provider, chainId]);
   const connect = useCallback(async () => {
     if (!selected || flight.current) return;

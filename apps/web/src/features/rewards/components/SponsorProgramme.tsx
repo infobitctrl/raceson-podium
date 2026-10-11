@@ -8,7 +8,7 @@ import RewardResultsTable from "./RewardResultsTable";
 import r from "./RewardResultsTable.module.css";
 import SponsorSourceReview from "./SponsorSourceReview";
 import {rewardsControlLink} from "../model/controllerLinks";
-import {useEffect,useRef,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {Link} from "react-router-dom";
 import {Check,RefreshCw} from "lucide-react";
 import {ApiError} from "@/lib/api";
@@ -41,12 +41,12 @@ function PotActions({setupId,slot,chainId,hr,sourceOnly=false}:{setupId:string;s
  const mounted=useRef(true),flight=useRef(false),ids=useRef(new Map<string,string>()),t=(en:string,local:string)=>hr?local:en;
  const storage=`raceson:sponsor-lifecycle:${chainId}:${setupId}:${slot}`;
  const requestId=(key:string)=>{if(!ids.current.has(key))ids.current.set(key,crypto.randomUUID());return ids.current.get(key)!;};
- async function load(){setAwardsReviewed(false);setReview(null);setUpload(null);setLife(null);const r=await programmeRequest(setupId,slot,"review") as SponsorReview;if(!mounted.current)return;setReview(r);
+ const load=useCallback(async()=>{setAwardsReviewed(false);setReview(null);setUpload(null);setLife(null);const r=await programmeRequest(setupId,slot,"review") as SponsorReview;if(!mounted.current)return;setReview(r);
   if(r.approval?.decision==="approved"&&r.approval.current){const u=await programmeRequest(setupId,slot,"upload",r.approval.id) as SponsorUpload;if(!mounted.current)return;setUpload(u);
    if(u.prepared){const l=await programmeRequest(setupId,slot,sourceOnly?"handoff":"lifecycle",r.approval.id) as SponsorLifecycle;if(mounted.current)setLife(l);}}
- }
- async function run(task:()=>Promise<void>){if(flight.current)return;flight.current=true;setBusy(true);setError(null);try{await task();}catch(e){if(mounted.current){setLife(null);setError(e instanceof ApiError&&e.code==="reward_review_issue_open"?"issues":e instanceof ApiError&&[403,404].includes(e.status)?"access":e instanceof ApiError&&e.code==="reward_sponsor_source_not_ready"?"source":e instanceof ApiError&&e.code==="reward_sponsor_funding_not_ready"?"funding":e instanceof ApiError&&["reward_final_allocation_source_not_ready","reward_league_publication_not_ready"].includes(e.code??"")?"results":"refresh");}}finally{flight.current=false;if(mounted.current)setBusy(false);}}
- useEffect(()=>{mounted.current=true;try{const p=JSON.parse(sessionStorage.getItem(storage)??"null");if(p?.action==="receipt"&&/^0x[0-9a-f]{64}$/.test(p.transactionHash))setPending(p);}catch{/* Recovery is optional. */}void run(load);return()=>{mounted.current=false;};},[setupId,slot]);
+ },[setupId,slot,sourceOnly]);
+ const run=useCallback(async(task:()=>Promise<void>)=>{if(flight.current)return;flight.current=true;setBusy(true);setError(null);try{await task();}catch(e){if(mounted.current){setLife(null);setError(e instanceof ApiError&&e.code==="reward_review_issue_open"?"issues":e instanceof ApiError&&[403,404].includes(e.status)?"access":e instanceof ApiError&&e.code==="reward_sponsor_source_not_ready"?"source":e instanceof ApiError&&e.code==="reward_sponsor_funding_not_ready"?"funding":e instanceof ApiError&&["reward_final_allocation_source_not_ready","reward_league_publication_not_ready"].includes(e.code??"")?"results":"refresh");}}finally{flight.current=false;if(mounted.current)setBusy(false);}},[]);
+ useEffect(()=>{mounted.current=true;try{const p=JSON.parse(sessionStorage.getItem(storage)??"null");if(p?.action==="receipt"&&/^0x[0-9a-f]{64}$/.test(p.transactionHash))setPending(p);}catch{/* Recovery is optional. */}void run(load);return()=>{mounted.current=false;};},[load,run,storage]);
  async function approve(){if(!review||(review.results&&!awardsReviewed))return;await programmeRequest(setupId,slot,"review",undefined,{requestId:requestId(`approve:${review.documentHash}:${review.approval?.id}`),expectedApprovalId:review.approval?.id??null,contextHash:review.contextHash,documentHash:review.documentHash,decision:"approved"});await load();}
  async function prepare(){if(!upload)return;setProgress('prepare');try{await programmeRequest(setupId,slot,"upload",upload.approvalId,{requestId:requestId(`upload:${upload.documentHash}`),contextHash:upload.contextHash,documentHash:upload.documentHash});await load();}finally{if(mounted.current)setProgress(null);}}
  async function bind(){if(!life)return;setProgress('handoff');try{await programmeRequest(setupId,slot,sourceOnly?"handoff":"lifecycle",life.approvalId,{action:"publication",requestId:requestId(`publication:${life.publicationHash}`),documentHash:life.publicationHash});await load();}finally{if(mounted.current)setProgress(null);}}

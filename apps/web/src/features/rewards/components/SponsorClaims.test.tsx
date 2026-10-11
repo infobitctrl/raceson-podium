@@ -158,3 +158,23 @@ it('the hosted athlete checklist resets explicit consent on a wallet change and 
  fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
  await screen.findByText('Verified sporting identity');expect(screen.getByRole('checkbox')).not.toBeChecked();expect(screen.getByRole('button',{name:'Sign reward consent'})).toBeDisabled();
 });
+it('preserves explicit consent across callback-only rerenders and uses the latest access handler',async()=>{
+ m.claim.mockResolvedValue(view);
+ const oldAccess=vi.fn(),newAccess=vi.fn();
+ const page=render(<ClaimDetail id={id} role="recipient" hr={false} chainId={31337} onAccessError={oldAccess}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Connect wallet'}));fireEvent.click(screen.getByRole('checkbox'));
+ page.rerender(<ClaimDetail id={id} role="recipient" hr={false} chainId={31337} onAccessError={newAccess}/>);
+ expect(screen.getByRole('checkbox')).toBeChecked();expect(m.claim).toHaveBeenCalledOnce();
+ expect(m.sign).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
+ const denied={status:403};m.claim.mockRejectedValue(denied);
+ fireEvent.click(screen.getByRole('button',{name:'Refresh status'}));
+ await waitFor(()=>expect(newAccess).toHaveBeenCalledWith(denied));expect(oldAccess).not.toHaveBeenCalled();
+});
+it('does not reload shared awards on rerender and refreshes only on an explicit click',async()=>{
+ const first=vi.fn(),latest=vi.fn();
+ const page=render(<SponsorClaims role="recipient" chainId={31337} hr={false} shared={{awards:[],destinations:[],refresh:first}}/>);
+ page.rerender(<SponsorClaims role="recipient" chainId={31337} hr={false} shared={{awards:[],destinations:[],refresh:latest}}/>);
+ expect(first).not.toHaveBeenCalled();expect(latest).not.toHaveBeenCalled();expect(m.awards).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Refresh claims'}));await waitFor(()=>expect(latest).toHaveBeenCalledOnce());
+ expect(m.sign).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
+});

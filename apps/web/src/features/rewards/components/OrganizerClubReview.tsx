@@ -23,7 +23,7 @@ export default function OrganizerClubReview({selection,onBack,onAccessLost}:{sel
     catch(error){if(ticket===epoch.current){setView({phase:"error",error});if(organizerAccessLost(error))lost.current(error);}}
     finally{if(ticket===epoch.current)flight.current=false;}
   },[selection]);
-  useEffect(()=>{region.current?.focus();void load();return()=>{epoch.current++;flight.current=false;};},[load]);
+  useEffect(()=>{region.current?.focus();void load();return()=>{epoch.current += 1;flight.current=false;};},[load]);
   async function observe(context:OperatorClubContext) {
     if(flight.current||!clubReviewAddress(factory)||!clubReviewHash(transaction))return;
     const ticket=++epoch.current;flight.current=true;setAttested(false);setRefs(emptyRefs());setView({phase:"observing"});

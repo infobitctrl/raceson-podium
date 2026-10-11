@@ -6,7 +6,7 @@
   "scripts": {
     "audit:localization": "node scripts/audit-localization.mjs",
     "audit:localization:check": "node scripts/audit-localization.mjs --uncovered --public --check && node scripts/audit-localization.mjs --uncovered --organizer --check && node scripts/audit-localization.mjs --uncovered --athlete --check",
-    "lint": "eslint src/features/rewards",
+    "lint": "eslint src/features/rewards --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit --pretty false",
     "test": "vitest run",
     "test:watch": "vitest"

@@ -21,8 +21,12 @@ function Editor(){
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[reload,setReload]=useState(0),[conflict,setConflict]=useState(false);
  const [step,setStep]=useState(id?5:1),pending=useRef<{requestId:string;expectedRevision:number;configuration:RewardDistributionSetup}|null>(null);
  const alive=useRef(true),lock=useRef(false),resumeFunding=useRef(false);
+ // Catalogue and query values seed a load; editor-step navigation must preserve unsaved rules.
+ const loadInput=useRef({copy,search});loadInput.current={copy,search};
+ const sourceSeasonId=copy?.sourceSeasonId;
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
  useEffect(()=>{
+  const {copy,search}=loadInput.current;
   if(!copy)return;
   let current=true;setError('');setBusy(true);
   void (async()=>{
@@ -38,8 +42,7 @@ function Editor(){
    return {record:null,value:{id:result.id,configuration:config}};
   })().then(({record,value})=>{if(current){setDraft(value);setSaved(record);pending.current=null;resumeFunding.current=false;setConflict(false);}}).catch(()=>{if(current)setError('The selected campaign could not be opened. Use the sponsor account and an event from this catalogue.');}).finally(()=>{if(current)setBusy(false);});
   return()=>{current=false;};
- // Query changes between editor steps do not reload an unsaved campaign.
- },[id,copy?.sourceSeasonId,reload]);
+ },[id,sourceSeasonId,reload]);
  const promotion=useSponsorPromotion(id??undefined);
  const dirty=!!draft&&JSON.stringify(draft.configuration)!==JSON.stringify(saved?.configuration);
  useEffect(()=>{if(!dirty&&!promotion.dirty)return;const leave=(e:BeforeUnloadEvent)=>{e.preventDefault();};window.addEventListener('beforeunload',leave);return()=>window.removeEventListener('beforeunload',leave);},[dirty,promotion.dirty]);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TransactionNotFoundError, TransactionReceiptNotFoundError, encodeAbiParameters, encodeEventTopics, getContractAddress, hashDomain, keccak256, padHex, stringToHex, toHex} from 'viem';
-import {SponsorReceiptError, observeSponsorProgramme, observeSponsorProgrammePot, sponsorContractConfiguration, sponsorDeploymentData, sponsorFundingData, sponsorProgrammeBuild, sponsorCampaignBuild, sponsorProgrammeAbi, sponsorFactoryBuild, sponsorFactoryAbi, sponsorFactoryData, sponsorFactoryProgrammeAddress, sponsorFactorySalt} from '../dist/sponsor-v4.js';
+import {SponsorReceiptError, observeSponsorProgramme, observeSponsorProgrammePot, observePublicSponsorProgrammePot, sponsorContractConfiguration, sponsorDeploymentData, sponsorFundingData, sponsorProgrammeBuild, sponsorCampaignBuild, sponsorProgrammeAbi, sponsorFactoryBuild, sponsorFactoryAbi, sponsorFactoryData, sponsorFactoryProgrammeAddress, sponsorFactorySalt} from '../dist/sponsor-v4.js';
 
 const hash = n => toHex(n, {size:32}), address = n => toHex(n, {size:20});
 const deploymentHash = hash(10), fundingHash = hash(11), factory = address(99);
@@ -197,4 +197,37 @@ test('selected-pot latency measurement with a fixed 25ms per RPC',async()=>{
  assert.equal(calls,44,'all provenance, runtime, funding and canonical-block reads remain');
  assert.ok(peak>=12,'independent pinned reads must overlap instead of adding round-trip latency');
  console.log(JSON.stringify({measurement:'synthetic25ms',calls,peak,elapsedMs:Math.round(performance.now()-start)}));
+});
+
+test('public pages share a finalized snapshot while private observations remain fresh',async()=>{
+ const f=fixture({funded:true,viaFactory:true}),read=f.reader.readContract,blocks=[];
+ f.reader.readContract=async args=>{blocks.push(args.blockNumber);return read(args);};
+ const first=await observePublicSponsorProgrammePot(f.reader,plan,deploymentHash,fundingHash,0);
+ f.anchor=40n;
+ const next=await observePublicSponsorProgrammePot(f.reader,plan,deploymentHash,fundingHash,0,30n);
+ assert.deepEqual(next,first);
+ assert.ok(blocks.every(block=>block===30n));
+ assert.equal((await observeSponsorProgrammePot(f.reader,plan,deploymentHash,fundingHash,0)).blockNumber,'40');
+});
+test('public snapshots reject nonfinal, invalid, mismatched and reorganized blocks',async()=>{
+ for(const block of [-1n,31n,9n,19n]){
+  const f=fixture({funded:true});
+  await assert.rejects(()=>observePublicSponsorProgrammePot(f.reader,plan,deploymentHash,fundingHash,0,block));
+ }
+ for(const change of ['wrong-number','missing-hash','reorganization','wrong-chain','wrong-runtime']){
+  const f=fixture({funded:true}),get=f.reader.getBlock;
+  let seen=0;
+  f.reader.getBlock=async args=>{
+   const block=await get(args);
+   if(args.blockNumber===25n){
+    if(change==='wrong-number')return {...block,number:26n};
+    if(change==='missing-hash')return {...block,hash:null};
+    if(change==='reorganization'&&++seen>1)return {...block,hash:hash(999)};
+   }
+   return block;
+  };
+  if(change==='wrong-chain')f.reader.getChainId=async()=>1;
+  if(change==='wrong-runtime')f.reader.getCode=async()=> '0x6000';
+  await assert.rejects(()=>observePublicSponsorProgrammePot(f.reader,plan,deploymentHash,fundingHash,0,25n));
+ }
 });

@@ -50,7 +50,7 @@ export default function ClubConsentV3({ selection, onAccessLost, onClose, onReco
       } catch (e) { if (current()) { setError(e); setStopped(true); if (clubAccessLost(e)) callbacks.current.onAccessLost(e); } }
       finally { if (current()) { flight.current = false; setBusy(false); } }
     })();
-    return () => { generation.current++; controller.abort(); flow.current?.dispose(); flow.current = null; flight.current = false; };
+    return () => { generation.current += 1; controller.abort(); flow.current?.dispose(); flow.current = null; flight.current = false; };
     // The serialized selection is the complete immutable identity; parent also keys it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);

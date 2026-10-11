@@ -13,7 +13,8 @@ vi.mock("@/lib/public-env", () => ({ publicEnv: { rewardDemo: { mode: "local-tes
   origin: window.location.origin, supabaseUrl: "http://127.0.0.1:55321" } } }));
 function Runtime(props: RewardWalletRuntimeProps) {
   mocks.runtime(props);
-  useEffect(() => props.onState(props.sessionKey, { status: "ready", wallet: null, address: "synthetic-address" }), [props.sessionKey, props.onState]);
+  const {onState, sessionKey} = props;
+  useEffect(() => onState(sessionKey, { status: "ready", wallet: null, address: "synthetic-address" }), [sessionKey, onState]);
   return null;
 }
 beforeEach(() => { vi.clearAllMocks(); mocks.auth.user = { id: "first" }; mocks.auth.account = { userId: "first", hasAthleteAccess: true };
