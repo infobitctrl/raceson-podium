@@ -14,7 +14,7 @@ import s from "./SponsorDiscovery.module.css";
 export default function SponsorDiscovery(){
  const {locale}=useI18n(),hr=locale==="hr",t=(en:string,local:string)=>hr?local:en;
  const {items:sponsorCatalogue,league:sponsorLeague,copy,loading,error,retry}=useSponsorCatalogue();
- const directory=usePublicDirectory();
+ const directory=usePublicDirectory('published');
  const races=sponsorCatalogue.filter(item=>item.kind==="race");
  const [search,setSearch]=useSearchParams(),link=(target="league",raceId?:string)=>{if(!copy)return sponsorLink(target,search.get("setup"),raceId);const q=new URLSearchParams({sourceLeagueId:copy.sourceLeagueId,sourceSeasonId:copy.sourceSeasonId,opportunity:target});const r=copy.rounds.find(r=>`round-${r.slot}`===target);if(r)q.set("eventEditionId",r.eventEditionId);if(raceId&&r?.tracks.some(t=>t.raceId===raceId))q.set("raceId",raceId);if(search.get("setup"))q.set("setup",search.get("setup")!);return `/rewards/create?${q}`;};
  const kind=["league","race"].includes(search.get("kind")??"")?search.get("kind"):"all",query=search.get("q")??"",period=search.get("period")??"all",sort=search.get("sort")??"date",view=search.get("view")??"grid";

@@ -19,12 +19,12 @@ export function decodePublicCampaignSnapshot(value:unknown):PublicCampaignSnapsh
  if(r.selection!==null)decodeRewardSponsorSelection(r.selection);
  return r;
 }
-export type PublicDirectory={chainId:10143|31337;items:DirectoryCampaign[];sponsors:number;checkedAt:string;refreshStatus:'refreshing'|'current'|'failed'};
+export type PublicDirectory={chainId:10143|31337;items:DirectoryCampaign[];sponsors:number;checkedAt:string;refreshStatus:'published'|'refreshing'|'current'|'failed'};
 export function decodePublicDirectory(value:unknown):PublicDirectory {
  const bad=()=>{throw Error('invalid_public_directory');};
  if(!value||typeof value!=='object'||Array.isArray(value))return bad();
  const r=value as PublicDirectory;
- if(Object.keys(r).sort().join()!=='chainId,checkedAt,items,refreshStatus,sponsors'||!['refreshing','current','failed'].includes(r.refreshStatus)||![10143,31337].includes(r.chainId)||!Number.isSafeInteger(r.sponsors)||r.sponsors<0||typeof r.checkedAt!=='string'||!Number.isFinite(Date.parse(r.checkedAt))||!Array.isArray(r.items)||r.sponsors>r.items.length)return bad();
+ if(Object.keys(r).sort().join()!=='chainId,checkedAt,items,refreshStatus,sponsors'||!['published','refreshing','current','failed'].includes(r.refreshStatus)||![10143,31337].includes(r.chainId)||!Number.isSafeInteger(r.sponsors)||r.sponsors<0||typeof r.checkedAt!=='string'||!Number.isFinite(Date.parse(r.checkedAt))||!Array.isArray(r.items)||r.sponsors>r.items.length)return bad();
  const ids=new Set<string>();
  for(const item of r.items){
   if(!item||Object.keys(item).sort().join()!=='campaign,publishedAt,selection,verified'||typeof item.verified!=='boolean'||typeof item.publishedAt!=='string'||!Number.isFinite(Date.parse(item.publishedAt)))return bad();

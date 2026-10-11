@@ -7,11 +7,13 @@ export default function PodiumDirectoryStatus({data,fetching,error,onRefresh}:{d
  const {locale}=useI18n(),hr=locale==='hr';
  const checking=fetching||(!error&&(!data||data.refreshStatus==='refreshing'));
  const failed=error||data?.refreshStatus==='failed';
- return <div className={status.panel} data-state={checking?'checking':failed?'failed':'current'}>
-  <div role="status"><strong>{checking?(hr?'Provjera stanja kampanja':'Checking campaign status'):failed?(data?(hr?'Prikazani su raniji podaci':'Showing earlier figures'):(hr?'Stanje kampanja nije dostupno':'Campaign status unavailable')):(hr?'Stanje kampanja provjereno':'Campaign status checked')}</strong><details><summary>{hr?'Detalji provjere':'Verification details'}</summary><span>{data?.items.length?<>
+ const published=data?.refreshStatus==='published';
+ return <div className={status.panel} data-state={checking?'checking':failed?'failed':published?'published':'current'}>
+  <div role="status"><strong>{checking?(hr?'Provjera stanja kampanja':'Checking campaign status'):(failed||published)?(data?(hr?'Prikazani su raniji podaci':'Showing earlier figures'):(hr?'Stanje kampanja nije dostupno':'Campaign status unavailable')):(hr?'Stanje kampanja provjereno':'Campaign status checked')}</strong>{checking&&data?.items.length?<p className={status.hint}>{hr?'Možete pregledavati kampanje dok provjeravamo novo stanje. Prikazani podaci imaju vrijeme provjere.':'You can browse while we check for updates. Figures reflect the dated checks shown below.'}</p>:null}<details><summary>{hr?'Detalji provjere':'Verification details'}</summary><span>{data?.items.length?<>
    {hr?'Potvrđeni zapisi · najstarije stanje':'Verified records · oldest observation'}{' '}
    <time dateTime={data.checkedAt}>{new Date(data.checkedAt).toLocaleString(hr?'hr-HR':'en-GB')}</time>.
    {' '}{checking?(hr?'Provjera novog stanja u pozadini…':'Checking for updates in the background…'):failed?(hr?'Osvježavanje nije uspjelo. Prikazano je posljednje poznato stanje.':'Refresh failed. Showing last known figures.')
+    :published?(hr?'Objavljeni podaci. Osvježite za provjeru novog stanja.':'Published figures. Refresh to check the latest status.')
     :(hr?'Podaci mogu biti iz različitih potvrđenih blokova.':'Figures may come from different confirmed blocks.')}
   </>:data?(checking?(hr?'Posljednji poznati popis je prazan. Provjeravamo novo stanje…':'The last known published list is empty. Checking for updates…'):failed?(hr?'Osvježavanje nije uspjelo. Posljednji poznati popis je prazan.':'Refresh failed. The last known published list is empty.')
    :(hr?'Trenutačno nema objavljenih kampanja.':'No campaigns are currently published.'))

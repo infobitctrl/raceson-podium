@@ -36,6 +36,7 @@ export function hostedCopyRequestAllowed(method: string | undefined, url: URL, m
   if(mode==='sponsor-drafts-v1'&&url.pathname==='/api/v1/public/auth/demo-account-sign-in')return method==='POST'&&[...url.searchParams].length===0;
   if(mode==='sponsor-drafts-v1'&&operations){
     const keys=[...url.searchParams.keys()];
+    if(url.pathname==='/api/v1/rewards/public-campaigns/snapshot')return method==='GET'&&keys.length===0;
     if(keys.length===0&&/^\/api\/v1\/athlete\/rewards\/direct-claims\/[0-9a-f-]{36}\/0x[0-9a-f]{64}$/.test(url.pathname))return method==='GET'||method==='POST';
     if(['/api/v1/club/rewards/owner-awards','/api/v1/club/rewards/my-clubs'].includes(url.pathname)&&keys.length<=1&&keys.every(k=>k==='after'))return method==='GET';
     if(keys.length===0&&/^\/api\/v1\/club\/rewards\/direct-claims\/[0-9a-f-]{36}\/0x[0-9a-f]{64}\/[0-9a-f-]{36}$/.test(url.pathname))return method==='GET'||method==='POST';

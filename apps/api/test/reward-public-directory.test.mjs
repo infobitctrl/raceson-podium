@@ -113,3 +113,29 @@ test('hosted stalled refresh returns preserved facts at the deadline',async t=>{
  await new Promise(resolve=>setImmediate(resolve));t.mock.timers.tick(90001);await request;
  assert.equal(response.refreshStatus,'failed');assert.deepEqual(response.items[0].campaign,campaign);
 });
+
+test('hosted snapshot returns dated public facts without starting or awaiting chain work',async()=>{
+ let reads=0,chainReads=0;const responses=[];
+ const deps={config:()=>({chainId:10143}),awaitRefresh:true,
+  rpc:async()=>{reads++;return {data:saved,error:null};},
+  sponsorReader:{getChainId:()=>{chainReads++;return new Promise(()=>{});}},
+  sendSuccess:(_,data)=>responses.push({status:200,data}),sendError:(_,status)=>responses.push({status})};
+ const request=(method='GET',query='')=>dispatchPublicDirectory({method},{setHeader(){}},new URL('http://local/api/v1/rewards/public-campaigns/snapshot'+query),deps);
+ await request();
+ const result=responses.pop();assert.equal(result.status,200);assert.equal(result.data.refreshStatus,'published');
+ assert.deepEqual(result.data.items,[item]);assert.equal(result.data.checkedAt,new Date(Number(campaign.blockTimestamp)*1000).toISOString());
+ assert.equal(JSON.stringify(result.data).includes('record'),false);assert.equal(JSON.stringify(result.data).includes('funder'),false);
+ assert.equal(reads,1);assert.equal(chainReads,0);
+ for(const [method,query,status] of [['POST','',405],['GET','?owner=private',400],['GET','?refresh=true',400]]){
+  await request(method,query);assert.equal(responses.pop().status,status);
+ }
+ assert.equal(reads,1);assert.equal(chainReads,0);
+});
+test('snapshot fails closed on invalid publications and does not truncate a large directory',async()=>{
+ for(const data of [null,{...saved,items:[{...saved.items[0],campaign:{...campaign,wallet:'private'}}]},
+  {...saved,items:Array.from({length:201},(_,i)=>({...saved.items[0],campaign:{...campaign,id:`73000000-0000-4000-8000-${String(i).padStart(12,'0')}`}}))}]){
+  let status;await dispatchPublicDirectory({method:'GET'},{setHeader(){}},new URL('http://local/api/v1/rewards/public-campaigns/snapshot'),{
+   config:()=>({chainId:10143}),rpc:async()=>({data,error:null}),sponsorReader:{},sendSuccess:()=>assert.fail('invalid publication accepted'),sendError:(_,code)=>{status=code;}});
+  assert.equal(status,503);
+ }
+});

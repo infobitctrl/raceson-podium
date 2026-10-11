@@ -73,3 +73,13 @@ it('does not show unavailable payment observations as zero on directory cards',(
  expect(screen.getByText('Status unavailable')).toBeVisible();
  for(const label of ['Paid','Returned'])expect(screen.getByText(label).nextElementSibling).toHaveTextContent('—');
 });
+
+it('returns focus and scroll to campaign results when changing page',()=>{
+ const scroll=vi.fn();Element.prototype.scrollIntoView=scroll;
+ render(<I18nProvider initialLocale="en"><MemoryRouter><Location/><PodiumCampaigns directory items={Array.from({length:10},(_,i)=>item(`Campaign ${i}`))}/></MemoryRouter></I18nProvider>);
+ fireEvent.click(screen.getByRole('button',{name:'Next',exact:true}));
+ expect(params().get('page')).toBe('2');expect(screen.getByRole('region',{name:'Campaigns',exact:true})).toHaveFocus();
+ expect(scroll).toHaveBeenCalledWith({block:'start',behavior:'instant'});expect(screen.getByText('Page 2 of 2')).toBeVisible();
+ expect(screen.getByRole('button',{name:'Next',exact:true})).toBeDisabled();
+ delete (Element.prototype as Partial<Element>).scrollIntoView;
+});

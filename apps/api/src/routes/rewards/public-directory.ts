@@ -2,7 +2,7 @@ import type {IncomingMessage,ServerResponse} from 'node:http';
 import {rewardPublicDirectory} from '@raceson/db/rewards';
 import type {RewardLedgerRpc} from '@raceson/db/rewards';
 import {decodePublicDirectory,type PublicDirectory,type DirectoryCampaign} from '@raceson/domain/rewards/public-directory';
-import {observeSponsorProgramme,type SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
+import {observePublicSponsorProgramme,type SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
 import type {Hex} from 'viem';
 import type {OrganizerRewardRouteDependencies} from './organizer.js';
 import {publicCampaignObservation} from './public-campaign.js';
@@ -15,7 +15,7 @@ const observationTime=(items:DirectoryCampaign[])=>items.length
  ?new Date(Math.min(...items.map(i=>Number(i.campaign.blockTimestamp)*1000))).toISOString()
  :new Date().toISOString();
 /** Publish a completed full observer result; preserve all other campaigns and economics. */
-export function mergeDirectoryObservation(directory:PublicDirectory,index:number,observation:Awaited<ReturnType<typeof observeSponsorProgramme>>):PublicDirectory{
+export function mergeDirectoryObservation(directory:PublicDirectory,index:number,observation:Awaited<ReturnType<typeof observePublicSponsorProgramme>>):PublicDirectory{
  const item=directory.items[index];if(!item)throw Error('directory_index');
  const campaign=publicCampaignObservation(item.campaign,observation);
  if(BigInt(campaign.blockNumber)<BigInt(item.campaign.blockNumber)||BigInt(campaign.blockTimestamp)<BigInt(item.campaign.blockTimestamp))throw Error('older_observation');
@@ -41,7 +41,7 @@ async function loadPublished(chainId:10143|31337,deps:Deps,entry:Entry):Promise<
    await Promise.all(saved.items.slice(offset,offset+4).map(async({record},index)=>{
     const item=items[offset+index];
     try{
-     const observation=await observeSponsorProgramme(deps.sponsorReader!,record.plan,record.deploymentHash as Hex,record.fundingHash as Hex);
+     const observation=await observePublicSponsorProgramme(deps.sponsorReader!,record.plan,record.deploymentHash as Hex,record.fundingHash as Hex);
      if(expired)return item; // A late result cannot overwrite the timed-out projection.
      latest=mergeDirectoryObservation(latest,offset+index,observation);
      entry.value=latest; // Other campaigns can still be checking; expose only this fully verified result.
@@ -61,13 +61,23 @@ async function loadPublished(chainId:10143|31337,deps:Deps,entry:Entry):Promise<
  return initial;
 }
 export async function dispatchPublicDirectory(req:IncomingMessage,res:ServerResponse,url:URL,deps:Deps){
- if(url.pathname!=='/api/v1/rewards/public-campaigns')return false;
+ const snapshot=url.pathname==='/api/v1/rewards/public-campaigns/snapshot';
+ if(!snapshot&&url.pathname!=='/api/v1/rewards/public-campaigns')return false;
  res.setHeader('Cache-Control','no-store');
  if(req.method!=='GET'){res.setHeader('Allow','GET');deps.sendError(res,405,'method_not_allowed','Unsupported method.');return true;}
  if([...url.searchParams].length){deps.sendError(res,400,'invalid_public_directory','Invalid directory request.');return true;}
  try{
   const config=deps.config(),reader=deps.sponsorReader;
   if(!config||!reader)throw Error('unavailable');
+  if(snapshot){
+   // Published facts have already been verified at their original block. Do not
+   // launch detached RPC work or let a slow live check delay public browsing.
+   const saved=await rewardPublicDirectory(config.chainId,deps.publicRpc??deps.rpc);
+   if(saved.items.length>200)throw Error('directory_capacity');
+   const items=saved.items.map(({campaign,selection,publishedAt})=>({campaign,selection,publishedAt,verified:true}));
+   deps.sendSuccess(res,decodePublicDirectory({chainId:config.chainId,items,sponsors:saved.sponsors,checkedAt:observationTime(items),refreshStatus:'published'}));
+   return true;
+  }
   let byChain=cache.get(reader);if(!byChain){byChain=new Map();cache.set(reader,byChain);}
   let entry=byChain.get(config.chainId);
   if(!entry){entry={until:0};byChain.set(config.chainId,entry);}

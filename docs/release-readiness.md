@@ -1,3 +1,24 @@
+## Public browsing — 12 October 2026
+
+Campaigns and Home now display dated publications before the live directory check
+finishes. The read-only `/api/v1/rewards/public-campaigns/snapshot` endpoint returns
+the existing strict public projection with `refreshStatus: published`; it does
+not start chain work or expose execution records. Events uses this publication
+list for sponsorship counts, so chain availability cannot hide those counts.
+
+Live verification remains bounded and request-owned on hosted functions. Its
+public observer overlaps independent pot reads at a single finalized anchor.
+Public browsing allows five seconds beyond the server deadline to receive partial
+verified updates; private callers retain their existing request behavior. A failed
+check keeps dated figures visible and offers retry. Late publications never replace
+newer live data. The freshness notice precedes the campaign cards, pagination
+returns focus to results, and below-fold Home images load lazily.
+
+Tests cover deferred/failing reads, retry, deduplication, publication privacy,
+route restrictions, timestamps, pagination focus and unchanged private loading.
+Provider latency still affects fresh chain status; a fast publication response is
+not a fresh payment check. Wallet, consent and payment flows are unchanged.
+
 ## Full league verification uses larger bounded batches
 
 The public chart collector requests up to 500 rewards per response, reducing a

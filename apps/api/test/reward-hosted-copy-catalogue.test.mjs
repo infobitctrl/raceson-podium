@@ -56,3 +56,12 @@ test('active hosted operations bypass the preview directory but retain the verif
   await dispatchHostedCopyCatalogue({method:'GET'},{},directory,deps,read);assert.equal(response.status,503);
  }finally{for(const[k,v]of Object.entries(old)){if(v===undefined)delete process.env[k];else process.env[k]=v;}}
 });
+
+test('public directory snapshot is a narrow read-only hosted operations route',()=>{
+ const path='/api/v1/rewards/public-campaigns/snapshot';
+ const allowed=(method,path,operations=true,mode='sponsor-drafts-v1')=>hostedCopyRequestAllowed(method,new URL(path,'https://demo.invalid'),mode,operations);
+ assert.equal(allowed('GET',path),true);
+ for(const method of ['POST','PATCH','DELETE'])assert.equal(allowed(method,path),false);
+ for(const suffix of ['?owner=private','?refresh=true','/extra'])assert.equal(allowed('GET',path+suffix),false);
+ assert.equal(allowed('GET',path,false),false);assert.equal(allowed('GET',path,true,'preview-v1'),false);
+});
