@@ -1,6 +1,7 @@
 import {useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent} from 'react';
 
-const MIN_ZOOM = 1, MAX_ZOOM = 3;
+const MIN_ZOOM = 1, MAX_ZOOM = 16;
+const ZOOM_STEPS = [1, 1.5, 2, 3, 4, 6, 8, 12, 16];
 /** Keep native scrolling (including touch/keyboard), adding cursor-anchored wheel
  * zoom and mouse dragging. Moving the viewport never changes reward selection. */
 export function useDistributionViewport() {
@@ -75,5 +76,17 @@ export function useDistributionViewport() {
   const onClickCapture = (event:MouseEvent<HTMLDivElement>) => {
     if (suppressClick.current && event.detail !== 0) {event.preventDefault();event.stopPropagation();suppressClick.current=false;}
   };
-  return {viewportRef, zoom, dragging, zoomIn:()=>zoomTo(scale.current+.5), zoomOut:()=>zoomTo(scale.current-.5), fit:()=>zoomTo(MIN_ZOOM), handlers:{onPointerDown,onPointerMove,onPointerUp:endDrag,onPointerCancel:endDrag,onLostPointerCapture:endDrag,onClickCapture}};
+  const focusPoint = (x:number, y:number, size:number) => {
+    const element = viewportRef.current;
+    if (!element) return;
+    const next = Math.min(MAX_ZOOM, Math.max(2, size / element.clientWidth));
+    const left = x / size * element.clientWidth * next - element.clientWidth / 2;
+    const top = y / size * element.clientWidth * next - element.clientHeight / 2;
+    if (next === scale.current) {element.scrollLeft=left; element.scrollTop=top;}
+    else {pendingScroll.current={left,top}; scale.current=next; setZoom(next);}
+  };
+  return {viewportRef, zoom, dragging, canZoomIn:zoom<MAX_ZOOM, canZoomOut:zoom>MIN_ZOOM, focusPoint,
+    zoomIn:()=>zoomTo(ZOOM_STEPS.find(step=>step>scale.current)??MAX_ZOOM),
+    zoomOut:()=>zoomTo([...ZOOM_STEPS].reverse().find(step=>step<scale.current)??MIN_ZOOM),
+    fit:()=>zoomTo(MIN_ZOOM), handlers:{onPointerDown,onPointerMove,onPointerUp:endDrag,onPointerCancel:endDrag,onLostPointerCapture:endDrag,onClickCapture}};
 }

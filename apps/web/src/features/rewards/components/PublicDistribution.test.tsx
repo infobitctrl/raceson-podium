@@ -51,7 +51,7 @@ it('zooms around the mouse position, clamps the scale, and preserves browser zoo
  const scale=parseFloat(chart.style.width)/100;
  expect(scale).toBeGreaterThan(1);expect((element.scrollLeft+75)/scale).toBeCloseTo(75);expect((element.scrollTop+125)/scale).toBeCloseTo(125);
  fireEvent.wheel(element,{deltaY:-100,ctrlKey:true});expect(parseFloat(chart.style.width)/100).toBe(scale);
- for(let i=0;i<20;i++)fireEvent.wheel(element,{deltaY:-150});expect(chart).toHaveStyle({width:'300%'});
+ for(let i=0;i<20;i++)fireEvent.wheel(element,{deltaY:-150});expect(chart).toHaveStyle({width:'1600%'});
  for(let i=0;i<20;i++)fireEvent.wheel(element,{deltaY:150});expect(chart).toHaveStyle({width:'100%'});
  expect(element.scrollLeft).toBe(0);expect(element.scrollTop).toBe(0);
 });
@@ -75,4 +75,21 @@ it('releases a cancelled mouse drag and leaves touch gestures native',()=>{
  expect(element).toHaveAttribute('data-dragging','false');
  const before=element.scrollLeft;pointer(element,'pointermove',100,100);expect(element.scrollLeft).toBe(before);
  pointer(element,'pointerdown',200,200,'touch');pointer(element,'pointermove',100,100,'touch');expect(element.scrollLeft).toBe(before);
+});
+
+it('supports 1600% button zoom, focuses a selected reward, and resets on a level change',()=>{
+ render(<DistributionExplorer tree={tree} hr={false} busy={false} failed={false}/>);
+ const element=viewport(), chart=screen.getByRole('group',{name:'Prize pool: 1 test MON'});
+ for(let i=0;i<8;i++)fireEvent.click(screen.getByRole('button',{name:'Zoom in'}));
+ expect(chart).toHaveStyle({width:'1600%'});
+ expect(screen.getByRole('button',{name:'Zoom in'})).toBeDisabled();
+ fireEvent.click(screen.getByRole('button',{name:'#1 · Winner 1, 1 test MON, Claimed'}));
+ fireEvent.click(screen.getByRole('button',{name:'Focus selection'}));
+ expect(parseFloat(chart.style.width)).toBeGreaterThanOrEqual(200);
+ expect(screen.getByText('public-reference')).toBeVisible();
+ expect(element.scrollTop).not.toBe(0);
+ fireEvent.click(screen.getByRole('button',{name:'Categories',exact:true}));
+ expect(chart).toHaveStyle({width:'100%'});
+ expect(element.scrollLeft).toBe(0);expect(element.scrollTop).toBe(0);
+ expect(screen.queryByText('public-reference')).not.toBeInTheDocument();
 });
