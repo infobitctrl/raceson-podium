@@ -53,7 +53,8 @@ export function hostedCopyRequestAllowed(method: string | undefined, url: URL, m
     }
     if(/^\/api\/v1\/rewards\/public-campaigns\/[0-9a-f-]{36}$/.test(url.pathname)&&keys.length===0)return method==='GET'||method==='POST';
     if(/^\/api\/v1\/rewards\/public-campaigns\/[0-9a-f-]{36}\/pots\/[0-5]\/awards$/.test(url.pathname)&&method==='GET')
-      return keys.length<=3&&new Set(keys).size===keys.length&&keys.every(k=>['offset','sort','direction'].includes(k));
+      return keys.length<=4&&new Set(keys).size===keys.length&&keys.every(k=>['offset','sort','direction','blockNumber'].includes(k))
+        &&(!url.searchParams.has('blockNumber')||/^(0|[1-9][0-9]{0,77})$/.test(url.searchParams.get('blockNumber')??''));
     if(['/api/v1/rewards/demo-copy/claim-reviews','/api/v1/rewards/control/claims','/api/v1/rewards/demo-copy/club-claim-reviews','/api/v1/rewards/control/club-claims'].includes(url.pathname)&&method==='GET')
       return keys.length>=1&&keys.length<=2&&new Set(keys).size===keys.length&&keys.includes('approvalId')
         &&keys.every(k=>['approvalId','after'].includes(k)&&/^[0-9a-f-]{36}$/.test(url.searchParams.get(k)??''));

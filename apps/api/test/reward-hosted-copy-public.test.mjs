@@ -75,3 +75,19 @@ test('hosted branding gate permits exact reads and owner update only in enabled 
  for(const [m,p] of [['PATCH',base],['PATCH',base+'/mine'],['POST',base+'/'+id],['DELETE',base+'/'+id],['GET',base+'?owner='+id]])assert.equal(allow(m,p),false);
  assert.equal(allow('GET',base,false),false);assert.equal(allow('PATCH',base+'/'+id,false),false);
 });
+
+
+test('hosted gate admits the public finalized snapshot query without opening private or write paths',()=>{
+ const path=`/api/v1/rewards/public-campaigns/${id}/pots/0/awards`,query='?offset=25&sort=reward&direction=asc&blockNumber=123';
+ const allow=(method,url,mode='sponsor-drafts-v1',operations=true)=>hostedCopyRequestAllowed(method,new URL(url,'https://podium.raceson.com'),mode,operations);
+ assert.equal(allow('GET',path+query),true);
+ assert.equal(allow('GET',path+'?blockNumber=0'),true);
+ for(const method of ['POST','PUT','PATCH','DELETE'])assert.equal(allow(method,path+query),false);
+ assert.equal(allow('GET',path+query,'preview-v1'),false);
+ assert.equal(allow('GET',path+query,'sponsor-drafts-v1',false),false);
+ for(const extra of ['&blockNumber=124','&owner=other','&wallet=other'])assert.equal(allow('GET',path+query+extra),false);
+ for(const value of ['','-1','01','1e2','0x10','1.5','1'.repeat(79)])assert.equal(allow('GET',path+'?blockNumber='+value),false);
+ for(const privatePath of [`/api/v1/rewards/demo-copy/claim-reviews/${id}`,`/api/v1/rewards/control/claims/${id}`,`/api/v1/athlete/rewards/sponsor-claims/${id}`,`/api/v1/athlete/rewards/wallet-proofs`]){
+  for(const method of ['GET','POST'])assert.equal(allow(method,privatePath+'?blockNumber=123'),false);
+ }
+});

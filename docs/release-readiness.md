@@ -85,7 +85,8 @@ Starting source: `96122b1583e0b58b7bac61061544c910b4334c1f`.
   total, availability, duplicate reward or failed request discards the collection;
   retry begins with a fresh finalized block. Unmount and selection changes abort
   outstanding requests. Existing 25-row response limits remain in force.
-- Only public pagination accepts the optional block number. Private verification,
+- Both the hosted request filter and public pagination accept the optional block
+  number only for public reward reads. Private verification,
   wallet prompts, explicit consent, transaction submission and receipt validation
   keep their existing action paths. No authorization cache, contract, database
   migration, provider setting or public projection field changes.
