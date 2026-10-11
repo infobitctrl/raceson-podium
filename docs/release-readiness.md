@@ -12,6 +12,11 @@ bounds the RPC overhead. This reduces repeated work; hosted elapsed time still
 depends on network load and function reuse. Wallet, consent, payment and provider
 configuration are unchanged.
 
+The public campaign overview also overlaps the independent reads of up to six
+pots at its single finalized anchor. Private observers retain their existing
+read order. Public Server-Timing headers report only numeric durations for
+campaign lookup, observation and award validation; they expose no private inputs.
+
 ## Progressive public campaign loading
 
 Public detail pages display the existing published campaign projection while

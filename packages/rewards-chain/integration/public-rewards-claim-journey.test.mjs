@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {createPublicClient,http} from 'viem';
 import {startOwnedRewardChain,fixtureSigner} from './owned-chain.mjs';
-import {sponsorDeploymentData,sponsorFundingData,observeSponsorProgramme,observeSponsorProgrammePot,observePublicSponsorProgrammePot} from '../dist/sponsor-v4.js';
+import {sponsorDeploymentData,sponsorFundingData,observeSponsorProgramme,observeSponsorProgrammePot,observePublicSponsorProgrammePot,observePublicSponsorProgramme} from '../dist/sponsor-v4.js';
 import {sponsorClaimMessagesV4} from '../dist/sponsor-claims-v4.js';
 import {controllerReadBatch} from '../dist/canary-public-client.js';
 import {rewardUploadDigest} from '../dist/index.js';
@@ -29,7 +29,23 @@ test('two fresh simulated athlete wallets claim all 12 awards and public rows tu
   const funded=await observeSponsorProgramme(chain.publicClient,plan,deployment,funding);
   // Exercise the same deployless batched read mechanism selected for public pages.
   const endpoint=chain.publicClient.transport.url;assert.match(endpoint,/^http:\/\/127\.0\.0\.1:\d+$/);
-  const batched=createPublicClient({chain:chain.publicClient.chain,cacheTime:0,batch:controllerReadBatch,transport:http(endpoint,{retryCount:0})});
+  let transportRequests=0;
+  const batched=createPublicClient({chain:chain.publicClient.chain,cacheTime:0,batch:controllerReadBatch,transport:http(endpoint,{retryCount:0,onFetchRequest:()=>{transportRequests++;}})});
+  // Public overview overlaps six independent pots; private observation keeps
+  // its established order. Both must verify the identical anchored result.
+  let active=0,peak=0;
+  const measured={...batched,getBalance:async args=>{
+   peak=Math.max(peak,++active);
+   try{await new Promise(resolve=>setTimeout(resolve,30));return await batched.getBalance(args);}finally{active--;}
+  }};
+  assert.deepEqual(await observeSponsorProgramme(measured,plan,deployment,funding),funded);
+  assert.equal(peak,1);peak=0;const privateRequests=transportRequests;transportRequests=0;
+  assert.deepEqual(await observePublicSponsorProgramme(measured,plan,deployment,funding),funded);
+  assert.equal(peak,6);assert.ok(transportRequests<privateRequests);
+  console.log(JSON.stringify({overviewPots:6,privateRequests,publicRequests:transportRequests,privateConcurrentPots:1,publicConcurrentPots:peak}));
+  const invalid={...batched,getCode:async args=>args.address.toLowerCase()===funded.pots[4].address?'0x':batched.getCode(args)};
+  await assert.rejects(()=>observePublicSponsorProgramme(invalid,plan,deployment,funding));
+  await assert.rejects(()=>observePublicSponsorProgramme({...batched,getBalance:async()=>0n},plan,deployment,funding));
   const publicObserver=createPublicPotObserver();
   const evidence={environment:'disposable-local-chain',chainId:31337,privy:'SDK creation mocked separately; locally provisioned fresh EOAs here',sportingSource:'synthetic test fixture',testnetTransactionsSent:0,programme:funded.address,depositWei:plan.budgetWei,wallets:athletes.map(a=>({address:a.address,initialBalanceWei:'0'})),pots:[]};
   const write=(child,name,args,success=true)=>chain.operatorClient.writeContract({address:child,abi,functionName:name,args,gas:2_000_000n}).then(hash=>receipt(hash,success));

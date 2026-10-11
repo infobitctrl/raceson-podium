@@ -120,6 +120,11 @@ async function checkReceiptFinality(reader: SponsorChainReader, chainId: number,
 export async function observeSponsorProgramme(reader: SponsorChainReader, input: SponsorExecutionPlan, deploymentHash: Hex, fundingHash?: Hex): Promise<SponsorChainObservation> {
   return observeSponsorProgrammeScope(reader,input,deploymentHash,fundingHash);
 }
+/** Public overview only: all pots share one finalized anchor, so their independent
+ * state reads can overlap. Private action observers retain their existing order. */
+export async function observePublicSponsorProgramme(reader:SponsorChainReader,input:SponsorExecutionPlan,deploymentHash:Hex,fundingHash:Hex):Promise<SponsorChainObservation>{
+  return observeSponsorProgrammeScope(reader,input,deploymentHash,fundingHash,undefined,undefined,true);
+}
 /** Controller actions concern one pot. Verify the whole programme's deployment,
  * funding, immutable caps/child addresses and the selected pot's runtime/state.
  * Other pots' mutable state is intentionally absent from this scoped result. */
@@ -133,7 +138,7 @@ export async function observePublicSponsorProgrammePot(reader:SponsorChainReader
   check(Number.isInteger(slot)&&slot>=0&&slot<6&&BigInt(decodeSponsorExecutionPlan(input).caps[slot]!)>0n);
   return observeSponsorProgrammeScope(reader,input,deploymentHash,fundingHash,slot,blockNumber);
 }
-async function observeSponsorProgrammeScope(reader:SponsorChainReader,input:SponsorExecutionPlan,deploymentHash:Hex,fundingHash?:Hex,selectedSlot?:number,publicBlockNumber?:bigint):Promise<SponsorChainObservation>{
+async function observeSponsorProgrammeScope(reader:SponsorChainReader,input:SponsorExecutionPlan,deploymentHash:Hex,fundingHash?:Hex,selectedSlot?:number,publicBlockNumber?:bigint,parallelPublicPots=false):Promise<SponsorChainObservation>{
   const p = decodeSponsorExecutionPlan(input), c = sponsorContractConfiguration(p);
   check(await reader.getChainId() === p.chainId);
   const finalized = await reader.getBlock({blockTag: "finalized"});
@@ -192,6 +197,7 @@ async function observeSponsorProgrammeScope(reader:SponsorChainReader,input:Spon
   });
   check(typeof funded === "boolean" && typeof cancelled === "boolean" && !(funded && cancelled));
   const pots: SponsorChainObservation["pots"] = [];
+  const publicPots: (()=>Promise<SponsorChainObservation["pots"][number]>)[] = [];
   let nonce = 1n;
   for (let slot = 0; slot < 6; slot++) {
     const [child, cap] = slots[slot]!;
@@ -199,37 +205,42 @@ async function observeSponsorProgrammeScope(reader:SponsorChainReader,input:Spon
     if (cap === 0n) {check(BigInt(child) === 0n); continue;}
     check(same(child, getContractAddress({from: address, nonce: nonce++})));
     if(selectedSlot!==undefined&&slot!==selectedSlot)continue;
-    const name = "RacesOnRewardCampaign", version = p.version===6?"7":p.version===5?"6":"5";
-    const short = (s: string) => `${padHex(stringToHex(s), {size: 31, dir: "right"})}${toHex(s.length, {size: 1}).slice(2)}` as Hex;
-    const args = {address: child, abi: sponsorCampaignAbi, blockNumber};
-    const [campaignCode, accounted, state, paused, deadline, count, allocatedRace, allocatedLeague, paidRace, paidLeague, returned, balance] = await Promise.all([
-      reader.getCode({address: child, blockNumber}),
-      reader.readContract({...args, functionName: "accountedFunding"}), reader.readContract({...args, functionName: "state"}),
-      reader.readContract({...args, functionName: "paused"}), reader.readContract({...args, functionName: "claimDeadline"}),
-      reader.readContract({...args, functionName: "entitlementCount"}),
-      reader.readContract({...args, functionName: "allocated", args: [0n]}), reader.readContract({...args, functionName: "allocated", args: [1n]}),
-      reader.readContract({...args, functionName: "paid", args: [0n]}), reader.readContract({...args, functionName: "paid", args: [1n]}),
-      reader.readContract({...args, functionName: "treasuryReturned"}), reader.getBalance({address: child, blockNumber}),
-    ]);
-    runtime(p.version===6?sponsorCampaignBuildV6:p.version===5?sponsorCampaignBuildV5:sponsorCampaignBuild, campaignCode, {
-      ...(p.version>=5?{walletRegistry:word(p.walletRegistry!)}:{}),
-      operator: word(c.operator), treasury: word(c.unallocatedTreasury), expiredTreasury: word(c.expiredTreasury), cancellationTreasury: word(c.funder),
-      fundingSource: word(address), CLAIM_LIFETIME: word(c.claimLifetime), programmeId: c.programmeId, campaignId: c.campaignIds[slot]!,
-      programmeManifestHash: c.manifestHash, enabledPot: word(slot === 0 ? 1 : 0), reviewPeriod: word(c.reviewPeriods[slot]!),
-      _cachedChainId: word(p.chainId), _cachedThis: word(child), _hashedName: keccak256(stringToHex(name)), _hashedVersion: keccak256(stringToHex(version)),
-      _name: short(name), _version: short(version), _cachedDomainSeparator: hashDomain({domain: {name, version, chainId: BigInt(p.chainId), verifyingContract: child}, types: {EIP712Domain: [
-        {name: "name", type: "string"}, {name: "version", type: "string"}, {name: "chainId", type: "uint256"}, {name: "verifyingContract", type: "address"}]} }),
-    });
-    check(accounted === (funded ? cap : 0n));
-    const allocated = allocatedRace + allocatedLeague, paid = paidRace + paidLeague;
-    check(Number.isInteger(state) && state >= 0 && state <= 5 && typeof paused === "boolean"
-      && allocated <= accounted && paid <= allocated && paid + returned <= accounted && balance >= accounted - paid - returned
-      && (slot === 0 ? allocatedRace === 0n && paidRace === 0n : allocatedLeague === 0n && paidLeague === 0n)
-      && (funded ? state >= 1 : state === 0) && (state === 3 || state === 4 ? deadline > 0n : true));
-    pots.push({slot, address: child.toLowerCase(), amountWei: cap.toString(), state, paused,
-      allocatedWei: allocated.toString(), paidWei: paid.toString(), returnedWei: returned.toString(),
-      remainingWei: (accounted - paid - returned).toString(), claimDeadline: deadline.toString(), entitlementCount: count.toString()});
+    const readPot = async (): Promise<SponsorChainObservation["pots"][number]> => {
+      const name = "RacesOnRewardCampaign", version = p.version===6?"7":p.version===5?"6":"5";
+      const short = (s: string) => `${padHex(stringToHex(s), {size: 31, dir: "right"})}${toHex(s.length, {size: 1}).slice(2)}` as Hex;
+      const args = {address: child, abi: sponsorCampaignAbi, blockNumber};
+      const [campaignCode, accounted, state, paused, deadline, count, allocatedRace, allocatedLeague, paidRace, paidLeague, returned, balance] = await Promise.all([
+        reader.getCode({address: child, blockNumber}),
+        reader.readContract({...args, functionName: "accountedFunding"}), reader.readContract({...args, functionName: "state"}),
+        reader.readContract({...args, functionName: "paused"}), reader.readContract({...args, functionName: "claimDeadline"}),
+        reader.readContract({...args, functionName: "entitlementCount"}),
+        reader.readContract({...args, functionName: "allocated", args: [0n]}), reader.readContract({...args, functionName: "allocated", args: [1n]}),
+        reader.readContract({...args, functionName: "paid", args: [0n]}), reader.readContract({...args, functionName: "paid", args: [1n]}),
+        reader.readContract({...args, functionName: "treasuryReturned"}), reader.getBalance({address: child, blockNumber}),
+      ]);
+      runtime(p.version===6?sponsorCampaignBuildV6:p.version===5?sponsorCampaignBuildV5:sponsorCampaignBuild, campaignCode, {
+        ...(p.version>=5?{walletRegistry:word(p.walletRegistry!)}:{}),
+        operator: word(c.operator), treasury: word(c.unallocatedTreasury), expiredTreasury: word(c.expiredTreasury), cancellationTreasury: word(c.funder),
+        fundingSource: word(address), CLAIM_LIFETIME: word(c.claimLifetime), programmeId: c.programmeId, campaignId: c.campaignIds[slot]!,
+        programmeManifestHash: c.manifestHash, enabledPot: word(slot === 0 ? 1 : 0), reviewPeriod: word(c.reviewPeriods[slot]!),
+        _cachedChainId: word(p.chainId), _cachedThis: word(child), _hashedName: keccak256(stringToHex(name)), _hashedVersion: keccak256(stringToHex(version)),
+        _name: short(name), _version: short(version), _cachedDomainSeparator: hashDomain({domain: {name, version, chainId: BigInt(p.chainId), verifyingContract: child}, types: {EIP712Domain: [
+          {name: "name", type: "string"}, {name: "version", type: "string"}, {name: "chainId", type: "uint256"}, {name: "verifyingContract", type: "address"}]} }),
+      });
+      check(accounted === (funded ? cap : 0n));
+      const allocated = allocatedRace + allocatedLeague, paid = paidRace + paidLeague;
+      check(Number.isInteger(state) && state >= 0 && state <= 5 && typeof paused === "boolean"
+        && allocated <= accounted && paid <= allocated && paid + returned <= accounted && balance >= accounted - paid - returned
+        && (slot === 0 ? allocatedRace === 0n && paidRace === 0n : allocatedLeague === 0n && paidLeague === 0n)
+        && (funded ? state >= 1 : state === 0) && (state === 3 || state === 4 ? deadline > 0n : true));
+      return {slot, address: child.toLowerCase(), amountWei: cap.toString(), state, paused,
+        allocatedWei: allocated.toString(), paidWei: paid.toString(), returnedWei: returned.toString(),
+        remainingWei: (accounted - paid - returned).toString(), claimDeadline: deadline.toString(), entitlementCount: count.toString()};
+    };
+    if(parallelPublicPots)publicPots.push(readPot);
+    else pots.push(await readPot());
   }
+  if(parallelPublicPots)pots.push(...await Promise.all(publicPots.map(read=>read())));
   if (fundingHash) {
     const ftx = await lookup(fundingHash, () => reader.getTransaction({hash: fundingHash}));
     check(ftx.chainId === p.chainId && same(ftx.hash, fundingHash) && same(ftx.from, p.funder) && same(ftx.to, address)

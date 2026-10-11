@@ -19,12 +19,12 @@ test('live public projection preserves economics and reflects confirmed payouts 
  for(const patch of [{funded:false},{cancelled:true},{fundingHash:null},{address:'0x'+'22'.repeat(20)},{pots:[]}])assert.throws(()=>publicCampaignObservation(campaign,{...observation,...patch}));
 });
 async function request({method='GET',body={},authError,record=null,query='',rpcError}={}){
- let response,calls=0,chainCalls=0;
+ let response,calls=0,chainCalls=0;const headers={};
  const deps={config:()=>({chainId:10143}),requireIdentity:async()=>{if(authError)throw Error(authError);return{userId:id,sessionId:id};},readJsonBody:async()=>body,
   rpc:async()=>{calls++;return{data:record,error:rpcError?{message:rpcError}:null};},sponsorReader:{getChainId:async()=>{chainCalls++;throw Error('offline');}},applyPrivateSessionHeaders:()=>{},
   sendSuccess:(_res,data)=>response={status:200,data},sendError:(_res,status,code)=>response={status,code}};
- await dispatchPublicCampaign({method},{setHeader(){}},new URL(`http://local/api/v1/rewards/public-campaigns/${id}${query}`),deps);
- return{response,calls,chainCalls};
+ await dispatchPublicCampaign({method},{setHeader(name,value){headers[name]=value;}},new URL(`http://local/api/v1/rewards/public-campaigns/${id}${query}`),deps);
+ return{response,calls,chainCalls,headers};
 }
 test('guest cannot publish, unpublished campaigns return 404 and GET does not require identity',async()=>{
  assert.equal((await request({authError:'Unauthorized'})).response.status,404);
@@ -36,4 +36,11 @@ test('completion rejects browser facts, unfunded records and foreign ownership b
  const pending=await request({method:'POST'});assert.equal(pending.response.status,409);assert.equal(pending.calls,1);assert.equal(pending.chainCalls,0);
  const foreign=await request({method:'POST',rpcError:'reward_setup_not_found'});assert.equal(foreign.response.status,404);assert.equal(foreign.chainCalls,0);
  assert.equal((await request({query:'?owner=other'})).response.status,400);
+});
+
+test('public timing headers expose only numeric phase durations and are absent from private publication',async()=>{
+ const result=await request();
+ assert.match(result.headers['Server-Timing'],/^campaign;dur=[0-9]+\.[0-9]$/);
+ assert.equal(result.headers['Cache-Control'],'no-store');
+ assert.equal((await request({method:'POST'})).headers['Server-Timing'],undefined);
 });

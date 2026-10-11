@@ -1,5 +1,5 @@
 import {decodeSponsorExecutionPlan, type SponsorExecutionPlan} from '@raceson/domain/rewards/sponsor-execution';
-import {observeSponsorProgramme, observePublicSponsorProgrammePot, type SponsorChainObservation, type SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
+import {observePublicSponsorProgramme, observePublicSponsorProgrammePot, type SponsorChainObservation, type SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
 import type {Hex} from 'viem';
 
 const RETENTION_MS = 120_000, MAX_SNAPSHOTS = 64;
@@ -7,7 +7,7 @@ type Entry = {until: number; value: Promise<SponsorChainObservation>};
 
 /** Only public pagination may reuse an observation at an exact finalized block.
  * Fresh requests, private actions and reward-row verification bypass this store. */
-export function createPublicPotObserver(observe = observePublicSponsorProgrammePot, now = Date.now, programme = observeSponsorProgramme) {
+export function createPublicPotObserver(observe = observePublicSponsorProgrammePot, now = Date.now, programme = observePublicSponsorProgramme) {
   const readers = new WeakMap<SponsorChainReader, Map<string, Entry>>();
   const scope = (plan: SponsorExecutionPlan, deployment: Hex, funding: Hex, slot: number) => JSON.stringify([plan, deployment, funding, slot]);
   const store = (reader: SponsorChainReader) => {

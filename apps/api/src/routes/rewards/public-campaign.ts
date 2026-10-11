@@ -34,6 +34,14 @@ export function createPublicCampaign(launch:SponsorLaunch, observation:SponsorCh
   }))},observation);
 }
 export async function dispatchPublicCampaign(req:IncomingMessage,res:ServerResponse,url:URL,deps:Deps) {
+ const timings:string[]=[];
+ const timed=async<T>(name:string,read:()=>Promise<T>):Promise<T>=>{
+  const start=performance.now();
+  try{return await read();}finally{
+   timings.push(`${name};dur=${(performance.now()-start).toFixed(1)}`);
+   if(!res.headersSent)res.setHeader('Server-Timing',timings.join(', '));
+  }
+ };
  const source=/^\/api\/v1\/rewards\/public-campaigns\/([^/]+)\/(source|snapshot)$/.exec(url.pathname);
  if(source){
   res.setHeader('Cache-Control','no-store');
@@ -60,10 +68,11 @@ export async function dispatchPublicCampaign(req:IncomingMessage,res:ServerRespo
    const config=deps.config(),id=awards[1],slot=Number(awards[2]),query=publicAwardQuery(url.searchParams);
    if(!setupId(id))throw Error('invalid_public_awards');
    if(!config||!deps.sponsorReader)throw Error('public_awards_unavailable');
-   const saved=await rewardPublicCampaign(config.chainId,id,undefined,deps.publicRpc??deps.rpc);
+   const saved=await timed('campaign',()=>rewardPublicCampaign(config.chainId,id,undefined,deps.publicRpc??deps.rpc));
    if(!saved||!saved.campaign.pots.some(p=>p.slot===slot)){deps.sendError(res,404,'public_campaign_not_found','Prize pot not found.');return true;}
-   const [raw,observed]=await Promise.all([rewardPublicAwards(config.chainId,id,slot,deps.publicRpc??deps.rpc),observePublicPot(deps.sponsorReader,saved.record.plan,saved.record.deploymentHash as Hex,saved.record.fundingHash as Hex,slot,query.blockNumber===undefined?undefined:BigInt(query.blockNumber))]);
-   deps.sendSuccess(res,await publicAwardPage(deps.sponsorReader,observed,{id,chainId:config.chainId,slot,groups:saved.campaign.pots.find(p=>p.slot===slot)!.groups},raw,query));
+   const reader=deps.sponsorReader;
+   const [raw,observed]=await Promise.all([timed('awards',()=>rewardPublicAwards(config.chainId,id,slot,deps.publicRpc??deps.rpc)),timed('observation',()=>observePublicPot(reader,saved.record.plan,saved.record.deploymentHash as Hex,saved.record.fundingHash as Hex,slot,query.blockNumber===undefined?undefined:BigInt(query.blockNumber)))]);
+   deps.sendSuccess(res,await timed('rows',()=>publicAwardPage(reader,observed,{id,chainId:config.chainId,slot,groups:saved.campaign.pots.find(p=>p.slot===slot)!.groups},raw,query)));
   }catch(error){const invalid=error instanceof Error&&error.message==='invalid_public_awards';deps.sendError(res,invalid?400:503,invalid?'invalid_public_awards':'public_awards_unavailable',invalid?'Invalid reward request.':'Reward status is temporarily unavailable. Please retry.');}
   return true;
  }
@@ -89,9 +98,10 @@ export async function dispatchPublicCampaign(req:IncomingMessage,res:ServerRespo
    if(!published)throw Error('public_campaign_unavailable');
    deps.sendSuccess(res,publicCampaignObservation(published.campaign,observation));
   } else {
-   const saved=await rewardPublicCampaign(config.chainId,id,undefined,deps.publicRpc??deps.rpc);
+   const saved=await timed('campaign',()=>rewardPublicCampaign(config.chainId,id,undefined,deps.publicRpc??deps.rpc));
    if(!saved){deps.sendError(res,404,'public_campaign_not_found','This campaign has not completed setup.');return true;}
-   const observation=await observePublicPot.programme(deps.sponsorReader,saved.record.plan,saved.record.deploymentHash as Hex,saved.record.fundingHash as Hex);
+   const reader=deps.sponsorReader;
+   const observation=await timed('observation',()=>observePublicPot.programme(reader,saved.record.plan,saved.record.deploymentHash as Hex,saved.record.fundingHash as Hex));
    deps.sendSuccess(res,publicCampaignObservation(saved.campaign,observation));
   }
  } catch(error){
