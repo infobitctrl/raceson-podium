@@ -35,20 +35,22 @@ async function loadPublished(chainId:10143|31337,deps:Deps,entry:Entry):Promise<
  if(!items.length){entry.until=Date.now()+30_000;return initial;}
  let expired=false,latest=initial;
  async function refresh(){
-  let failed=false;
-  for(let offset=0;offset<saved.items.length;offset+=4){
-   if(expired)throw Error('refresh_timeout');
-   await Promise.all(saved.items.slice(offset,offset+4).map(async({record},index)=>{
-    const item=items[offset+index];
+  let failed=false,next=0;
+  async function worker(){
+   while(next<saved.items.length){
+    if(expired)return;
+    const index=next++,{record}=saved.items[index]!;
     try{
      const observation=await observePublicSponsorProgramme(deps.sponsorReader!,record.plan,record.deploymentHash as Hex,record.fundingHash as Hex);
-     if(expired)return item; // A late result cannot overwrite the timed-out projection.
-     latest=mergeDirectoryObservation(latest,offset+index,observation);
+     if(expired)return; // A late result cannot overwrite the timed-out projection.
+     latest=mergeDirectoryObservation(latest,index,observation);
      entry.value=latest; // Other campaigns can still be checking; expose only this fully verified result.
-     return latest.items[offset+index];
-    }catch{failed=true;return item;}
-   }));
+    }catch{failed=true;}
+   }
   }
+  // Refill each of four slots as soon as it finishes. One slow campaign must
+  // not hold back every campaign that follows its group.
+  await Promise.all(Array.from({length:Math.min(4,saved.items.length)},worker));
   return decodePublicDirectory({...latest,refreshStatus:failed?'failed':'current'});
  }
  // A stalled provider must not leave the browser polling indefinitely. Late results

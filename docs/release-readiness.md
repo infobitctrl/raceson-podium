@@ -7,7 +7,9 @@ not start chain work or expose execution records. Events uses this publication
 list for sponsorship counts, so chain availability cannot hide those counts.
 
 Live verification remains bounded and request-owned on hosted functions. Its
-public observer overlaps independent pot reads at a single finalized anchor.
+public observer overlaps independent pot reads at a single finalized anchor. Four
+campaign checks stay in flight; each completed slot takes the next campaign
+immediately, avoiding a slowest-campaign barrier between groups.
 Public browsing allows five seconds beyond the server deadline to receive partial
 verified updates; private callers retain their existing request behavior. A failed
 check keeps dated figures visible and offers retry. Late publications never replace
