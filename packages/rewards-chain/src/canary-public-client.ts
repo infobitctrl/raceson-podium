@@ -40,3 +40,15 @@ export const canaryPublicClient = createPublicClient({ chain: monadTestnet, cach
 // The transport and five-starts/second queue remain shared with all canary work.
 export const controllerReadBatch = {multicall:{deployless:true,batchSize:4096,wait:0}} as const;
 export const controllerPublicClient = createPublicClient({chain:monadTestnet,cacheTime:0,batch:controllerReadBatch,transport});
+
+// Directory verification also reads bytecode, receipts and block headers
+// outside eth_call multicalls. Group at most two read-only RPCs per
+// HTTP request, using the same five-starts/second queue (at most ten RPCs/sec).
+// Private observers retain their original unbatched transport and ordering.
+export const publicDirectoryRpcBatch = {batchSize:2,wait:0} as const;
+export const publicDirectoryClient = createPublicClient({chain:monadTestnet,cacheTime:0,batch:controllerReadBatch,
+  transport:http("https://testnet-rpc.monad.xyz",{timeout:15000,retryCount:0,batch:publicDirectoryRpcBatch,
+    methods:{include:['eth_chainId','eth_getBlockByNumber','eth_getBlockByHash','eth_getTransactionByHash','eth_getTransactionReceipt','eth_getCode','eth_call','eth_getBalance']},
+    onFetchRequest:async request=>{await pace(request.signal);request.signal.throwIfAborted();},
+  }),
+});

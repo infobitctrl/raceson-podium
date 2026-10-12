@@ -1,3 +1,17 @@
+## Full public directory verification — 12 October 2026
+
+The public directory groups up to two read-only JSON-RPC calls per HTTP request.
+It retains the existing endpoint, five HTTP starts per second, zero retries and
+zero result caching. Private observers keep their original transport. Contract
+getters retain deployless aggregation; every receipt, runtime, balance and finality
+check still runs. The directory transport explicitly rejects transaction methods.
+
+A disposable-chain regression verifies 15 independent programmes and 65 prize
+pots against the original transport: identical observations, 357 to 201 network
+requests, and 7.222 to 4.061 seconds with a synthetic 20 ms start interval. These
+are controlled measurements, not hosted latency promises. Hosted validation and
+exact-commit checks accompany deployment.
+
 ## Public browsing — 12 October 2026
 
 Campaigns and Home now display dated publications before the live directory check
