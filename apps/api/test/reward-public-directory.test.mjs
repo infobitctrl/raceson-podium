@@ -155,3 +155,66 @@ test('directory refresh refills four worker slots without waiting for a slow cam
  assert.equal(responses[0].refreshStatus,'failed');assert.equal(responses[0].items.length,9);
  for(const item of responses[0].items)assert.equal(item.campaign.blockTimestamp,campaign.blockTimestamp);
 });
+
+test('saved summaries preload confirmed payments in a new server instance without chain reads',async()=>{
+ const {saveDirectorySummary}=await import('../dist/features/rewards/public-directory-cache.js');
+ const {mergeDirectoryObservation}=await import('../dist/routes/rewards/public-directory.js');
+ const entries=new Map();const summaryCache={get:async key=>entries.get(key),set:async(key,value,options)=>{
+  assert.equal(options.ttl,86400);assert.equal(JSON.stringify(value).includes('record'),false);entries.set(key,structuredClone(value));}};
+ const observed={address:campaign.address,funded:true,cancelled:false,fundingHash:hash,blockNumber:'101',blockTimestamp:'1800000010',
+  pots:[{...campaign.pots[0],state:3,allocatedWei:'80',paidWei:'30',remainingWei:'70',claimDeadline:'1800010000',address:'0x'+'55'.repeat(20),entitlementCount:'4'}]};
+ const verified=mergeDirectoryObservation(directory,0,observed);
+ await saveDirectorySummary(verified.items[0],summaryCache);
+ for(let instance=0;instance<2;instance++){
+  let data;const headers={};
+  await dispatchPublicDirectory({method:'GET'},{setHeader:(name,value)=>{headers[name]=value;}},new URL('http://local/api/v1/rewards/public-campaigns/snapshot'),{
+   config:()=>({chainId:10143}),rpc:async()=>({data:saved,error:null}),summaryCache,
+   sponsorReader:{getChainId:()=>assert.fail('snapshot must not start a chain read')},
+   sendSuccess:(_,value)=>{data=value;},sendError:()=>assert.fail('snapshot failed')});
+  assert.equal(directoryMetrics(data).paidWei,'30');assert.equal(campaignStatus(data.items[0]),'claiming');
+  assert.equal(data.checkedAt,'2027-01-15T08:00:10.000Z');assert.equal(data.refreshStatus,'published');
+  assert.match(headers['Server-Timing'],/^summaries;dur=[0-9]+\.[0-9];desc="1 saved"$/);
+ }
+ // A late older verification must not replace a newer saved observation.
+ await saveDirectorySummary(item,summaryCache);
+ assert.equal([...entries.values()][0].items[0].campaign.blockNumber,'101');
+});
+
+test('cache misses, failures, foreign identity and private fields retain original dated publications',async()=>{
+ const {readDirectorySummaries,saveDirectorySummary,hostedPublicDirectoryCache}=await import('../dist/features/rewards/public-directory-cache.js');
+ const warm=structuredClone(directory);warm.items[0].campaign.blockNumber='101';warm.items[0].campaign.blockTimestamp='1800000010';
+ const bad=[null,{...warm,wallet:'private'}, {...warm,chainId:31337}];
+ for(const mutate of [d=>d.items[0].publishedAt='2026-10-01T00:00:00Z',d=>d.items[0].verified=false,
+  d=>d.items[0].campaign.address='0x'+'22'.repeat(20),d=>d.items[0].campaign.name='Replaced campaign',
+  d=>d.items[0].campaign.pots[0].groups[0].name='Changed category',d=>d.items[0].campaign.blockTimestamp='1799999999']){
+  const value=structuredClone(warm);mutate(value);bad.push(value);
+ }
+ for(const value of bad){const result=await readDirectorySummaries(directory,{get:async()=>value,set:async()=>{}});assert.deepEqual(result.items,directory.items);}
+ const failed={get:async()=>{throw Error('offline');},set:async()=>{throw Error('offline');}};
+ assert.deepEqual((await readDirectorySummaries(directory,failed)).items,directory.items);
+ await saveDirectorySummary(item,failed);
+ await assert.rejects(()=>saveDirectorySummary({...item,campaign:{...campaign,wallet:'private'}},failed));
+ assert.equal(hostedPublicDirectoryCache({}),undefined);assert.equal(hostedPublicDirectoryCache({VERCEL:'1'}),undefined);
+});
+
+test('stalled shared cache has a bounded fallback and never holds publication loading indefinitely',async t=>{
+ const {readDirectorySummaries}=await import('../dist/features/rewards/public-directory-cache.js');
+ t.mock.timers.enable({apis:['setTimeout']});
+ const pending=readDirectorySummaries(directory,{get:()=>new Promise(()=>{}),set:async()=>{}});
+ await new Promise(resolve=>setImmediate(resolve));t.mock.timers.tick(1001);
+ assert.deepEqual((await pending).items,directory.items);
+});
+
+test('public merges preserve membership, publication identity, monotonic observations and the freshness window',async()=>{
+ const {mergePublicDirectory,publicDirectoryIsFresh}=await import('@raceson/domain/rewards/public-directory');
+ const newer=structuredClone(directory);newer.items[0].campaign.blockNumber='101';newer.items[0].campaign.blockTimestamp='1800000010';
+ const merged=mergePublicDirectory(directory,newer);
+ assert.equal(merged.items[0].campaign.blockNumber,'101');assert.equal(merged.checkedAt,'2027-01-15T08:00:10.000Z');
+ assert.deepEqual(mergePublicDirectory(merged,directory),merged);
+ assert.deepEqual(mergePublicDirectory({...directory,items:[],sponsors:0},newer).items,[]);
+ assert.deepEqual(mergePublicDirectory({...directory,items:[{...item,publishedAt:'2026-10-10T00:00:00Z'}]},newer).items[0].campaign,campaign);
+ const at=Date.parse(merged.checkedAt);
+ assert.equal(publicDirectoryIsFresh(merged,at),true);assert.equal(publicDirectoryIsFresh(merged,at+59999),true);
+ assert.equal(publicDirectoryIsFresh(merged,at+60000),false);assert.equal(publicDirectoryIsFresh(merged,at-1),false);
+ assert.equal(publicDirectoryIsFresh({...merged,items:[{...merged.items[0],verified:false}]},at),false);
+});

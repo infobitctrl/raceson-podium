@@ -1,36 +1,31 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {rewardPublicDirectory} from '@raceson/db/rewards';
 import type {RewardLedgerRpc} from '@raceson/db/rewards';
-import {decodePublicDirectory,type PublicDirectory,type DirectoryCampaign} from '@raceson/domain/rewards/public-directory';
+import {decodePublicDirectory,directoryObservationTime,mergePublicDirectory,type PublicDirectory} from '@raceson/domain/rewards/public-directory';
 import {observePublicSponsorProgramme,type SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
 import type {Hex} from 'viem';
 import type {OrganizerRewardRouteDependencies} from './organizer.js';
 import {publicCampaignObservation} from './public-campaign.js';
-type Deps=OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;publicRpc?:RewardLedgerRpc;awaitRefresh?:boolean};
+import {readDirectorySummaries,saveDirectorySummary,type PublicDirectoryCache} from '../../features/rewards/public-directory-cache.js';
+type Deps=OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;publicRpc?:RewardLedgerRpc;awaitRefresh?:boolean;summaryCache?:PublicDirectoryCache};
 type Entry={until:number;value?:PublicDirectory;loading?:Promise<PublicDirectory>;refresh?:Promise<void>};
 // Only public projections are cached. Publications already contain verified chain snapshots.
-// The long-running demo API owns background work; no chain facts are persisted here.
+// Only a held full-verification request writes shared public summaries.
 const cache=new WeakMap<SponsorChainReader,Map<number,Entry>>();
-const observationTime=(items:DirectoryCampaign[])=>items.length
- ?new Date(Math.min(...items.map(i=>Number(i.campaign.blockTimestamp)*1000))).toISOString()
- :new Date().toISOString();
 /** Publish a completed full observer result; preserve all other campaigns and economics. */
 export function mergeDirectoryObservation(directory:PublicDirectory,index:number,observation:Awaited<ReturnType<typeof observePublicSponsorProgramme>>):PublicDirectory{
  const item=directory.items[index];if(!item)throw Error('directory_index');
  const campaign=publicCampaignObservation(item.campaign,observation);
  if(BigInt(campaign.blockNumber)<BigInt(item.campaign.blockNumber)||BigInt(campaign.blockTimestamp)<BigInt(item.campaign.blockTimestamp))throw Error('older_observation');
  return decodePublicDirectory({...directory,items:directory.items.map((value,position)=>position===index?{...item,campaign}:value),
-  checkedAt:observationTime(directory.items.map((value,position)=>position===index?{...item,campaign}:value)),refreshStatus:'refreshing'});
+  checkedAt:directoryObservationTime(directory.items.map((value,position)=>position===index?{...item,campaign}:value)),refreshStatus:'refreshing'});
 }
 async function loadPublished(chainId:10143|31337,deps:Deps,entry:Entry):Promise<PublicDirectory>{
  const saved=await rewardPublicDirectory(chainId,deps.publicRpc??deps.rpc);
  if(saved.items.length>200)throw Error('directory_capacity'); // Never silently truncate totals.
- const items=saved.items.map(({campaign,selection,publishedAt})=>{
-  const previous=entry.value?.items.find(i=>i.campaign.id===campaign.id&&i.publishedAt===publishedAt
-   &&i.campaign.address===campaign.address&&i.campaign.fundingHash===campaign.fundingHash);
-  return {campaign:previous&&BigInt(previous.campaign.blockNumber)>BigInt(campaign.blockNumber)?previous.campaign:campaign,selection,publishedAt,verified:true};
- });
- const initial=decodePublicDirectory({chainId,items,sponsors:saved.sponsors,checkedAt:observationTime(items),refreshStatus:items.length?'refreshing':'current'});
+ const items=saved.items.map(({campaign,selection,publishedAt})=>({campaign,selection,publishedAt,verified:true}));
+ const published=decodePublicDirectory({chainId,items,sponsors:saved.sponsors,checkedAt:directoryObservationTime(items),refreshStatus:items.length?'refreshing':'current'});
+ const initial=mergePublicDirectory(await readDirectorySummaries(published,deps.summaryCache),entry.value);
  entry.value=initial;
  if(!items.length){entry.until=Date.now()+30_000;return initial;}
  let expired=false,latest=initial;
@@ -45,6 +40,7 @@ async function loadPublished(chainId:10143|31337,deps:Deps,entry:Entry):Promise<
      if(expired)return; // A late result cannot overwrite the timed-out projection.
      latest=mergeDirectoryObservation(latest,index,observation);
      entry.value=latest; // Other campaigns can still be checking; expose only this fully verified result.
+     await saveDirectorySummary(latest.items[index]!,deps.summaryCache);
     }catch{failed=true;}
    }
   }
@@ -77,7 +73,12 @@ export async function dispatchPublicDirectory(req:IncomingMessage,res:ServerResp
    const saved=await rewardPublicDirectory(config.chainId,deps.publicRpc??deps.rpc);
    if(saved.items.length>200)throw Error('directory_capacity');
    const items=saved.items.map(({campaign,selection,publishedAt})=>({campaign,selection,publishedAt,verified:true}));
-   deps.sendSuccess(res,decodePublicDirectory({chainId:config.chainId,items,sponsors:saved.sponsors,checkedAt:observationTime(items),refreshStatus:'published'}));
+   const published=decodePublicDirectory({chainId:config.chainId,items,sponsors:saved.sponsors,checkedAt:directoryObservationTime(items),refreshStatus:'published'});
+   const started=performance.now();
+   const shared=await readDirectorySummaries(published,deps.summaryCache);
+   const reused=shared.items.filter((item,index)=>BigInt(item.campaign.blockNumber)>BigInt(items[index]!.campaign.blockNumber)).length;
+   res.setHeader('Server-Timing',`summaries;dur=${(performance.now()-started).toFixed(1)};desc="${reused} saved"`);
+   deps.sendSuccess(res,mergePublicDirectory(shared,cache.get(reader)?.get(config.chainId)?.value));
    return true;
   }
   let byChain=cache.get(reader);if(!byChain){byChain=new Map();cache.set(reader,byChain);}

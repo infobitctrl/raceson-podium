@@ -18,6 +18,7 @@
     "@raceson/db": "0.1.0",
     "@raceson/domain": "0.1.0",
     "@raceson/rewards-chain": "0.1.0",
+    "@vercel/functions": "3.9.11",
     "jose": "4.15.9",
     "stripe": "^22.3.2",
     "viem": "2.56.3",

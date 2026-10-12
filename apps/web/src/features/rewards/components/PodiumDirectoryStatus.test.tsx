@@ -72,7 +72,7 @@ it('localizes first-request failure and recovery in Croatian',()=>{
 it('labels publications as earlier figures until a fresh check completes',()=>{
  render(<I18nProvider initialLocale="en"><PodiumDirectoryStatus data={{...data,refreshStatus:'published'}} fetching={false} error={false} onRefresh={()=>{}}/></I18nProvider>);
  expect(screen.getByRole('status')).toHaveTextContent('Showing earlier figures');
- expect(screen.getByRole('status')).toHaveTextContent('Published figures. Refresh to check the latest status.');
+ expect(screen.getByRole('status')).toHaveTextContent('Saved verified figures. Refresh to check the latest status.');
  expect(screen.getByRole('status')).not.toHaveTextContent('Campaign status checked');
  expect(document.querySelector('time')).toHaveAttribute('dateTime',data.checkedAt);
 });

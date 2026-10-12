@@ -61,6 +61,7 @@ import { dispatchRewardResultReviewV3 } from "./routes/rewards/result-review-v3.
 import { authenticateRewardRequest, rewardPortalConfig } from "./features/rewards/request-identity.js";
 import { canaryPublicClient, controllerPublicClient, publicDirectoryClient } from "@raceson/rewards-chain/canary-public-client";
 import { programmeLocalReader } from "./features/rewards/programme-local-reader.js";
+import {hostedPublicDirectoryCache} from './features/rewards/public-directory-cache.js';
 import { dispatchPilotAcceptanceV3, type LocalPilotRunnerV3 } from "./routes/rewards/pilot-acceptance-v3.js";
 
 const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpointV3, publicReport?: PublicRewardReportReader): ApiRouteExtension => async (req, res, url, boundary) => {
@@ -105,7 +106,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   if (await dispatchCampaignBranding(req,res,url,{...deps,...(hostedCopyOperationsEnabled(process.env,boundary.env)?{
     resolveRpc:(identity?:import('@raceson/db/rewards').RewardAccountIdentity)=>hostedCopyBrandingRpc((name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args),identity),
   }: {})})) return true;
-  if (await dispatchPublicDirectory(req,res,url,{...deps,...copiedPublic,awaitRefresh:hostedCopyOperationsEnabled(process.env,boundary.env),sponsorReader:config?.chainId===10143?publicDirectoryClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
+  if (await dispatchPublicDirectory(req,res,url,{...deps,...copiedPublic,awaitRefresh:hostedCopyOperationsEnabled(process.env,boundary.env),summaryCache:hostedPublicDirectoryCache(process.env),sponsorReader:config?.chainId===10143?publicDirectoryClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
   if (await dispatchPublicCampaign(req,res,url,{...deps,...copiedPublic,sponsorReader:config?.chainId===10143?controllerPublicClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
   if (await dispatchSetupEvents(req, res, url, deps)) return true;
   if (await dispatchSponsorSourceV4(req, res, url, deps)) return true;

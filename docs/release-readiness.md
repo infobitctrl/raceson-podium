@@ -1,3 +1,32 @@
+## Saved public campaign card summaries — 12 October 2026
+
+Campaign cards preload the latest saved, fully verified public amounts and status.
+Each campaign has an independent, project/environment-scoped Runtime Cache entry;
+only the strict existing public projection is stored. Entries retain their chain
+block and original observation time. Current database publications control list
+membership, metadata and identity; changed or withdrawn publications cannot reuse
+an old summary. Cache reads are bounded to one second and retention is one day.
+The cache is ephemeral: a miss safely falls back to the dated publication.
+
+Public browsing treats observations younger than 60 seconds as recent. Older
+figures trigger the unchanged full verification. While that request runs, the
+browser checks saved summaries every four seconds so completed campaigns update
+individually. Visible pages recheck on a 60-second interval; Refresh status forces
+a check. New confirmed payments and lifecycle states become visible as their
+full observer completes. This is a public display cache, not a payment receipt
+or a guarantee of instantaneous chain state. No financial action is intercepted.
+
+Failed checks keep the latest available figures and dates. Browser merges reject
+older observations even if a delayed response or cache eviction returns publication
+zeros. Private live-only queries, wallet/consent/payment implementations, chain
+validation, RPC pacing and the 90-second server deadline are unchanged. No new
+scheduled job, database migration or detached hosted verification is introduced.
+
+Regression coverage includes a new-server cache preload, confirmed payment/status
+projection, partial updates during an unfinished request, failure recovery,
+cache outages/timeouts, strict privacy, replaced/withdrawn publications and the
+60-second freshness boundary. Hosted measurements accompany release verification.
+
 ## Full public directory verification — 12 October 2026
 
 The public directory groups up to two read-only JSON-RPC calls per HTTP request.

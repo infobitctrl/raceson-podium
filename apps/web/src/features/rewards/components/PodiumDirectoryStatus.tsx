@@ -13,7 +13,7 @@ export default function PodiumDirectoryStatus({data,fetching,error,onRefresh}:{d
    {hr?'Potvrđeni zapisi · najstarije stanje':'Verified records · oldest observation'}{' '}
    <time dateTime={data.checkedAt}>{new Date(data.checkedAt).toLocaleString(hr?'hr-HR':'en-GB')}</time>.
    {' '}{checking?(hr?'Provjera novog stanja u pozadini…':'Checking for updates in the background…'):failed?(hr?'Osvježavanje nije uspjelo. Prikazano je posljednje poznato stanje.':'Refresh failed. Showing last known figures.')
-    :published?(hr?'Objavljeni podaci. Osvježite za provjeru novog stanja.':'Published figures. Refresh to check the latest status.')
+    :published?(hr?'Spremljeni provjereni podaci. Osvježite za provjeru novog stanja.':'Saved verified figures. Refresh to check the latest status.')
     :(hr?'Podaci mogu biti iz različitih potvrđenih blokova.':'Figures may come from different confirmed blocks.')}
   </>:data?(checking?(hr?'Posljednji poznati popis je prazan. Provjeravamo novo stanje…':'The last known published list is empty. Checking for updates…'):failed?(hr?'Osvježavanje nije uspjelo. Posljednji poznati popis je prazan.':'Refresh failed. The last known published list is empty.')
    :(hr?'Trenutačno nema objavljenih kampanja.':'No campaigns are currently published.'))

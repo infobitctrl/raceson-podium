@@ -20,6 +20,40 @@ export function decodePublicCampaignSnapshot(value:unknown):PublicCampaignSnapsh
  return r;
 }
 export type PublicDirectory={chainId:10143|31337;items:DirectoryCampaign[];sponsors:number;checkedAt:string;refreshStatus:'published'|'refreshing'|'current'|'failed'};
+export const PUBLIC_DIRECTORY_FRESH_MS=60_000;
+/** Identity of a publication, excluding only its observed chain accounting. */
+export function directoryPublicationIdentity(item:DirectoryCampaign):string {
+ const c=item.campaign;
+ return JSON.stringify([item.publishedAt,item.selection,c.id,c.chainId,c.name,c.address,c.fundingHash,c.budgetWei,
+  c.pots.map(p=>[p.slot,p.name,p.amountWei,p.groups])]);
+}
+export const directoryObservationTime=(items:DirectoryCampaign[])=>items.length
+ ?new Date(Math.min(...items.map(i=>Number(i.campaign.blockTimestamp)*1000))).toISOString():new Date().toISOString();
+/** The current publication controls membership and metadata. Older responses can
+ * contribute only newer verified observations of exactly the same publication. */
+export function mergePublicDirectory(published:PublicDirectory,...sources:(PublicDirectory|undefined)[]):PublicDirectory {
+ const candidates=new Map<string,DirectoryCampaign>();
+ for(const source of [published,...sources]){
+  if(!source||source.chainId!==published.chainId)continue;
+  for(const item of source.items){
+   if(!item.verified)continue;
+   const key=directoryPublicationIdentity(item),previous=candidates.get(key);
+   if(!previous||BigInt(item.campaign.blockNumber)>BigInt(previous.campaign.blockNumber)
+    &&BigInt(item.campaign.blockTimestamp)>=BigInt(previous.campaign.blockTimestamp))candidates.set(key,item);
+  }
+ }
+ const items=published.items.map(item=>{
+  const candidate=candidates.get(directoryPublicationIdentity(item));
+  return candidate&&BigInt(candidate.campaign.blockNumber)>BigInt(item.campaign.blockNumber)
+   &&BigInt(candidate.campaign.blockTimestamp)>=BigInt(item.campaign.blockTimestamp)?{...item,campaign:candidate.campaign,verified:true}:item;
+ });
+ return {...published,items,checkedAt:items.length?directoryObservationTime(items):published.checkedAt};
+}
+export function publicDirectoryIsFresh(directory:PublicDirectory|undefined,now=Date.now()):boolean {
+ if(!directory||directory.items.some(item=>!item.verified))return false;
+ const age=now-Date.parse(directory.checkedAt);
+ return age>=0&&age<PUBLIC_DIRECTORY_FRESH_MS;
+}
 export function decodePublicDirectory(value:unknown):PublicDirectory {
  const bad=()=>{throw Error('invalid_public_directory');};
  if(!value||typeof value!=='object'||Array.isArray(value))return bad();

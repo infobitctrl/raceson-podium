@@ -67,3 +67,53 @@ it('omits credentials, bypasses caches and honors cancellation for publication r
 it.each([{chainId:10143},{wallet:'private'},{refreshStatus:'current'},{items:[{...published.items[0],record:{secret:'private'}}]}])('rejects a foreign or private publication: %j',async patch=>{
  mocks.fetch.mockResolvedValue(response({...published,...patch}));await expect(readPublicDirectory(undefined,true)).rejects.toThrow();
 });
+
+it('preloads recently verified summaries without a live request and allows an explicit new check',async()=>{
+ const now=Math.floor(Date.now()/1000),fresh={...published,checkedAt:new Date(now*1000).toISOString(),items:published.items.map(i=>({...i,campaign:{...i.campaign,blockTimestamp:String(now)}}))};
+ mocks.fetch.mockResolvedValue(response(fresh));
+ const {result}=renderHook(()=>usePublicDirectory('browse'),{wrapper:wrapper()});
+ await waitFor(()=>expect(result.current.data).toEqual(fresh));expect(result.current.isPending).toBe(false);
+ expect(mocks.fetch).toHaveBeenCalledTimes(1);expect(result.current.isFetching).toBe(false);
+ mocks.fetch.mockImplementation((url:string)=>Promise.resolve(response(url.endsWith('/snapshot')?fresh:{...fresh,refreshStatus:'current'})));
+ await act(async()=>{await result.current.refetch();});
+ expect(mocks.fetch.mock.calls.some(([url])=>!url.endsWith('/snapshot'))).toBe(true);
+});
+
+it('polls completed card updates before the full request finishes and retains them after failure',async()=>{
+ const live=held<ReturnType<typeof response>>();let reads=0;
+ const progress={...current,refreshStatus:'published',items:current.items.map(i=>({...i,campaign:{...i.campaign,blockTimestamp:'1800000010',pots:i.campaign.pots.map(p=>({...p,allocatedWei:'80',paidWei:'30',remainingWei:'70',state:3,claimDeadline:'1800010000'}))}})),checkedAt:'2027-01-15T08:00:10.000Z'};
+ mocks.fetch.mockImplementation((url:string)=>url.endsWith('/snapshot')?Promise.resolve(response(++reads===1?published:progress)):live.promise);
+ const {result}=renderHook(()=>usePublicDirectory('browse'),{wrapper:wrapper()});
+ await waitFor(()=>expect(mocks.fetch).toHaveBeenCalledTimes(2));
+ expect(result.current.data?.items[0].campaign.pots[0].paidWei).toBe('0');
+ await waitFor(()=>expect(result.current.data?.items[0].campaign.pots[0].paidWei).toBe('30'),{timeout:6000});
+ expect(result.current.isFetching).toBe(true);
+ await act(async()=>live.resolve({ok:false} as ReturnType<typeof response>));
+ await waitFor(()=>expect(result.current.isError).toBe(true));
+ expect(result.current.data?.items[0].campaign.pots[0].paidWei).toBe('30');expect(result.current.data?.checkedAt).toBe(progress.checkedAt);
+ // A later cache miss must not reset already observed payments to publication zeros.
+ mocks.fetch.mockResolvedValue(response(published));
+ await act(async()=>{await clients.at(-1)!.refetchQueries({queryKey:['podium-published-directory']});});
+ expect(result.current.data?.items[0].campaign.pots[0].paidWei).toBe('30');
+},10000);
+
+it('removes withdrawn publications even when an older complete live response arrives later',async()=>{
+ const live=held<ReturnType<typeof response>>();mocks.fetch.mockResolvedValueOnce(response(published)).mockReturnValueOnce(live.promise);
+ const {result}=renderHook(()=>usePublicDirectory('browse'),{wrapper:wrapper()});
+ await waitFor(()=>expect(mocks.fetch).toHaveBeenCalledTimes(2));
+ mocks.fetch.mockResolvedValue(response({...published,items:[],sponsors:0}));
+ await act(async()=>{await clients.at(-1)!.refetchQueries({queryKey:['podium-published-directory']});});
+ await act(async()=>live.resolve(response(current)));
+ await waitFor(()=>expect(result.current.isFetching).toBe(false));expect(result.current.data?.items).toEqual([]);
+});
+
+it('retains the last full result if a later server loses its cache and returns older failed observations',async()=>{
+ const paid={...current,items:current.items.map(i=>({...i,campaign:{...i.campaign,pots:i.campaign.pots.map(p=>({...p,allocatedWei:'80',paidWei:'30',remainingWei:'70'}))}}))};
+ mocks.fetch.mockImplementation((url:string)=>Promise.resolve(response(url.endsWith('/snapshot')?published:paid)));
+ const {result}=renderHook(()=>usePublicDirectory('browse'),{wrapper:wrapper()});
+ await waitFor(()=>expect(result.current.data?.items[0].campaign.pots[0].paidWei).toBe('30'));
+ mocks.fetch.mockImplementation((url:string)=>Promise.resolve(response(url.endsWith('/snapshot')?published:{...published,refreshStatus:'failed'})));
+ await act(async()=>{await result.current.refetch();});
+ await waitFor(()=>expect(result.current.data?.refreshStatus).toBe('failed'));expect(result.current.data?.items[0].campaign.pots[0].paidWei).toBe('30');
+ expect(result.current.data?.items[0].campaign.blockNumber).toBe('101');
+});
