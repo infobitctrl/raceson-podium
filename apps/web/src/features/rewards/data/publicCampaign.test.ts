@@ -24,7 +24,7 @@ it('requests a bounded public page at the selected block without credentials or 
   response(); const abort = new AbortController();
   expect(await readPublicRewards(id, 1, 25, 'reward', 'asc', abort.signal, '100')).toEqual(page);
   expect(mocks.fetch).toHaveBeenCalledWith(`https://isolated.invalid/api/v1/rewards/public-campaigns/${id}/pots/1/awards?offset=25&sort=reward&direction=asc&blockNumber=100`,
-    expect.objectContaining({method: 'GET', credentials: 'omit', cache: 'no-store', redirect: 'error', headers: {Accept: 'application/json'}}));
+    expect.objectContaining({method: 'GET', credentials: 'omit', cache: 'no-store', redirect: 'error', headers: {Accept: 'application/vnd.raceson.reward-wallets.v1+json, application/json'}}));
   const signal = mocks.fetch.mock.calls[0][1].signal;
   abort.abort(); expect(signal.aborted).toBe(true);
 });

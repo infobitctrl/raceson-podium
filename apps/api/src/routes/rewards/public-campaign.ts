@@ -11,6 +11,7 @@ import type {OrganizerRewardRouteDependencies} from './organizer.js';
 import type {RewardAccountIdentity,RewardLedgerRpc} from '@raceson/db/rewards';
 
 import {publicAwardPage,publicAwardQuery} from '../../features/rewards/public-awards-service.js';
+import {publicAwardResponse} from '../../features/rewards/public-award-response.js';
 
 type Deps = OrganizerRewardRouteDependencies & {sponsorReader?:SponsorChainReader;publicRpc?:RewardLedgerRpc;
  resolveSponsorRpc?:(identity:RewardAccountIdentity,id:string)=>Promise<RewardLedgerRpc>;
@@ -73,8 +74,9 @@ export async function dispatchPublicCampaign(req:IncomingMessage,res:ServerRespo
    const reader=deps.sponsorReader;
    const [raw,observed]=await Promise.all([timed('awards',()=>rewardPublicAwards(config.chainId,id,slot,deps.publicRpc??deps.rpc)),timed('observation',()=>observePublicPot(reader,saved.record.plan,saved.record.deploymentHash as Hex,saved.record.fundingHash as Hex,slot,query.blockNumber===undefined?undefined:BigInt(query.blockNumber)))]);
    const plan=saved.record.plan;
-   deps.sendSuccess(res,await timed('rows',()=>publicAwardPage(reader,observed,{id,chainId:config.chainId,slot,groups:saved.campaign.pots.find(p=>p.slot===slot)!.groups,
-    ...(plan.version===5||plan.version===6?{walletRegistry:{address:plan.walletRegistry!,version:plan.version}}:{})},raw,query)));
+   const page=await timed('rows',()=>publicAwardPage(reader,observed,{id,chainId:config.chainId,slot,groups:saved.campaign.pots.find(p=>p.slot===slot)!.groups,
+    ...(plan.version===5||plan.version===6?{walletRegistry:{address:plan.walletRegistry!,version:plan.version}}:{})},raw,query));
+   deps.sendSuccess(res,publicAwardResponse(page,req.headers.accept));
   }catch(error){const invalid=error instanceof Error&&error.message==='invalid_public_awards';deps.sendError(res,invalid?400:503,invalid?'invalid_public_awards':'public_awards_unavailable',invalid?'Invalid reward request.':'Reward status is temporarily unavailable. Please retry.');}
   return true;
  }

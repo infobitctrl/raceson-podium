@@ -56,7 +56,7 @@ export async function readPublicRewards(id:string,slot:number,offset:number,sort
  const snapshot=blockNumber===undefined?'':`&blockNumber=${blockNumber}`;
  const batch=limit===25?'':`&limit=${limit}`;
  const response=await fetch(`${demo.apiBaseUrl}/v1/rewards/public-campaigns/${id}/pots/${slot}/awards?offset=${offset}&sort=${sort}&direction=${direction}${snapshot}${batch}`,{
-  method:'GET',credentials:'omit',cache:'no-store',redirect:'error',signal:AbortSignal.any([signal,AbortSignal.timeout(60000)]),headers:{Accept:'application/json'},
+  method:'GET',credentials:'omit',cache:'no-store',redirect:'error',signal:AbortSignal.any([signal,AbortSignal.timeout(60000)]),headers:{Accept:'application/vnd.raceson.reward-wallets.v1+json, application/json'},
  });
  if(!response.ok)throw new ApiError('Rewards unavailable',{status:response.status,code:'public_awards_unavailable'});
  const envelope:unknown=await response.json();
