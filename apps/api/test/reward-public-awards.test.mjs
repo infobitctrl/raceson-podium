@@ -224,3 +224,29 @@ test('500-row public batches remain bounded and reject a mismatch beyond the old
  await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scope,f.raw,{...query,limit:500}));
  assert.throws(()=>decodePublicRewardPage({...p,rows:p.rows.map((r,i)=>i===490?{...r,recipient:address}:r)},500));
 });
+
+test('unclaimed names use the exact verified saved destination when no award registration exists',async()=>{
+ for(const kind of [0,1]){
+  const f=fixture(2,kind),saved='0x'+'44'.repeat(20),read=f.reader.readContract;
+  f.raw.registeredWallets=f.raw.awards.map(r=>({id:r.entitlementId,address:saved}));
+  f.reader.readContract=async args=>args.functionName==='registrations'?['0x'+'00'.repeat(20),0,0n]:read(args);
+  const p=await publicAwardPage(f.reader,f.observed,{...scope,walletRegistry:{address:'0x'+'33'.repeat(20),version:6}},f.raw,query);
+  assert.equal(p.rows[0].recipientAddress,address);assert.equal(p.rows[0].registeredAddress,undefined);
+  assert.equal(p.rows[1].registeredAddress,saved);assert.equal(p.rows[1].status,'unclaimed');
+  assert.equal(JSON.stringify(p).includes('registeredWallets'),false);
+  f.reader.readContract=async args=>args.functionName==='registrations'?[address,kind,1n]:read(args);
+  assert.equal((await publicAwardPage(f.reader,f.observed,{...scope,walletRegistry:{address:'0x'+'33'.repeat(20),version:6}},f.raw,query)).rows[1].registeredAddress,address);
+  f.observed.pots[0].state=1;
+  f.reader.readContract=async args=>args.functionName==='entitlements'?[h(0),0n,h(0),0n,'0x'+'00'.repeat(20),0,false,kind]:read(args);
+  assert((await publicAwardPage(f.reader,f.observed,scope,f.raw,query)).rows.every(r=>r.status==='planned'&&!r.registeredAddress));
+ }
+});
+test('saved-wallet metadata rejects cross-award, duplicate, invalid and private fields',async()=>{
+ const f=fixture(),valid={id:h(2),address};
+ for(const wallets of [null,{},[valid,valid],[{...valid,id:h(999)}],[{...valid,address:'0x'+'00'.repeat(20)}],[{...valid,address:'https://example.com'}],[{...valid,userId:scope.id}]]){
+  f.raw.registeredWallets=wallets;
+  await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scope,f.raw,query));
+ }
+ f.raw.registeredWallets=[];
+ assert.equal((await publicAwardPage(f.reader,f.observed,scope,f.raw,query)).rows[1].registeredAddress,undefined);
+});

@@ -31,7 +31,7 @@ export async function publicAwardPage(reader:SponsorChainReader,observed:Sponsor
  check(observed.funded&&!observed.cancelled&&pot&&(query.blockNumber===undefined||query.blockNumber===observed.blockNumber));
  const base={campaignId:scope.id,slot:scope.slot,chainId:scope.chainId,blockNumber:observed.blockNumber,blockTimestamp:observed.blockTimestamp,offset:query.offset,sort:query.sort,direction:query.direction};
  if(raw===null){check(pot.entitlementCount==='0'&&pot.allocatedWei==='0');return decodePublicRewardPage({...base,total:0,availability:'awaiting_approval',rows:[]},size);}
- const p=raw as {chainId:number;slot:number;programmeAddress:string;campaignAddress:string;fundingHash:string;uploadDigest:Hex;awards:{entitlementId:Hex;beneficiaryId:Hex;explanationHash:Hex;amount:string;pot:0|1;beneficiaryKind:0|1;breakdown?:PublicRewardBreakdown[];display?:PublicRewardDisplay}[]};
+ const p=raw as {chainId:number;slot:number;programmeAddress:string;campaignAddress:string;fundingHash:string;uploadDigest:Hex;registeredWallets?:{id:Hex;address:string}[];awards:{entitlementId:Hex;beneficiaryId:Hex;explanationHash:Hex;amount:string;pot:0|1;beneficiaryKind:0|1;breakdown?:PublicRewardBreakdown[];display?:PublicRewardDisplay}[]};
  check(p && p.chainId===scope.chainId && p.slot===scope.slot && p.programmeAddress===observed.address && p.campaignAddress===pot.address && p.fundingHash===observed.fundingHash && Array.isArray(p.awards) && p.awards.length<=10000);
  const commitment=rewardUploadDigest(p.awards.map(r=>({...r,amount:BigInt(r.amount)})),scope.slot===0?1:0,BigInt(pot.amountWei));
  check(commitment.digest===p.uploadDigest);
@@ -53,6 +53,19 @@ export async function publicAwardPage(reader:SponsorChainReader,observed:Sponsor
   }
   check(new Set(award.breakdown.map(b=>b.category)).size===award.breakdown.length
    &&award.breakdown.reduce((sum,b)=>sum+BigInt(b.amountWei),0n)===BigInt(award.amount));
+ }
+ // Optional service-only saved-wallet projection, joined by exact entitlement
+ // and current beneficiary ownership in SQL. It is display metadata, not payment
+ // or claim authorization, and is never read from sporting display/name fields.
+ const savedWallets=new Map<string,string>();
+ if(p.registeredWallets!==undefined){
+  check(scope.chainId===10143&&Array.isArray(p.registeredWallets)&&p.registeredWallets.length<=p.awards.length);
+  const awardIds=new Set(p.awards.map(r=>r.entitlementId));
+  for(const wallet of p.registeredWallets){
+   check(wallet&&Object.keys(wallet).sort().join()==='address,id'&&awardIds.has(wallet.id)
+    &&!savedWallets.has(wallet.id)&&sponsorAddress(wallet.address));
+   savedWallets.set(wallet.id,wallet.address);
+  }
  }
  const args={address:pot.address as Address,abi,blockNumber:BigInt(observed.blockNumber)};
  // The route supplies the registry from the same execution plan whose registry
@@ -89,7 +102,9 @@ export async function publicAwardPage(reader:SponsorChainReader,observed:Sponsor
     && (row[6]?BigInt(row[4])!==0n:BigInt(row[4])===0n));
   // A registered destination is not a payment. Preserve the actual paid address
   // even if this beneficiary later registers a different wallet.
-  const registeredAddress=!missing&&!row[6]&&registry?await registeredRecipient(r.beneficiaryId,r.beneficiaryKind):undefined;
+  const registeredAddress=!missing&&!row[6]
+   ?(registry?await registeredRecipient(r.beneficiaryId,r.beneficiaryKind):undefined)??savedWallets.get(r.entitlementId)
+   :undefined;
   return {id:r.entitlementId,number,kind:r.beneficiaryKind===0?'athlete':'club',amountWei:r.amount,status:missing?'planned':row[6]?'claimed':'unclaimed',...(!missing&&row[6]?{recipientAddress:row[4]}:{}),...(registeredAddress?{registeredAddress}:{}),...(r.breakdown?{breakdown:r.breakdown}: {}),...(r.display?{display:r.display}:{})};
  }));
  const after=await reader.getBlock({blockNumber:args.blockNumber});
