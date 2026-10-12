@@ -87,6 +87,11 @@ export async function observeSponsorDirectClaimV5(reader:SponsorChainReader,inpu
 
 function safeReader(reader:SponsorChainReader):reader is SponsorChainReader&RewardClubSafeDeploymentReader{return 'getStorageAt' in reader&&typeof reader.getStorageAt==='function';}
 export async function verifySponsorDirectReceiptV5(reader:SponsorChainReader,scope:DirectClaimScopeV5,hash:Hex,treasury?:DirectClubTreasuryV5){
+ return (await verifySponsorDirectReceiptWithViewV5(reader,scope,hash,treasury)).receipt;
+}
+/** Return the view already verified with this receipt, so recording it does not
+ * perform an additional complete observation or display an earlier snapshot. */
+export async function verifySponsorDirectReceiptWithViewV5(reader:SponsorChainReader,scope:DirectClaimScopeV5,hash:Hex,treasury?:DirectClubTreasuryV5){
  const view=await observeSponsorDirectClaimV5(reader,scope);
  const [tx,receipt]=await Promise.all([reader.getTransaction({hash}),reader.getTransactionReceipt({hash})]);
  demand(view.paid&&view.recipient&&tx.hash===hash&&receipt.transactionHash===hash&&tx.chainId===scope.plan.chainId
@@ -134,11 +139,14 @@ export async function verifySponsorDirectReceiptV5(reader:SponsorChainReader,sco
   &&matches[0]!.args.nonce+1n===BigInt(view.authorizationNonce),'direct_claim_receipt_mismatch');
  const [block,anchor]=await Promise.all([reader.getBlock({blockNumber:receipt.blockNumber}),reader.getBlock({blockNumber:BigInt(view.observation.blockNumber)})]);
  demand(block.hash===receipt.blockHash&&anchor.hash===view.observation.blockHash&&await reader.getChainId()===scope.plan.chainId,'direct_claim_chain_changed');
- return {transactionHash:hash,amountWei:scope.amountWei,recipient:view.recipient,blockNumber:receipt.blockNumber.toString(),blockHash:receipt.blockHash};
+ return {view,receipt:{transactionHash:hash,amountWei:scope.amountWei,recipient:view.recipient,blockNumber:receipt.blockNumber.toString(),blockHash:receipt.blockHash}};
 }
 
 /** Registration establishes a treasury destination. It never journals a payment. */
 export async function verifyClubRegistrationReceiptV6(reader:SponsorChainReader & RewardClubSafeDeploymentReader,scope:DirectClaimScopeV5,hash:Hex,treasury:DirectClubTreasuryV5){
+ return (await verifyClubRegistrationReceiptWithViewV6(reader,scope,hash,treasury)).receipt;
+}
+export async function verifyClubRegistrationReceiptWithViewV6(reader:SponsorChainReader & RewardClubSafeDeploymentReader,scope:DirectClaimScopeV5,hash:Hex,treasury:DirectClubTreasuryV5){
  demand(scope.plan.version===6&&scope.beneficiaryKind===1,'direct_claim_version_required');
  const view=await observeSponsorDirectClaimV5(reader,scope),safe=treasury.safe.context.verifyingContract.toLowerCase();
  const [tx,r]=await Promise.all([reader.getTransaction({hash}),reader.getTransactionReceipt({hash})]);
@@ -162,5 +170,5 @@ export async function verifyClubRegistrationReceiptV6(reader:SponsorChainReader 
   &&events[0]!.args.beneficiaryKind===1&&events[0]!.args.nonce===BigInt(view.registrationNonce),'direct_claim_receipt_mismatch');
  const [block,anchor]=await Promise.all([reader.getBlock({blockNumber:r.blockNumber}),reader.getBlock({blockNumber:BigInt(view.observation.blockNumber)})]);
  demand(block.hash===r.blockHash&&anchor.hash===view.observation.blockHash&&await reader.getChainId()===scope.plan.chainId,'direct_claim_chain_changed');
- return {transactionHash:hash,blockNumber:r.blockNumber.toString(),blockHash:r.blockHash};
+ return {view,receipt:{transactionHash:hash,blockNumber:r.blockNumber.toString(),blockHash:r.blockHash}};
 }

@@ -193,7 +193,18 @@ for(const version of [5,6])for(const chainId of [31337,10143])test(`V${version} 
       await assert.rejects(verifySponsorDirectReceiptV5(reader,receiptScope,receipt.transactionHash));
      }
 
-     const verified=await get({action:'receipt',hash:receipt.transactionHash});assert.equal(verified.status,'paid');assert.equal(writes.length,1);
+     // Receipt recording must use its own verified view, never an extra full
+     // observation before the receipt verifier. All finality rechecks remain.
+     let receiptAnchors=0;
+     const receiptReader={...chain.publicClient,getBlock:async args=>{if(args?.blockTag==='finalized')receiptAnchors++;return chain.publicClient.getBlock(args);}};
+     const verified=await directClaimV5(actor,approvalId,row.entitlementId,{action:'receipt',hash:receipt.transactionHash},{...deps,reader:receiptReader});
+     assert.equal(verified.status,'paid');assert.equal(writes.length,1);assert.equal(receiptAnchors,1);
+     assert.equal(verified.recipient,verified.receipt.recipient);assert.equal(verified.amountWei,verified.receipt.amountWei);
+     for(const change of [r=>({...r,status:'reverted'}),r=>({...r,blockHash:h(999)}),r=>({...r,blockNumber:r.blockNumber+10000n}),r=>({...r,logs:[]})]){
+      const invalid={...chain.publicClient,getTransactionReceipt:async args=>args.hash===receipt.transactionHash?change(await chain.publicClient.getTransactionReceipt(args)):chain.publicClient.getTransactionReceipt(args)};
+      await assert.rejects(directClaimV5(actor,approvalId,row.entitlementId,{action:'receipt',hash:receipt.transactionHash},{...deps,reader:invalid}));
+      assert.equal(writes.length,1,'invalid receipt cannot write payment facts');
+     }
      assert.equal((await get()).status,'paid');assert.equal(signatures,1);
      assert.equal(await chain.publicClient.getTransactionCount({address:reviewer.address}),beforeReviewer);
      const fixture=await deployOriginalClubSafeFixture(chain,{},rewardClubSafeTestnetDependencies);await finalized();
@@ -225,7 +236,11 @@ for(const version of [5,6])for(const chainId of [31337,10143])test(`V${version} 
       await assert.rejects(encodeClubClaimV6(ctx,claim,owners,[proofs[0],proofs[0]]));
       paidClub=await send({to:ready.campaignAddress,data:await encodeClubClaimV6(ctx,claim,owners,proofs)});await finalized();
      }
-     assert.equal((await clubGet({action:'receipt',hash:paidClub.transactionHash})).status,'paid');assert.equal(clubReceipt.recipient,safeAddress);
+     let programmeAnchors=0;
+     const clubReceiptReader={...chain.publicClient,getTransaction:async args=>{if(args.hash===i.deploymentHash)programmeAnchors++;return chain.publicClient.getTransaction(args);}};
+     const clubVerified=await clubDirectClaimV5(actor,approvalId,clubrow.entitlementId,creationId,{action:'receipt',hash:paidClub.transactionHash},{...clubDeps,reader:clubReceiptReader});
+     assert.equal(clubVerified.status,'paid');assert.equal(clubReceipt.recipient,safeAddress);assert.equal(programmeAnchors,1);
+     assert.equal(clubVerified.recipient,clubVerified.receipt.recipient);
      const bundledPayment=await clubDirectClaimV5(actor,approvalId,clubrow.entitlementId,creationId,{action:'receipt',hash:paidClub.transactionHash},{...clubDeps,reader:clubCarrierReader(chain.publicClient,paidClub.transactionHash,clubActor.address)});
      assert.equal(bundledPayment.status,'paid');assert.equal(bundledPayment.receipt.recipient,safeAddress);assert.equal(bundledPayment.receipt.amountWei,clubrow.amount.toString());
      await assert.rejects(clubDirectClaimV5(actor,approvalId,clubrow.entitlementId,creationId,{action:'receipt',hash:paidClub.transactionHash},{...clubDeps,reader:clubCarrierReader(chain.publicClient,paidClub.transactionHash,wrong.address)}));

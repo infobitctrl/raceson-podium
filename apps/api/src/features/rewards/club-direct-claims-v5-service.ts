@@ -3,7 +3,7 @@ import {clubApprovalExpiry} from './club-approval-lifetime.js';
 import {clubOwnersHashV1,encodeWalletRegistrationV2,verifyWalletBindingProofV2,type WalletBindingV2,type ClubClaimV6} from '@raceson/rewards-chain/club-signatures-v6';
 import {clubDirectClaimFactsV5,type RewardAccountIdentity,type RewardLedgerRpc} from '@raceson/db/rewards';
 import {verifyRewardWalletControl} from '@raceson/rewards-chain';
-import {observeSponsorDirectClaimV5,verifySponsorDirectReceiptV5,verifyClubRegistrationReceiptV6,verifyWalletBindingProofV1,encodeRegisterAndClaimV5,
+import {observeSponsorDirectClaimV5,verifySponsorDirectReceiptWithViewV5,verifyClubRegistrationReceiptWithViewV6,verifyWalletBindingProofV1,encodeRegisterAndClaimV5,
  encodeSponsorDirectClaimV5,type WalletRegistryContextV1,type WalletBindingV1} from '@raceson/rewards-chain/sponsor-direct-claims-v5';
 import {observeDirectClubTreasuryV5} from '@raceson/rewards-chain/sponsor-club-direct-v5';
 import {rewardClubSafeTestnetDependencies,type RewardClubSafeDeploymentReader} from '@raceson/rewards-chain';
@@ -24,9 +24,12 @@ export async function buildClubDirectClaimV5(actor:RewardAccountIdentity,approva
   factoryAddress:rewardClubSafeTestnetDependencies.factoryAddress,deploymentTransactionHash:facts.treasury.deploymentTransactionHash as Hex,initializationSaltNonce:BigInt('0x'+facts.treasury.creationId.replaceAll('-',''))+1n};
  // Both depend on the authenticated facts, not each other. Keep every final
  // authority, nonce and checkpoint recheck below after these initial reads.
- const [safe,initialObservation]=await Promise.all([
+ const receiptCheck=command?.action==='receipt'?verifySponsorDirectReceiptWithViewV5(deps.reader,facts.scope,command.hash,treasury):null;
+ const registrationCheck=command?.action==='registrationReceipt'?verifyClubRegistrationReceiptWithViewV6(deps.reader,facts.scope,command.hash,treasury):null;
+ const [safe,initialObservation,verified,registration]=await Promise.all([
   observeDirectClubTreasuryV5(deps.reader,treasury),
-  observeSponsorDirectClaimV5(deps.reader,facts.scope),
+  receiptCheck?receiptCheck.then(result=>result.view):registrationCheck?registrationCheck.then(result=>result.view):observeSponsorDirectClaimV5(deps.reader,facts.scope),
+  receiptCheck,registrationCheck,
  ]);
  let observed=initialObservation;
  let clubClaim:ClubClaimV6|null=null,registrationReceipt:null|{transactionHash:Hex;blockNumber:string;blockHash:Hex}=null;
@@ -35,10 +38,9 @@ export async function buildClubDirectClaimV5(actor:RewardAccountIdentity,approva
  if(v6&&observed.registeredAddress===facts.treasury.safeAddress)check(observed.clubOwnersHash===ownersHash,'reward_sponsor_claim_conflict');
  let transaction:null|{chainId:10143;from:string;to:string;data:Hex;value:'0';binding:Record<string,unknown>|null;identityProof:Hex|null}=null;
  if(command?.action==='registrationReceipt'){
-  check(v6);registrationReceipt=await verifyClubRegistrationReceiptV6(deps.reader,facts.scope,command.hash,treasury);
+  check(v6);registrationReceipt=registration!.receipt;
  }else if(command?.action==='receipt'){
-  const receipt=await verifySponsorDirectReceiptV5(deps.reader,facts.scope,command.hash,treasury);
-  facts=await clubDirectClaimFactsV5(identity,approvalId,entitlementId,creationId,deps.rpc,{receipt});
+  facts=await clubDirectClaimFactsV5(identity,approvalId,entitlementId,creationId,deps.rpc,{receipt:verified!.receipt});
  }else if(command?.action==='prepare'){
   check(!observed.paid&&observed.state===3&&!observed.paused&&BigInt(observed.observation.blockTimestamp)<BigInt(observed.deadline),'reward_sponsor_claim_not_ready');
   const challenge=facts.challenge;check(challenge?.proof,'reward_destination_proof_required');

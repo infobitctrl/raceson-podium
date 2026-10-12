@@ -71,6 +71,7 @@ function runtime(build: {runtimeBytes: number; runtimeTemplateHash: Hex; offsets
 const word = (v: bigint | number | string): Hex => typeof v === "string" ? padHex(v as Hex) : toHex(v, {size: 32});
 const same = (a: string | null | undefined, b: string) => a?.toLowerCase() === b.toLowerCase();
 export type SponsorChainReader = Pick<PublicClient, "getChainId" | "getBlock" | "getTransaction" | "getTransactionReceipt" | "getCode" | "readContract" | "getBalance">;
+export {createPublicDirectoryReader} from './public-directory-reader.js';
 export type SponsorPotObservation = {slot: number; address: string; amountWei: string; state: number; paused: boolean;
   allocatedWei: string; paidWei: string; returnedWei: string; remainingWei: string; claimDeadline: string; entitlementCount: string};
 export type SponsorChainObservation = {address: string; deploymentHash: string; funded: boolean; cancelled: boolean; fundingHash: string | null;

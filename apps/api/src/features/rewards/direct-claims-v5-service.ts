@@ -2,7 +2,7 @@ import {directIdentityIssuerFromEnv} from './direct-claims-privy.js';
 import {encodeRegisterAndClaimV6,verifyWalletBindingProofV2,type WalletBindingV2} from '@raceson/rewards-chain/club-signatures-v6';
 import {directClaimFactsV5,type RewardAccountIdentity,type RewardLedgerRpc} from '@raceson/db/rewards';
 import {verifyRewardWalletControl} from '@raceson/rewards-chain';
-import {observeSponsorDirectClaimV5,verifySponsorDirectReceiptV5,verifyWalletBindingProofV1,encodeRegisterAndClaimV5,
+import {observeSponsorDirectClaimV5,verifySponsorDirectReceiptWithViewV5,verifyWalletBindingProofV1,encodeRegisterAndClaimV5,
  encodeSponsorDirectClaimV5,type WalletRegistryContextV1,type WalletBindingV1} from '@raceson/rewards-chain/sponsor-direct-claims-v5';
 import type {SponsorChainReader} from '@raceson/rewards-chain/sponsor-v4';
 import type {Address,Hex} from 'viem';
@@ -15,11 +15,12 @@ export async function directClaimV5(actor:RewardAccountIdentity,approvalId:strin
  deps:{rpc:RewardLedgerRpc;reader:SponsorChainReader;issuer:IdentityBindingIssuerV1|null;issuerV2?:IdentityBindingIssuerV1|null}){
  const identity={...actor};
  const read=()=>directClaimFactsV5(identity,approvalId,entitlementId,deps.rpc,command?.action==='prepare'?{proofId:command.proofId}:{});
- let facts=await read();let observed=await observeSponsorDirectClaimV5(deps.reader,facts.scope);
+ let facts=await read();
+ const verified=command?.action==='receipt'?await verifySponsorDirectReceiptWithViewV5(deps.reader,facts.scope,command.hash):null;
+ let observed=verified?.view??await observeSponsorDirectClaimV5(deps.reader,facts.scope);
  let transaction:null|{chainId:10143;from:string;to:string;data:Hex;value:'0';binding:Record<string,unknown>|null;identityProof:Hex|null}=null;
  if(command?.action==='receipt'){
-  const receipt=await verifySponsorDirectReceiptV5(deps.reader,facts.scope,command.hash);
-  facts=await directClaimFactsV5(identity,approvalId,entitlementId,deps.rpc,{receipt});
+  facts=await directClaimFactsV5(identity,approvalId,entitlementId,deps.rpc,{receipt:verified!.receipt});
  }else if(command?.action==='prepare'){
   check(!observed.paid&&observed.state===3&&!observed.paused&&BigInt(observed.observation.blockTimestamp)<BigInt(observed.deadline),'reward_sponsor_claim_not_ready');
   const challenge=facts.challenge;check(challenge?.proof,'reward_destination_proof_required');

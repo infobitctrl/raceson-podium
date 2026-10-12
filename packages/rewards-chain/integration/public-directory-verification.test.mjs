@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createPublicClient,encodeDeployData,http} from 'viem';
 import {startOwnedRewardChain,fixtureSigner} from './owned-chain.mjs';
 import {controllerReadBatch,publicDirectoryRpcBatch} from '../dist/canary-public-client.js';
-import {observePublicSponsorProgramme,sponsorFactoryData,sponsorFactoryProgrammeAddress,sponsorFundingData} from '../dist/sponsor-v4.js';
+import {createPublicDirectoryReader,observePublicSponsorProgramme,sponsorFactoryData,sponsorFactoryProgrammeAddress,sponsorFundingData} from '../dist/sponsor-v4.js';
 import {sponsorFactoryBuildV5,walletRegistryBuildV1} from '../dist/sponsor-v5-build.js';
 const artifact=name=>JSON.parse(readFileSync(new URL(`../../../contracts/out/${name}.sol/${name}.json`,import.meta.url)));
 
@@ -36,34 +36,43 @@ test('15 independently funded programmes retain exact full observations with les
   }
   await chain.testClient.mine({blocks:96,interval:1});
   const endpoint=chain.publicClient.transport.url;assert.match(endpoint,/^http:\/\/127\.0\.0\.1:\d+$/);
-  async function measure(workers){
+  async function measure(candidate){
    const requests={};let httpRequests=0,maxBatch=0,tail=Promise.resolve(),next=0;
    const reader=createPublicClient({chain:chain.publicClient.chain,cacheTime:0,batch:controllerReadBatch,
-    transport:http(endpoint,{retryCount:0,batch:publicDirectoryRpcBatch,onFetchRequest:async request=>{
+    transport:http(endpoint,{retryCount:0,batch:candidate?publicDirectoryRpcBatch:{batchSize:4,wait:0},onFetchRequest:async request=>{
      const body=await request.clone().json(),calls=Array.isArray(body)?body:[body];httpRequests++;maxBatch=Math.max(maxBatch,calls.length);
      for(const {method} of calls)requests[method]=(requests[method]??0)+1;
      // A 20 ms start interval keeps CI short; the live transport remains 200 ms.
      const turn=tail.then(async()=>{const wait=next-performance.now();if(wait>0)await new Promise(r=>setTimeout(r,wait));next=performance.now()+20;});
      tail=turn.catch(()=>{});await turn;
     }})});
-   const observe=(plan,deployment,funding)=>observePublicSponsorProgramme(reader,plan,deployment,funding);
+   const selected=candidate?createPublicDirectoryReader(reader):reader;
+   const observe=(plan,deployment,funding)=>observePublicSponsorProgramme(selected,plan,deployment,funding);
    let nextIndex=0;const results=Array(records.length),start=performance.now();
-   await Promise.all(Array.from({length:workers},async()=>{while(nextIndex<records.length){const i=nextIndex++,r=records[i];results[i]=await observe(r.plan,r.deploymentHash,r.fundingHash);}}));
+   await Promise.all(Array.from({length:16},async()=>{while(nextIndex<records.length){const i=nextIndex++,r=records[i];results[i]=await observe(r.plan,r.deploymentHash,r.fundingHash);}}));
    return {results,requests,httpRequests,maxBatch,total:Object.values(requests).reduce((a,b)=>a+b,0),milliseconds:Math.round(performance.now()-start)};
   }
-  // Compare against the deployed four-worker/four-read configuration. More
+  // Compare against the deployed sixteen-worker/four-read configuration. More
   // observers may fill batches, but must never increase the transport rate.
-  const before=await measure(4),after=await measure(16);
+  const before=await measure(false),after=await measure(true);
   console.log(JSON.stringify({directoryCampaigns:15,pots:65,modelStartIntervalMs:20,
    before:{requests:before.requests,httpRequests:before.httpRequests,total:before.total,milliseconds:before.milliseconds},
    after:{requests:after.requests,httpRequests:after.httpRequests,total:after.total,milliseconds:after.milliseconds}}));
   assert.deepEqual(after.results,before.results);
   assert.equal(after.results.length,15);assert.equal(after.results.flatMap(r=>r.pots).length,65);
   assert.ok(after.httpRequests<before.httpRequests*0.85,'directory must reduce network requests, not just hide loading');
-  assert.equal(after.maxBatch,4);assert.equal(before.maxBatch,4);
+  assert.equal(after.maxBatch,8);assert.equal(before.maxBatch,4);
   assert.equal(after.requests.eth_getTransactionByHash,before.requests.eth_getTransactionByHash);
   assert.equal(after.requests.eth_getTransactionReceipt,before.requests.eth_getTransactionReceipt);
   assert.equal(after.requests.eth_getBalance,before.requests.eth_getBalance);
+
+  // Sharing the initial header must never hide a changed canonical anchor.
+  const anchor=await chain.publicClient.getBlock({blockTag:'finalized'}),record=records[0];
+  const reorganized=createPublicDirectoryReader({...chain.publicClient,getBlock:async args=>{
+   const block=await chain.publicClient.getBlock(args);
+   return args?.blockNumber===anchor.number?{...block,hash:'0x'+'ff'.repeat(32)}:block;
+  }});
+  await assert.rejects(observePublicSponsorProgramme(reorganized,record.plan,record.deploymentHash,record.fundingHash));
 
  }finally{await chain.stop();}
 });

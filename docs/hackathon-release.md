@@ -18,8 +18,10 @@ hackathon source; it is not a mainnet or real-funds release.
   view now returns its existing empty history state directly because the separate
   platform's history API/view is unavailable in this demo.
 
-The final patch changes no wallet, consent, payment, contract, database or provider
-configuration. The hosted history guard starts zero API/database reads; regression
+The performance follow-up removes duplicate receipt observations, shares one
+finalized snapshot per directory refresh and fills larger bounded read batches.
+Wallet, consent and payment rules, contracts, database and provider configuration
+are unchanged. The hosted history guard starts zero API/database reads; regression
 tests also retain the ordinary and local-demo history paths.
 
 ## Verification and security
@@ -43,7 +45,17 @@ formal verification or guarantee against unknown vulnerabilities. Public contrac
 state, addresses, amounts and transactions remain public blockchain information;
 account mappings, consent, credentials and signing journals remain private.
 
-## Measured performance
+## Verification performance follow-up
+
+The original full live check varied with provider and shared-queue load. Three
+fresh baseline samples took 25.480–32.204 seconds; earlier samples reached
+51.085 seconds. Controlled tests reduced complete directory verification from
+20.023 to 11.569 seconds and an already-finalized receipt check from 11.726 to
+7.168 seconds. Complete results and receipt validation remain equal. See
+[the detailed measurements and limits](release-readiness.md) and the versioned
+GitHub release for hosted results.
+
+## Earlier measured performance
 
 Earlier 12 October releases measured the following changes. These measurements
 retain their original scope; they are not new full-page benchmarks for this tag.

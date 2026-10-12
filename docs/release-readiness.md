@@ -1,3 +1,46 @@
+## Verification and receipt performance follow-up — 12 October 2026
+
+Baseline: `877cb262dc40f7f9646abc176f5d8bffeb925f21`. Previous full
+verification samples ranged from 33.651 to 51.085 seconds; three fresh requests
+before this patch took 25.480, 25.607 and 32.204 seconds for 15 campaigns/65 pots.
+These read existing finalized state; they are not transaction-confirmation times.
+The original samples did not contain per-phase telemetry, so their exact split
+between provider latency and concurrent queue load cannot be reconstructed.
+
+Public and private checks share five HTTP starts per second. Directory envelopes
+now contain up to eight read-only RPCs, with at most 40 logical reads per second
+and a separate rolling 20-call budget for `eth_call` (private requests count
+conservatively against it). These stay below the fixed endpoint's documented
+50 RPC/s and 25 `eth_call`/s limits. The endpoint, private unbatched transport,
+FIFO order, timeouts and absence of retries remain. The limiter is process-local;
+it cannot guarantee an IP-wide quota across hosting instances.
+
+Each full directory refresh shares one finalized header and its bytecode reads.
+State and receipt queries still execute, every observer rechecks canonical blocks
+and chain identity, and nothing is reused across refreshes. The public response's
+`Server-Timing` distinguishes fresh, joined and cached work, reports initial
+loading and verification duration, and gives the longest summary-write duration.
+Cached responses report the stored refresh timings, not new chain work. No
+wallet, receipt hash, account or credential is included in these metrics.
+
+Receipt recording previously observed the campaign/award once in the service and
+again in the receipt verifier. Athlete, club-payment and club-registration paths
+now return the verifier's own checked view. All exact transaction, amount,
+recipient, nonce, event, finality and canonical-block assertions remain. Account,
+scope, treasury and Safe nonce rechecks remain; preparation and signing are unchanged.
+
+Owned-chain measurements (synthetic accounts, no hosted sends) used identical
+contracts and 200 ms HTTP pacing. For 15 programmes/65 pots with a synthetic
+150 ms response delay, complete results were equal: 93 to 54 HTTP requests and
+20.023 to 11.569 seconds. An already-finalized V6 athlete receipt required 59
+versus 32 requests and 11.726 versus 7.168 seconds. These isolate application
+verification; they are not a promised public-network latency.
+
+Regression coverage includes mixed-batch rate limits, cancellation, response
+identity/errors, read-only transport, refresh-scoped reuse, fresh canonical
+rechecks, receipt write rejection and one complete observation per receipt.
+The release's exact CI run and hosted measurements provide final validation.
+
 ## Hackathon release candidate — 12 October 2026
 
 The final review starts from `120be9c46acb2a5c67b234ea5521bf6e89d5b499`.
