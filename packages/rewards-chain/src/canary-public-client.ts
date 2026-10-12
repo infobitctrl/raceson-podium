@@ -2,8 +2,8 @@ import { createPublicClient, http } from "viem";
 import { monadTestnet } from "viem/chains";
 
 /** Pace request STARTS, including parallel observations, not responses. This is
- * process-local (not a distributed/IP-wide quota). Five per second leaves room
- * for the separate operator and demo process under the observed 15/sec endpoint.
+ * process-local (not a distributed/IP-wide quota). All clients below share five
+ * HTTP starts per second; the directory also bounds logical reads per batch.
  * No cached successes, endpoint substitution or automatic transaction retries. */
 export function createCanaryRpcPacer(): (signal?:AbortSignal) => Promise<void> {
   let tail = Promise.resolve(), nextStart = 0;
@@ -42,10 +42,12 @@ export const controllerReadBatch = {multicall:{deployless:true,batchSize:4096,wa
 export const controllerPublicClient = createPublicClient({chain:monadTestnet,cacheTime:0,batch:controllerReadBatch,transport});
 
 // Directory verification also reads bytecode, receipts and block headers
-// outside eth_call multicalls. Group at most two read-only RPCs per
-// HTTP request, using the same five-starts/second queue (at most ten RPCs/sec).
+// outside eth_call multicalls. Group at most four read-only RPCs per
+// HTTP request, using the same five-starts/second queue (at most 20 RPCs/sec).
+// This remains below the endpoint's 50 RPC/sec and 25 eth_call/sec limits:
+// https://docs.monad.xyz/developer-essentials/testnet (checked 2026-10-12).
 // Private observers retain their original unbatched transport and ordering.
-export const publicDirectoryRpcBatch = {batchSize:2,wait:0} as const;
+export const publicDirectoryRpcBatch = {batchSize:4,wait:0} as const;
 export const publicDirectoryClient = createPublicClient({chain:monadTestnet,cacheTime:0,batch:controllerReadBatch,
   transport:http("https://testnet-rpc.monad.xyz",{timeout:15000,retryCount:0,batch:publicDirectoryRpcBatch,
     methods:{include:['eth_chainId','eth_getBlockByNumber','eth_getBlockByHash','eth_getTransactionByHash','eth_getTransactionReceipt','eth_getCode','eth_call','eth_getBalance']},

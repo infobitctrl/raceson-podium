@@ -1,3 +1,26 @@
+## Faster complete public directory refresh — 12 October 2026
+
+Full directory verification groups up to four read-only RPC calls per request,
+up from two. The same queue permits five HTTP starts per second, bounding the
+process to 20 logical reads per second. This is below the selected testnet
+endpoint's documented 50 RPC/s and 25 eth_call/s limits, checked against
+[Monad network documentation](https://docs.monad.xyz/developer-essentials/testnet).
+The limit is process-local, not an account-wide or distributed quota.
+
+All observer logic is unchanged: transactions, receipts, bytecode, balances,
+accounting and finalized-block checks still run. The private transport, wallet,
+consent and payment flows, failure deadline and dated fallback remain unchanged.
+No provider key, retry, dependency or new cache is introduced.
+
+On an owned disposable chain, 15 funded programmes with 65 pots produce identical
+complete observations. Compared with the deployed two-read transport, HTTP
+requests fall from 201 to 117 (41.8% fewer); a synthetic 20 ms request-start
+interval completes in 4.229 versus 2.524 seconds. The deployed interval remains
+200 ms. Hosted performance still depends on provider latency and is measured
+separately during release verification. Tests cover reversed response ordering,
+partial-batch errors, short batches, the logical-read ceiling, fresh reads and
+unchanged private request pacing.
+
 ## Saved public campaign card summaries — 12 October 2026
 
 Campaign cards preload the latest saved, fully verified public amounts and status.

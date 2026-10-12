@@ -38,7 +38,7 @@ test('expired queued requests reject immediately and do not delay live requests 
  const live=performance.now();await pace();assert.ok(performance.now()-live>=199,'live request pacing changed');
 });
 
-test('public directory batches at most two exact read RPCs and shares pacing with unbatched private reads',async()=>{
+test('public directory batches at most four exact read RPCs and shares pacing with unbatched private reads',async()=>{
  const {publicDirectoryClient}=await import('../dist/canary-public-client.js');
  const original=globalThis.fetch,calls=[];
  globalThis.fetch=async(url,init)=>{
@@ -49,20 +49,43 @@ test('public directory batches at most two exact read RPCs and shares pacing wit
   return new Response(JSON.stringify(Array.isArray(body)?replies:replies[0]),{headers:{'Content-Type':'application/json'}});
  };
  try{
-  const addresses=Array.from({length:8},(_,i)=>'0x'+String(i+1).padStart(40,'0'));
+  const addresses=Array.from({length:26},(_,i)=>'0x'+String(i+1).padStart(40,'0'));
   const reads=addresses.map(address=>publicDirectoryClient.getCode({address,blockNumber:120n}));
   const privateRead=controllerPublicClient.getChainId();
   assert.deepEqual(await Promise.all(reads),addresses,'reordered batch replies must retain their request identity');
   assert.equal(await privateRead,10143);
-  const batches=calls.filter(c=>Array.isArray(c.body));assert.equal(batches.length,4);
-  assert.ok(batches.every(c=>c.body.length===2));
+  const batches=calls.filter(c=>Array.isArray(c.body));assert.equal(batches.length,7);
+  assert.deepEqual(batches.map(c=>c.body.length),[4,4,4,4,4,4,2],'a short final batch must not wait for more reads');
   assert.deepEqual(batches.flatMap(c=>c.body.map(b=>b.params)).sort(),addresses.map(a=>[a,'0x78']).sort());
   assert.equal(calls.filter(c=>!Array.isArray(c.body)).length,1,'private transport stays unbatched');
   for(let i=1;i<calls.length;i++)assert.ok(calls[i].time-calls[i-1].time>=190,'directory bypassed shared pacing');
+  for(const start of calls){
+   const window=calls.filter(c=>c.time>=start.time&&c.time<start.time+990);
+   assert.ok(window.reduce((n,c)=>n+(Array.isArray(c.body)?c.body.length:1),0)<=20,'logical read limit exceeded');
+  }
   assert.equal(publicDirectoryClient.cacheTime,0);
   const before=calls.length;
   await assert.rejects(publicDirectoryClient.request({method:'eth_sendRawTransaction',params:['0x00']}));
   assert.equal(calls.length,before,'read-only directory transport cannot send transactions');
+ }finally{globalThis.fetch=original;}
+});
+
+test('a failed read in a reordered four-item batch stays attached to its caller without retry',async()=>{
+ const {publicDirectoryClient}=await import('../dist/canary-public-client.js');
+ const original=globalThis.fetch;let calls=0;
+ const addresses=Array.from({length:4},(_,i)=>'0x'+String(i+1).padStart(40,'0'));
+ globalThis.fetch=async(_url,init)=>{
+  calls++;const body=JSON.parse(init.body);assert.equal(body.length,4);
+  return new Response(JSON.stringify(body.map(item=>({jsonrpc:'2.0',id:item.id,
+   ...(item.params[0]===addresses[1]?{error:{code:-32011,message:'synthetic_provider_limit'}}:{result:item.params[0]})
+  })).reverse()),{headers:{'Content-Type':'application/json'}});
+ };
+ try{
+  const result=await Promise.allSettled(addresses.map(address=>publicDirectoryClient.getCode({address,blockNumber:120n})));
+  assert.deepEqual(result.map(r=>r.status),['fulfilled','rejected','fulfilled','fulfilled']);
+  for(const i of [0,2,3])assert.equal(result[i].value,addresses[i]);
+  assert.match(result[1].reason.message,/synthetic_provider_limit/);
+  assert.equal(calls,1,'a failed batch member must not retry successful or failed reads');
  }finally{globalThis.fetch=original;}
 });
 
