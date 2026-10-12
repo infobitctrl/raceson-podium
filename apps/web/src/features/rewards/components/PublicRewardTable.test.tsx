@@ -122,6 +122,27 @@ it('defaults to ascending position and combines exact category filters with sear
  expect(within(club).getAllByRole('rowheader')).toHaveLength(3);expect(api).toHaveBeenCalledOnce();
 });
 
+it('shows one selected category and matching position for a combined athlete reward without splitting its total',async()=>{
+ const breakdown=[{category:'Athlete finishes',place:null,amountWei:'500000000000000'},
+  {category:'Athlete kilometres',place:null,amountWei:'500000000000000'},
+  {category:'Long · Female',place:4,amountWei:'1000000000000000'},
+  {category:'Short · Female',place:2,amountWei:'1000000000000000'}];
+ api.mockResolvedValue({...page,total:1,rows:[{...row(1,'claimed'),display:{name:'League athlete',club:null,timeMs:null},breakdown}]});
+ render(ui());const table=await screen.findByRole('table',{name:'Athlete rewards'});
+ const cells=()=>within(within(table).getAllByRole('row')[1]).getAllByRole('cell');
+ const check=(category:string,position:string)=>{
+  expect(within(table).getAllByRole('row')).toHaveLength(2);
+  expect(cells()[1].textContent).toBe(category);expect(cells()[2].textContent).toBe(position);
+  expect(cells()[5]).toHaveTextContent('0.003 test MON');expect(cells()[6]).toHaveTextContent('Claimed');
+ };
+ check('Long · Female','4');
+ const filters=screen.getByRole('group',{name:'Athlete rewards · Category filters'});
+ fireEvent.click(within(filters).getByRole('button',{name:'Short · Female',exact:true}));check('Short · Female','2');
+ fireEvent.click(within(filters).getByRole('button',{name:'Athlete finishes',exact:true}));check('Athlete finishes','—');
+ fireEvent.click(within(filters).getByRole('button',{name:'All categories',exact:true}));check('Long · Female','4');
+ expect(api).toHaveBeenCalledOnce();expect(breakdown).toHaveLength(4);
+});
+
 it('retains the complete ledger and its verification time while refreshing and after failure',async()=>{
  api.mockResolvedValueOnce(page).mockReturnValueOnce(new Promise(()=>{})).mockRejectedValueOnce(Error('offline'));
  const view=render(ui());await screen.findByRole('table',{name:'Athlete rewards'});

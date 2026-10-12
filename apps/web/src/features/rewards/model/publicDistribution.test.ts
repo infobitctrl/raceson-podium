@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {publicDistributionTree,publicTrackGroups,sortPublicRewards,publicFinishTime} from './publicDistribution';
+import {publicDistributionTree,publicTrackGroups,sortPublicRewards,publicFinishTime,publicRewardCategory} from './publicDistribution';
 import type {PublicRewardPage,PublicSponsorCampaign} from '@raceson/domain/rewards/public-campaign';
 const pot={slot:3,name:'Round 3',amountWei:'100',groups:[{name:'Long · Female',amountWei:'40'},{name:'Short · Male',amountWei:'40'},{name:'Combined clubs',amountWei:'20'}]} as PublicSponsorCampaign['pots'][number];
 const campaign={budgetWei:'100',pots:[pot]} as PublicSponsorCampaign;
@@ -59,5 +59,16 @@ it('sorts aggregated rewards by the selected category position without changing 
  const original=structuredClone(rows);
  expect(sortPublicRewards(rows,'position',false,false,'Short · Male').map(r=>r.id)).toEqual(['second','opaque','unknown']);
  expect(sortPublicRewards(rows,'position',true,false,'Short · Male').map(r=>r.id)).toEqual(['opaque','second','unknown']);
+ expect(rows).toEqual(original);
+});
+
+it('sorts athlete categories by the single visible contribution and preserves unranked fallbacks',()=>{
+ const participation={category:'Athlete finishes',place:null,amountWei:'20'};
+ const rows=[{...row,breakdown:[participation,{category:'Short · Female',place:4,amountWei:'40'}]},
+  {...row,id:'second',number:2,breakdown:[participation,{category:'Long · Female',place:2,amountWei:'40'}]}];
+ const original=structuredClone(rows);
+ expect(sortPublicRewards(rows,'reward',false).map(r=>r.id)).toEqual(['second','opaque']);
+ expect(publicRewardCategory({...row,breakdown:[participation]})).toEqual(participation);
+ expect(publicRewardCategory({...row,breakdown:undefined})).toBeUndefined();
  expect(rows).toEqual(original);
 });
