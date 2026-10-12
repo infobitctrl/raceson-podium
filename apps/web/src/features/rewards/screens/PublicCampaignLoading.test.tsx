@@ -32,7 +32,7 @@ it('renders budgets early, reuses verification, and immediately restores a visit
   choose(/Round 1/);
   expect(screen.getByText('Round athlete')).toBeVisible();
   expect(screen.queryByText('League athlete')).not.toBeInTheDocument();
-  expect(screen.getByRole('button', {name: '#1 · Winner 1, 0.00000000000000005 test MON, Unclaimed'})).toBeVisible();
+  expect(screen.getByRole('button', {name: '#1 · Winner 1, 0 test MON, Unclaimed'})).toBeVisible();
   expect(api.rewards.mock.calls[2][6]).toBeUndefined();
   expect(screen.getByText('Checking reward status…')).toBeVisible();
   await act(async () => reject());
