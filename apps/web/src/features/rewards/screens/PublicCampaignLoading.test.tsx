@@ -1,6 +1,6 @@
 import {act, fireEvent, render, screen, within} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
-import {expect, it, vi} from 'vitest';
+import {afterEach, expect, it, vi} from 'vitest';
 import type {ReactNode} from 'react';
 import type {PublicSponsorCampaign as Campaign, PublicRewardPage} from '@raceson/domain/rewards/public-campaign';
 import {I18nProvider} from '@/shared/i18n/I18nProvider';
@@ -13,7 +13,9 @@ const pot = (slot: number) => ({slot, name: slot ? 'Round 1' : 'League', amountW
 const campaign: Campaign = {id: 'campaign', name: 'Synthetic league', chainId: 31337, budgetWei: '100', address: '0x'+'11'.repeat(20), fundingHash: '0x'+'aa'.repeat(32), blockNumber: '100', blockTimestamp: '1800000000', pots: [pot(0), pot(1)]};
 function page(slot: number, blockNumber = '100'): PublicRewardPage {return {campaignId: campaign.id, chainId: 31337, slot, offset: 0, sort: 'reward', direction: 'asc', total: 1, availability: 'open', blockNumber, blockTimestamp: '1800000000', rows: [{id: '0x'+String(slot+1).repeat(64), number: 1, kind: 'athlete', amountWei: '50', status: 'unclaimed', display: {name: slot ? 'Round athlete' : 'League athlete', club: null, timeMs: null}, breakdown: [{category: 'Open', place: 1, amountWei: '50'}]}]};}
 const ui = <I18nProvider initialLocale="en"><MemoryRouter initialEntries={['/rewards/campaigns/campaign/public?pot=1']}><Routes><Route path="/rewards/campaigns/:id/public" element={<PublicSponsorCampaign/>}/></Routes></MemoryRouter></I18nProvider>;
+afterEach(() => vi.restoreAllMocks());
 it('renders budgets early, reuses verification, and immediately restores a visited round through refresh and retry', async () => {
+  const now = vi.spyOn(Date, 'now').mockReturnValue(100_000);
   let finish!: (value: Campaign) => void;
   api.live.mockReturnValueOnce(new Promise(resolve => {finish = resolve;}));
   api.snapshot.mockResolvedValue({campaign, selection: null, publishedAt: '2026-10-11T00:00:00Z'});
@@ -27,6 +29,14 @@ it('renders budgets early, reuses verification, and immediately restores a visit
   expect(api.rewards.mock.calls[0][6]).toBe('100');
   const choose = (name: RegExp) => fireEvent.click(within(screen.getByRole('group', {name: 'Prize pots'})).getByRole('button', {name}));
   choose(/League/); expect(await screen.findByText('League athlete')).toBeVisible();
+  expect(api.rewards).toHaveBeenCalledTimes(2);
+  await act(async () => choose(/Round 1/));
+  expect(screen.getByText('Round athlete')).toBeVisible();
+  expect(api.rewards).toHaveBeenCalledTimes(2);
+  expect(screen.queryByText('Checking reward status…')).not.toBeInTheDocument();
+  await act(async () => choose(/League/));
+  // Revalidation starts only after the completed round snapshot ages out.
+  now.mockReturnValue(130_001);
   let reject!: () => void;
   api.rewards.mockImplementationOnce(() => new Promise((_, fail) => {reject = () => fail(Error('offline'));}));
   choose(/Round 1/);
