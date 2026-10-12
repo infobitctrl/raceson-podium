@@ -15,15 +15,26 @@ export function publicTrackGroups(groups: PublicSponsorCampaign['pots'][number][
 }
 export function publicDistributionTree(campaign: PublicSponsorCampaign, pot: PublicSponsorCampaign['pots'][number], rows: PublicRewardPage['rows'] | null, hr: boolean): DistributionNode {
   const t = (en: string, local: string) => hr ? local : en;
+  const complete = rows !== null && rows.length > 0 && rows.every(row => row.breakdown !== undefined);
+  const byCategory = new Map<string, DistributionNode[]>();
+  // Index the complete selected-pot snapshot once, rather than scanning every
+  // reward again for each category. Wallet links are shared across contributions.
+  if (complete) for (const row of rows) {
+    const walletUrl = publicRewardWalletUrl(campaign.chainId, row) ?? undefined;
+    for (const contribution of row.breakdown ?? []) {
+      const winners = byCategory.get(contribution.category) ?? [];
+      winners.push({
+        id: row.id, label: `${contribution.place ? `#${contribution.place} · ` : ''}${row.display?.name ?? `${row.kind === 'club' ? t('Club', 'Klub') : t('Winner', 'Dobitnik')} ${row.number}`}`,
+        amountWei: BigInt(contribution.amountWei), level: 'winner', status: row.status, reference: row.id, rank: contribution.place, children: [], walletUrl,
+      });
+      byCategory.set(contribution.category, winners);
+    }
+  }
   const trackNodes = (p: typeof pot): DistributionNode[] => publicTrackGroups(p.groups).map((track, ti) => ({
     id: `pot-${p.slot}-track-${ti}`, label: track.label, amountWei: track.amountWei, level: 'allocation', children: track.groups.map((g, gi) => {
       const id = `pot-${p.slot}-track-${ti}-category-${gi}`;
-      const known = p.slot === pot.slot && rows !== null && rows.length > 0 && rows.every(r => r.breakdown !== undefined);
-      const winners: DistributionNode[] = known ? rows.flatMap(row => (row.breakdown ?? []).filter(b => b.category === g.name).map(b => ({
-        id: `${id}-${row.id}`, label: `${b.place ? `#${b.place} · ` : ''}${row.display?.name ?? `${row.kind === 'club' ? t('Club', 'Klub') : t('Winner', 'Dobitnik')} ${row.number}`}`,
-        amountWei: BigInt(b.amountWei), level: 'winner' as const, status: row.status, reference: row.id, rank:b.place, children: [],
-        walletUrl: publicRewardWalletUrl(campaign.chainId, row) ?? undefined,
-      }))) : [];
+      const known = p.slot === pot.slot && complete;
+      const winners: DistributionNode[] = known ? (byCategory.get(g.name) ?? []).map(winner => ({...winner, id: `${id}-${winner.id}`})) : [];
       winners.sort((a,b)=>(a.rank??Infinity)-(b.rank??Infinity)||a.id.localeCompare(b.id));
       const awarded = winners.reduce((n, w) => n + w.amountWei, 0n), budget = BigInt(g.amountWei);
       // Preserve funds without a winning allocation; they are neither unpaid awards nor returned money.

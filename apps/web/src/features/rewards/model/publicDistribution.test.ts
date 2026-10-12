@@ -72,3 +72,29 @@ it('sorts athlete categories by the single visible contribution and preserves un
  expect(publicRewardCategory({...row,breakdown:undefined})).toBeUndefined();
  expect(rows).toEqual(original);
 });
+
+it('indexes a large multi-category snapshot without leaking winners into another pot or mutating rows',()=>{
+ const groups=Array.from({length:50},(_,i)=>({name:`Track · Category ${i}`,amountWei:'1000'}));
+ const selected={...pot,groups,amountWei:'50000'};
+ const rows=Array.from({length:1000},(_,i)=>({...row,id:`winner-${i}`,number:i+1,amountWei:'3',breakdown:[
+  {category:groups[i%50]!.name,amountWei:'1',place:Math.floor(i/50)+1},
+  {category:groups[(i+1)%50]!.name,amountWei:'2',place:Math.floor(i/50)+1},
+ ]}));
+ const original=structuredClone(rows);
+ const other={...selected,slot:0};
+ const tree=publicDistributionTree({...campaign,pots:[other,selected],budgetWei:'100000'},selected,rows,false);
+ const categories=tree.children[1]!.children[0]!.children;
+ expect(categories).toHaveLength(50);
+ for(const category of categories){
+  const winners=category.children.filter(n=>n.level==='winner');
+  expect(winners).toHaveLength(40);
+  expect(new Set(winners.map(n=>n.id)).size).toBe(40);
+  expect(winners.reduce((sum,n)=>sum+n.amountWei,0n)).toBe(60n);
+  expect(winners.map(n=>n.rank)).toEqual(Array.from({length:40},(_,i)=>Math.floor(i/2)+1));
+  expect(category.children.at(-1)).toMatchObject({level:'reserve',amountWei:940n});
+ }
+ expect(tree.children[0]!.children[0]!.children.every(n=>n.children.length===0)).toBe(true);
+ expect(rows).toEqual(original);
+ const incomplete=publicDistributionTree({...campaign,pots:[selected]},selected,[...rows,{...row,breakdown:undefined}],false);
+ expect(incomplete.children[0]!.children.every(n=>n.children.length===0)).toBe(true);
+});

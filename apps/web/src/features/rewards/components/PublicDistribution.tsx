@@ -84,13 +84,14 @@ const DistributionDiagram = memo(function DistributionDiagram({graph, path, sele
             {graph.nodes.filter(entry => entry.parentId).map(entry => {const parent=positions.get(entry.parentId!)!;return <path key={entry.node.id} className={s.connector} data-active={path.includes(entry.node.id)} d={`M${parent.x} ${parent.y} L${entry.x} ${entry.y}`}/>;})}
             {graph.nodes.map(entry => {
               const child=entry.node, root=entry.depth===0, selected=child.id===selectedId;
+              const formattedAmount=amount(child), statusLabel=state(child);
               const label=<text className={root?s.centerLabel:s.nodeLabel} y={root?-23:-14} textLength={!root&&child.label.length>11?entry.radius*1.72:undefined} lengthAdjust="spacingAndGlyphs">{child.label.length>18?child.label.slice(0,16)+'…':child.label}</text>;
               return <g key={child.id} className={root?s.center:s.node} data-selected={selected} data-status={child.status ?? child.level} data-depth={entry.depth} transform={`translate(${entry.x} ${entry.y})`}>
-                <g role="button" tabIndex={0} aria-pressed={selected} data-status={child.status ?? child.level} aria-label={`${child.label}, ${amount(child)} test MON, ${state(child)}`} onClick={() => root?back(0):open(child,entry.path)} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();if(root)back(0);else open(child,entry.path);}}}>
-                  <title>{`${child.label} · ${amount(child)} test MON · ${state(child)}`}</title>
+                <g role="button" tabIndex={0} aria-pressed={selected} data-status={child.status ?? child.level} aria-label={`${child.label}, ${formattedAmount} test MON, ${statusLabel}`} onClick={() => root?back(0):open(child,entry.path)} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();if(root)back(0);else open(child,entry.path);}}}>
+                  <title>{`${child.label} · ${formattedAmount} test MON · ${statusLabel}`}</title>
                   <circle r={entry.radius}/>
                   {child.walletUrl?null:label}
-                  <text className={root?s.centerAmount:s.nodeAmount} y={root?10:7} textLength={amount(child).length>7?entry.radius*1.65:undefined} lengthAdjust="spacingAndGlyphs">{amount(child)}</text>
+                  <text className={root?s.centerAmount:s.nodeAmount} y={root?10:7} textLength={formattedAmount.length>7?entry.radius*1.65:undefined} lengthAdjust="spacingAndGlyphs">{formattedAmount}</text>
                   <text className={root?s.centerUnit:s.unit} y={root?29:21}>test MON</text>
                   {child.status==='claimed'?<text className={s.statusMark} x={entry.radius*.75} y={-entry.radius*.6}>✓</text>:child.status==='unclaimed'?<text className={s.statusMark} x={entry.radius*.75} y={-entry.radius*.6}>○</text>:null}
                   {child.children.length && entry.depth>=maxDepth?<text className={s.expand} x={entry.radius*.75} y={-entry.radius*.6}>+</text>:null}

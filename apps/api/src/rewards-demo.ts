@@ -107,7 +107,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
     resolveRpc:(identity?:import('@raceson/db/rewards').RewardAccountIdentity)=>hostedCopyBrandingRpc((name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args),identity),
   }: {})})) return true;
   if (await dispatchPublicDirectory(req,res,url,{...deps,...copiedPublic,awaitRefresh:hostedCopyOperationsEnabled(process.env,boundary.env),summaryCache:hostedPublicDirectoryCache(process.env),sponsorReader:config?.chainId===10143?publicDirectoryClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
-  if (await dispatchPublicCampaign(req,res,url,{...deps,...copiedPublic,sponsorReader:config?.chainId===10143?controllerPublicClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
+  if (await dispatchPublicCampaign(req,res,url,{...deps,...copiedPublic,sponsorReader:config?.chainId===10143?publicDirectoryClient:config?.chainId===31337?programmeLocalReader:undefined})) return true;
   if (await dispatchSetupEvents(req, res, url, deps)) return true;
   if (await dispatchSponsorSourceV4(req, res, url, deps)) return true;
   if (await dispatchSponsorClubClaimsV4(req, res, url, {...deps, sponsorReader: config?.chainId === 10143 ? canaryPublicClient : config?.chainId === 31337 ? programmeLocalReader : undefined})) return true;
