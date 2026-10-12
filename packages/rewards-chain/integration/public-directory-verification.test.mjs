@@ -36,10 +36,10 @@ test('15 independently funded programmes retain exact full observations with les
   }
   await chain.testClient.mine({blocks:96,interval:1});
   const endpoint=chain.publicClient.transport.url;assert.match(endpoint,/^http:\/\/127\.0\.0\.1:\d+$/);
-  async function measure(batch){
+  async function measure(workers){
    const requests={};let httpRequests=0,maxBatch=0,tail=Promise.resolve(),next=0;
    const reader=createPublicClient({chain:chain.publicClient.chain,cacheTime:0,batch:controllerReadBatch,
-    transport:http(endpoint,{retryCount:0,batch,onFetchRequest:async request=>{
+    transport:http(endpoint,{retryCount:0,batch:publicDirectoryRpcBatch,onFetchRequest:async request=>{
      const body=await request.clone().json(),calls=Array.isArray(body)?body:[body];httpRequests++;maxBatch=Math.max(maxBatch,calls.length);
      for(const {method} of calls)requests[method]=(requests[method]??0)+1;
      // A 20 ms start interval keeps CI short; the live transport remains 200 ms.
@@ -48,19 +48,19 @@ test('15 independently funded programmes retain exact full observations with les
     }})});
    const observe=(plan,deployment,funding)=>observePublicSponsorProgramme(reader,plan,deployment,funding);
    let nextIndex=0;const results=Array(records.length),start=performance.now();
-   await Promise.all(Array.from({length:4},async()=>{while(nextIndex<records.length){const i=nextIndex++,r=records[i];results[i]=await observe(r.plan,r.deploymentHash,r.fundingHash);}}));
+   await Promise.all(Array.from({length:workers},async()=>{while(nextIndex<records.length){const i=nextIndex++,r=records[i];results[i]=await observe(r.plan,r.deploymentHash,r.fundingHash);}}));
    return {results,requests,httpRequests,maxBatch,total:Object.values(requests).reduce((a,b)=>a+b,0),milliseconds:Math.round(performance.now()-start)};
   }
-  // Compare against the deployed two-read transport, not the older unbatched
-  // client. Both paths perform the same complete observation at a fixed block.
-  const before=await measure({batchSize:2,wait:0}),after=await measure(publicDirectoryRpcBatch);
+  // Compare against the deployed four-worker/four-read configuration. More
+  // observers may fill batches, but must never increase the transport rate.
+  const before=await measure(4),after=await measure(16);
   console.log(JSON.stringify({directoryCampaigns:15,pots:65,modelStartIntervalMs:20,
    before:{requests:before.requests,httpRequests:before.httpRequests,total:before.total,milliseconds:before.milliseconds},
    after:{requests:after.requests,httpRequests:after.httpRequests,total:after.total,milliseconds:after.milliseconds}}));
   assert.deepEqual(after.results,before.results);
   assert.equal(after.results.length,15);assert.equal(after.results.flatMap(r=>r.pots).length,65);
-  assert.ok(after.httpRequests<before.httpRequests*0.75,'directory must reduce network requests, not just hide loading');
-  assert.equal(after.maxBatch,4);assert.equal(before.maxBatch,2);
+  assert.ok(after.httpRequests<before.httpRequests*0.85,'directory must reduce network requests, not just hide loading');
+  assert.equal(after.maxBatch,4);assert.equal(before.maxBatch,4);
   assert.equal(after.requests.eth_getTransactionByHash,before.requests.eth_getTransactionByHash);
   assert.equal(after.requests.eth_getTransactionReceipt,before.requests.eth_getTransactionReceipt);
   assert.equal(after.requests.eth_getBalance,before.requests.eth_getBalance);

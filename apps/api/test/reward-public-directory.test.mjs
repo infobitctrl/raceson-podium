@@ -140,20 +140,37 @@ test('snapshot fails closed on invalid publications and does not truncate a larg
  }
 });
 
-test('directory refresh refills four worker slots without waiting for a slow campaign',async()=>{
+test('directory refresh refills at most 16 worker slots without waiting for a slow campaign',async()=>{
  let reads=0,active=0,peak=0;const release=[];const responses=[];
- const data={...saved,items:Array.from({length:9},(_,i)=>({...saved.items[0],campaign:{...campaign,id:`73000000-0000-4000-8000-${String(i).padStart(12,'0')}`}}))};
+ const data={...saved,items:Array.from({length:33},(_,i)=>({...saved.items[0],campaign:{...campaign,id:`73000000-0000-4000-8000-${String(i).padStart(12,'0')}`}}))};
  const deps={config:()=>({chainId:10143}),rpc:async()=>({data,error:null}),awaitRefresh:true,
   sponsorReader:{getChainId:()=>{reads++;active++;peak=Math.max(peak,active);return new Promise((_,reject)=>{release.push(()=>{active--;reject(Error('offline'));});});}},
   sendSuccess:(_,data)=>responses.push(data),sendError:()=>assert.fail('unexpected failure')};
  const pending=dispatchPublicDirectory({method:'GET'},{setHeader(){}},new URL('http://local/api/v1/rewards/public-campaigns'),deps);
- const settle=()=>new Promise(resolve=>setImmediate(resolve));await settle();assert.equal(reads,4);
+ const settle=()=>new Promise(resolve=>setImmediate(resolve));await settle();assert.equal(reads,16);
  // Keep campaign zero pending. Each freed slot should start the next campaign.
- for(let i=1;i<6;i++){release[i]();await settle();assert.equal(reads,Math.min(9,4+i));}
- assert.equal(responses.length,0);assert.equal(peak,4);
- release[0]();for(let i=6;i<9;i++)release[i]();await pending;
- assert.equal(responses[0].refreshStatus,'failed');assert.equal(responses[0].items.length,9);
+ for(let i=1;i<18;i++){release[i]();await settle();assert.equal(reads,Math.min(33,16+i));}
+ assert.equal(responses.length,0);assert.equal(peak,16);
+ release[0]();for(let i=18;i<33;i++)release[i]();await pending;
+ assert.equal(responses[0].refreshStatus,'failed');assert.equal(responses[0].items.length,33);
  for(const item of responses[0].items)assert.equal(item.campaign.blockTimestamp,campaign.blockTimestamp);
+});
+
+test('a full directory stops scheduling at the deadline and cannot overlap its stalled workers',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});
+ let reads=0;const release=[],responses=[];
+ const data={...saved,items:Array.from({length:200},(_,i)=>({...saved.items[0],campaign:{...campaign,id:`73000000-0000-4000-8000-${String(i).padStart(12,'0')}`}}))};
+ const deps={config:()=>({chainId:10143}),rpc:async()=>({data,error:null}),awaitRefresh:true,
+  sponsorReader:{getChainId:()=>{reads++;return new Promise((_,reject)=>release.push(()=>reject(Error('offline'))));}},
+  sendSuccess:(_,value)=>responses.push(value),sendError:()=>assert.fail('unexpected failure')};
+ const request=()=>dispatchPublicDirectory({method:'GET'},{setHeader(){}},new URL('http://local/api/v1/rewards/public-campaigns'),deps);
+ const pending=request();await new Promise(resolve=>setImmediate(resolve));assert.equal(reads,16);
+ t.mock.timers.tick(90001);await pending;
+ assert.equal(responses[0].refreshStatus,'failed');assert.equal(responses[0].items.length,200);
+ t.mock.timers.tick(120000);await request();assert.equal(reads,16,'a second refresh must not overlap stalled work');
+ for(const reject of release)reject();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(reads,16,'expired workers must not start the remaining campaigns');
+ assert.deepEqual(responses[0].items.map(i=>i.campaign),data.items.map(i=>i.campaign));
 });
 
 test('saved summaries preload confirmed payments in a new server instance without chain reads',async()=>{

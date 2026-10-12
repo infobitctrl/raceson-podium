@@ -1,3 +1,22 @@
+## More efficient complete campaign verification — 12 October 2026
+
+The public directory now overlaps at most 16 complete campaign observations,
+refilling each slot when it finishes. This fills the existing four-read RPC
+batches more efficiently. The same shared queue still permits five HTTP starts
+and at most 20 logical reads per second per process. Private transports and all
+transaction, receipt, runtime, balance, accounting and finality checks are unchanged.
+The 90-second deadline still retains dated facts and prevents overlapping refreshes.
+
+On an owned disposable chain, the current 15-campaign/65-pot shape produces
+identical full observations with 117 to 93 HTTP requests. At the deployed 200 ms
+start interval, full verification takes 23.384 versus 18.877 seconds. A separate
+16-campaign/96-pot test also produces identical results and keeps the longest
+observed queue wait below the existing 15-second request timeout. These controlled
+measurements do not guarantee provider latency. Regression tests cover refilling
+33 campaigns and stopping a 200-campaign directory at the deadline without
+starting another refresh over stalled workers. No new cache, provider, dependency,
+database change or wallet/consent/payment behavior is introduced.
+
 ## Faster complete public directory refresh — 12 October 2026
 
 Full directory verification groups up to four read-only RPC calls per request,

@@ -44,9 +44,10 @@ async function loadPublished(chainId:10143|31337,deps:Deps,entry:Entry):Promise<
     }catch{failed=true;}
    }
   }
-  // Refill each of four slots as soon as it finishes. One slow campaign must
-  // not hold back every campaign that follows its group.
-  await Promise.all(Array.from({length:Math.min(4,saved.items.length)},worker));
+  // Overlap up to 16 complete observers to fill the existing four-read RPC
+  // batches. Transport pacing still limits starts to five HTTP requests/sec;
+  // each freed slot takes the next campaign without waiting for slower ones.
+  await Promise.all(Array.from({length:Math.min(16,saved.items.length)},worker));
   return decodePublicDirectory({...latest,refreshStatus:failed?'failed':'current'});
  }
  // A stalled provider must not leave the browser polling indefinitely. Late results
