@@ -64,7 +64,9 @@ export async function publicAwardPage(reader:SponsorChainReader,observed:Sponsor
   if(missing)check(pot.state===1&&row[0]==='0x'+'0'.repeat(64)&&row[2]==='0x'+'0'.repeat(64)&&row[3]===0n&&BigInt(row[4])===0n&&!row[6]);
   else check(row[0]===r.beneficiaryId&&row[1]===BigInt(r.amount)&&row[2]===r.explanationHash&&row[5]===r.pot&&row[7]===r.beneficiaryKind
     && (row[6]?BigInt(row[4])!==0n:BigInt(row[4])===0n));
-  return {id:r.entitlementId,number,kind:r.beneficiaryKind===0?'athlete':'club',amountWei:r.amount,status:missing?'planned':row[6]?'claimed':'unclaimed',...(r.breakdown?{breakdown:r.breakdown}: {}),...(r.display?{display:r.display}:{})};
+  // Only the finalized contract's actual paid recipient is public. Never use a
+  // saved/account wallet or infer a destination for an unpaid entitlement.
+  return {id:r.entitlementId,number,kind:r.beneficiaryKind===0?'athlete':'club',amountWei:r.amount,status:missing?'planned':row[6]?'claimed':'unclaimed',...(!missing&&row[6]?{recipientAddress:row[4]}:{}),...(r.breakdown?{breakdown:r.breakdown}: {}),...(r.display?{display:r.display}:{})};
  }));
  const after=await reader.getBlock({blockNumber:args.blockNumber});
  check(after.hash===observed.blockHash&&after.timestamp.toString()===observed.blockTimestamp&&await reader.getChainId()===scope.chainId);

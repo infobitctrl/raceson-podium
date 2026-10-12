@@ -3,6 +3,22 @@ import {it,expect} from 'vitest';
 import {DistributionExplorer} from './PublicDistribution';
 import type {DistributionNode} from '../model/publicDistribution';
 const tree:DistributionNode={id:'pool',label:'Prize pool',amountWei:10n**18n,level:'pool',children:[{id:'long',label:'Long',amountWei:10n**18n,level:'allocation',children:[{id:'female',label:'Female',amountWei:10n**18n,level:'category',children:[{id:'winner',label:'#1 · Winner 1',amountWei:10n**18n,level:'winner',status:'claimed',reference:'public-reference',children:[]}]}]}]};
+it('links the visible winner name separately from circle selection and preserves drag suppression',()=>{
+ const walletUrl='https://testnet.monadvision.com/address/0x'+'12'.repeat(20)+'?tab=Internal+Transaction';
+ const winner={...tree.children[0]!.children[0]!.children[0]!,label:'#1 · Public athlete',walletUrl};
+ render(<DistributionExplorer tree={{...tree,children:[winner]}} hr={false} busy={false} failed={false}/>);
+ const circle=screen.getByRole('button',{name:'#1 · Public athlete, 1 test MON, Claimed'});
+ const link=screen.getByRole('link',{name:'#1 · Public athlete · View recipient wallet (opens in a new tab)'});
+ expect(circle.contains(link)).toBe(false);expect(link).toHaveAttribute('href',walletUrl);
+ expect(link).toHaveAttribute('target','_blank');expect(link).toHaveAttribute('rel','noopener noreferrer');
+ fireEvent.keyDown(circle,{key:'Enter'});
+ expect(screen.getByRole('link',{name:'#1 · Public athlete',exact:true})).toHaveAttribute('href',walletUrl);
+ expect(screen.getByText('public-reference')).toBeVisible();
+ const element=viewport();fireEvent.click(screen.getByRole('button',{name:'Zoom in'}));
+ pointer(link,'pointerdown',100,100);pointer(element,'pointermove',120,110);pointer(element,'pointerup',120,110);
+ const click=new MouseEvent('click',{bubbles:true,cancelable:true,detail:1});
+ fireEvent(link,click);expect(click.defaultPrevented).toBe(true);
+});
 it.each([false,true])('rounds chart labels, accessible names and selected details (hr=%s)',hr=>{
  const reward={...tree.children[0]!.children[0]!.children[0]!,amountWei:3495105000000000n};
  render(<DistributionExplorer tree={{...tree,children:[reward]}} hr={hr} busy={false} failed={false}/>);

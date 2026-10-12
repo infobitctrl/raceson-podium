@@ -4,3 +4,10 @@ export function rewardExplorerUrl(chainId: number, kind: "address" | "tx" | "blo
     : kind === "tx" ? /^0x[0-9a-fA-F]{64}$/.test(value) : /^(0|[1-9][0-9]*)$/.test(value);
   return valid ? `https://testnet.monadvision.com/${kind}/${value}` : null;
 }
+
+/** Link only a confirmed public payment recipient, never a guessed/account wallet. */
+export function publicRewardWalletUrl(chainId: number, reward: {status?: string; recipientAddress?: string}) {
+  if (reward.status !== 'claimed' || !reward.recipientAddress || /^0x0{40}$/i.test(reward.recipientAddress)) return null;
+  const addressUrl = rewardExplorerUrl(chainId, 'address', reward.recipientAddress);
+  return addressUrl ? `${addressUrl}?tab=Internal+Transaction` : null;
+}

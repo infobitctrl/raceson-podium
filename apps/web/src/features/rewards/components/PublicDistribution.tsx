@@ -58,12 +58,12 @@ export function DistributionExplorer({tree, hr, busy, failed, onSelectPot, initi
         </div>
         <p className={s.hint}>{t('Pot → allocations → categories → rewards, ordered outward by place', 'Fond → raspodjela → kategorije → nagrade, prema van po plasmanu')}</p>
       </div>
-      <aside className={s.details}><div className={s.detailHeading}><div><small>{t('Exploring', 'Pregled')}</small><h3>{node.label}</h3></div>{path.length ? <button onClick={() => back(ancestors.length-2)} aria-label={t('Back one level', 'Natrag jednu razinu')}><ArrowLeft size={16}/></button> : null}</div>
+      <aside className={s.details}><div className={s.detailHeading}><div><small>{t('Exploring', 'Pregled')}</small><h3>{node.walletUrl?<a className={s.walletName} href={node.walletUrl} target="_blank" rel="noopener noreferrer" title={t('View recipient wallet on MonadVision (opens in a new tab)','Prikaži novčanik primatelja na MonadVisionu (otvara novu karticu)')}>{node.label}</a>:node.label}</h3></div>{path.length ? <button onClick={() => back(ancestors.length-2)} aria-label={t('Back one level', 'Natrag jednu razinu')}><ArrowLeft size={16}/></button> : null}</div>
         {path.length ? <p className={s.selectedAmount}><strong>{amount(node)}</strong> test MON</p> : null}
         {node.children.length ? <ul className={s.items}>{visible.map(child => <li key={child.id}><button onClick={() => open(child)}><i data-status={child.status ?? child.level}/><span><strong>{child.label}</strong><small>{child.level === 'winner' ? state(child) : `${prizePercent(child.amountWei,node.amountWei)}% ${t('of this pool','ovog fonda')}`}</small></span><b>{amount(child)}<small>test MON</small></b><ChevronRight size={14}/></button></li>)}</ul> : <div className={s.leaf}><strong>{state(node)}</strong>{node.reference ? <><p>{t('Public award reference', 'Javna oznaka nagrade')}</p><code>{node.reference}</code><p>{t('This circle shows this category’s share of the winner’s reward. The ledger combines their shares into one payment.', 'Krug prikazuje udio ove kategorije u nagradi dobitnika. Pregled spaja udjele u jednu isplatu.')}</p></> : <p>{node.level === 'reserve' ? t('Kept in the pool without a winner allocation.', 'Zadržano u fondu bez raspodjele dobitniku.') : busy ? t('Verifying winners…', 'Provjera dobitnika…') : failed ? t('Winner status unavailable. Retry below.', 'Stanje dobitnika nije dostupno. Pokušajte ponovno ispod.') : t('Winner breakdown is not available for this category yet.', 'Raspodjela dobitnicima još nije dostupna za ovu kategoriju.')}</p>}</div>}
         {node.children.length>8?<div className={s.paging}><button aria-label={t('Previous details', 'Prethodni detalji')} disabled={offset===0} onClick={() => setOffset(n=>Math.max(0,n-8))}><ArrowLeft size={14}/></button><span>{offset+1}–{Math.min(offset+8,node.children.length)} / {node.children.length}</span><button aria-label={t('Next details', 'Sljedeći detalji')} disabled={offset+8>=node.children.length} onClick={() => setOffset(n=>n+8)}><ArrowRight size={14}/></button></div>:null}
         {path.length > 0 && positions.has(node.id) ? <button className={s.focusSelection} onClick={() => {const point=positions.get(node.id)!; focusPoint(point.x, point.y, graph.size);}}>{t('Focus selection', 'Približi odabrano')}</button> : null}
-        <p className={s.helper}>{t('Scroll the mouse wheel to zoom. Drag to pan; click a circle for details. Circle sizes show levels, not amounts.', 'Kotačićem miša povećajte ili smanjite prikaz. Povucite za pomicanje; kliknite krug za detalje. Veličine krugova označavaju razine, a ne iznose.')}</p>
+        <p className={s.helper}>{t('Scroll the mouse wheel to zoom. Drag to pan; click a circle for details or a linked name for its public wallet. Circle sizes show levels, not amounts.', 'Kotačićem miša povećajte ili smanjite prikaz. Povucite za pomicanje; kliknite krug za detalje ili povezano ime za javni novčanik. Veličine krugova označavaju razine, a ne iznose.')}</p>
       </aside>
     </div>
   </section>;
@@ -82,14 +82,21 @@ const DistributionDiagram = memo(function DistributionDiagram({graph, path, sele
   return <>
             {graph.rings.map((r,i) => <circle key={i} className={s.orbit} cx={graph.size/2} cy={graph.size/2} r={r}/>)}
             {graph.nodes.filter(entry => entry.parentId).map(entry => {const parent=positions.get(entry.parentId!)!;return <path key={entry.node.id} className={s.connector} data-active={path.includes(entry.node.id)} d={`M${parent.x} ${parent.y} L${entry.x} ${entry.y}`}/>;})}
-            {graph.nodes.map(entry => {const child=entry.node, root=entry.depth===0, selected=child.id===selectedId;return <g key={child.id} className={root?s.center:s.node} role="button" tabIndex={0} aria-pressed={selected} aria-label={`${child.label}, ${amount(child)} test MON, ${state(child)}`} onClick={() => root?back(0):open(child,entry.path)} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();if(root)back(0);else open(child,entry.path);}}} data-status={child.status ?? child.level} data-depth={entry.depth} transform={`translate(${entry.x} ${entry.y})`}>
-              <title>{`${child.label} · ${amount(child)} test MON · ${state(child)}`}</title>
-              <circle r={entry.radius}/>
-              <text className={root?s.centerLabel:s.nodeLabel} y={root?-23:-14} textLength={!root&&child.label.length>11?entry.radius*1.72:undefined} lengthAdjust="spacingAndGlyphs">{child.label.length>18?child.label.slice(0,16)+'…':child.label}</text>
-              <text className={root?s.centerAmount:s.nodeAmount} y={root?10:7} textLength={amount(child).length>(root?7:7)?entry.radius*1.65:undefined} lengthAdjust="spacingAndGlyphs">{amount(child)}</text>
-              <text className={root?s.centerUnit:s.unit} y={root?29:21}>test MON</text>
-              {child.status==='claimed'?<text className={s.statusMark} x={entry.radius*.75} y={-entry.radius*.6}>✓</text>:child.status==='unclaimed'?<text className={s.statusMark} x={entry.radius*.75} y={-entry.radius*.6}>○</text>:null}
-              {child.children.length && entry.depth>=maxDepth?<text className={s.expand} x={entry.radius*.75} y={-entry.radius*.6}>+</text>:null}
-            </g>;})}
+            {graph.nodes.map(entry => {
+              const child=entry.node, root=entry.depth===0, selected=child.id===selectedId;
+              const label=<text className={root?s.centerLabel:s.nodeLabel} y={root?-23:-14} textLength={!root&&child.label.length>11?entry.radius*1.72:undefined} lengthAdjust="spacingAndGlyphs">{child.label.length>18?child.label.slice(0,16)+'…':child.label}</text>;
+              return <g key={child.id} className={root?s.center:s.node} data-selected={selected} data-status={child.status ?? child.level} data-depth={entry.depth} transform={`translate(${entry.x} ${entry.y})`}>
+                <g role="button" tabIndex={0} aria-pressed={selected} data-status={child.status ?? child.level} aria-label={`${child.label}, ${amount(child)} test MON, ${state(child)}`} onClick={() => root?back(0):open(child,entry.path)} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();if(root)back(0);else open(child,entry.path);}}}>
+                  <title>{`${child.label} · ${amount(child)} test MON · ${state(child)}`}</title>
+                  <circle r={entry.radius}/>
+                  {child.walletUrl?null:label}
+                  <text className={root?s.centerAmount:s.nodeAmount} y={root?10:7} textLength={amount(child).length>7?entry.radius*1.65:undefined} lengthAdjust="spacingAndGlyphs">{amount(child)}</text>
+                  <text className={root?s.centerUnit:s.unit} y={root?29:21}>test MON</text>
+                  {child.status==='claimed'?<text className={s.statusMark} x={entry.radius*.75} y={-entry.radius*.6}>✓</text>:child.status==='unclaimed'?<text className={s.statusMark} x={entry.radius*.75} y={-entry.radius*.6}>○</text>:null}
+                  {child.children.length && entry.depth>=maxDepth?<text className={s.expand} x={entry.radius*.75} y={-entry.radius*.6}>+</text>:null}
+                </g>
+                {child.walletUrl?<a className={s.walletName} href={child.walletUrl} target="_blank" rel="noopener noreferrer" tabIndex={0} aria-label={`${child.label} · ${t('View recipient wallet (opens in a new tab)','Prikaži novčanik primatelja (otvara novu karticu)')}`}>{label}</a>:null}
+              </g>;
+            })}
   </>;
 });

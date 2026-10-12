@@ -46,12 +46,12 @@ export function decodePublicRewardDisplay(value: unknown): PublicRewardDisplay {
   return d;
 }
 
-/** Copied sporting display only. No account IDs, recipient addresses or consent. */
+/** Sporting display plus the finalized paid recipient; no account IDs or consent. */
 export type PublicRewardPage = {
   campaignId: string; slot: number; chainId: 10143 | 31337; blockNumber: string; blockTimestamp: string;
   total: number; offset: number; sort: 'reward' | 'amount'; direction: 'asc' | 'desc';
   availability: 'awaiting_approval' | 'awaiting_distribution' | 'open' | 'paused' | 'closed';
-  rows: {id: string; number: number; kind: 'athlete' | 'club'; amountWei: string; status: 'planned' | 'unclaimed' | 'claimed'; breakdown?: PublicRewardBreakdown[]; display?: PublicRewardDisplay}[];
+  rows: {id: string; number: number; kind: 'athlete' | 'club'; amountWei: string; status: 'planned' | 'unclaimed' | 'claimed'; recipientAddress?: string; breakdown?: PublicRewardBreakdown[]; display?: PublicRewardDisplay}[];
 };
 export const PUBLIC_REWARD_PAGE_SIZE = 25;
 // Network batches are independent of the ledger's visible 25-row pages.
@@ -71,10 +71,11 @@ export function decodePublicRewardPage(value: unknown, size: 25 | 100 | 500 = PU
     || !Array.isArray(p.rows) || p.rows.length!==Math.min(size,Math.max(0,p.total-p.offset))) return fail();
   const ids=new Set<string>(),numbers=new Set<number>();
   for (const r of p.rows) {
-    if (!exact(r,'id,number,kind,amountWei,status'+(r.breakdown===undefined?'':',breakdown')+(r.display===undefined?'':',display')) || !sponsorTxHash(r.id) || BigInt(r.id)===0n || ids.has(r.id)
+    if (!exact(r,'id,number,kind,amountWei,status'+(r.breakdown===undefined?'':',breakdown')+(r.display===undefined?'':',display')+(r.recipientAddress===undefined?'':',recipientAddress')) || !sponsorTxHash(r.id) || BigInt(r.id)===0n || ids.has(r.id)
       || !Number.isInteger(r.number) || r.number<1 || r.number>p.total || numbers.has(r.number)
       || !['athlete','club'].includes(r.kind) || !uint(r.amountWei) || BigInt(r.amountWei)===0n
       || !['planned','unclaimed','claimed'].includes(r.status)) return fail();
+    if (r.recipientAddress !== undefined && (r.status !== 'claimed' || !sponsorAddress(r.recipientAddress))) return fail();
     if (r.breakdown !== undefined && (!Array.isArray(r.breakdown) || !r.breakdown.length || r.breakdown.length > 300
       || r.breakdown.some(b => !exact(b,'category,amountWei,place') || typeof b.category !== 'string' || !b.category.trim() || b.category.length > 300
         || !uint(b.amountWei) || BigInt(b.amountWei) === 0n || b.place !== null && (!Number.isSafeInteger(b.place) || b.place < 1))

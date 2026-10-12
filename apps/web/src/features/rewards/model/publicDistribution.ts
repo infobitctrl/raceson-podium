@@ -1,5 +1,6 @@
 import type {PublicSponsorCampaign, PublicRewardPage} from '@raceson/domain/rewards/public-campaign';
-export type DistributionNode = {id: string; label: string; amountWei: bigint; level: 'pool' | 'allocation' | 'category' | 'winner' | 'reserve'; status?: 'claimed' | 'unclaimed' | 'planned'; children: DistributionNode[]; reference?: string; rank?:number|null};
+import {publicRewardWalletUrl} from './rewardExplorerUrl';
+export type DistributionNode = {id: string; label: string; amountWei: bigint; level: 'pool' | 'allocation' | 'category' | 'winner' | 'reserve'; status?: 'claimed' | 'unclaimed' | 'planned'; children: DistributionNode[]; reference?: string; rank?:number|null; walletUrl?:string};
 /** Existing saved display labels use an explicit track/category separator. Keep
  * unsplit categories (including combined clubs) separate; never infer a track
  * from amounts, ordering, athlete names or a storage slot. */
@@ -19,8 +20,9 @@ export function publicDistributionTree(campaign: PublicSponsorCampaign, pot: Pub
       const id = `pot-${p.slot}-track-${ti}-category-${gi}`;
       const known = p.slot === pot.slot && rows !== null && rows.length > 0 && rows.every(r => r.breakdown !== undefined);
       const winners: DistributionNode[] = known ? rows.flatMap(row => (row.breakdown ?? []).filter(b => b.category === g.name).map(b => ({
-        id: `${id}-${row.id}`, label: `${b.place ? `#${b.place} · ` : ''}${row.kind === 'club' ? t('Club', 'Klub') : t('Winner', 'Dobitnik')} ${row.number}`,
+        id: `${id}-${row.id}`, label: `${b.place ? `#${b.place} · ` : ''}${row.display?.name ?? `${row.kind === 'club' ? t('Club', 'Klub') : t('Winner', 'Dobitnik')} ${row.number}`}`,
         amountWei: BigInt(b.amountWei), level: 'winner' as const, status: row.status, reference: row.id, rank:b.place, children: [],
+        walletUrl: publicRewardWalletUrl(campaign.chainId, row) ?? undefined,
       }))) : [];
       winners.sort((a,b)=>(a.rank??Infinity)-(b.rank??Infinity)||a.id.localeCompare(b.id));
       const awarded = winners.reduce((n, w) => n + w.amountWei, 0n), budget = BigInt(g.amountWei);

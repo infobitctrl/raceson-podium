@@ -12,6 +12,19 @@ describe('public allocation economics',()=>{
 });
 
 import {publicAmount} from './publicAmount';
+import {publicRewardWalletUrl} from './rewardExplorerUrl';
+it('uses approved athlete and club display names and only confirmed testnet recipient links',()=>{
+ const address='0x'+'12'.repeat(20),url=`https://testnet.monadvision.com/address/${address}?tab=Internal+Transaction`;
+ for(const kind of ['athlete','club'] as const){
+  const named={...row,kind,recipientAddress:address,display:{name:'Public recipient',club:null,timeMs:null}};
+  const tree=publicDistributionTree({...campaign,chainId:10143},pot,[named],false);
+  expect(tree.children[0]!.children[0]!.children[0]).toMatchObject({label:'#1 · Public recipient',walletUrl:url,amountWei:40n,reference:row.id});
+ }
+ expect(publicRewardWalletUrl(10143,{status:'claimed',recipientAddress:address})).toBe(url);
+ for(const status of ['planned','unclaimed'])expect(publicRewardWalletUrl(10143,{status,recipientAddress:address})).toBeNull();
+ for(const recipientAddress of [undefined,'','0x'+'0'.repeat(40),'javascript:alert(1)',address+'?other=1'])expect(publicRewardWalletUrl(10143,{status:'claimed',recipientAddress})).toBeNull();
+ expect(publicRewardWalletUrl(31337,{status:'claimed',recipientAddress:address})).toBeNull();
+});
 it('sorts sporting names, positions and exact times with absent values last',()=>{
  const rows=[{...row,id:'a',number:1,display:{name:'Runner 10',club:null,timeMs:null},breakdown:[{category:'Distance',amountWei:'60',place:null}]},
  {...row,id:'b',number:2,display:{name:'Runner 2',club:'Club 2',timeMs:'1000000000000001'}},

@@ -4,8 +4,8 @@ import {rewardUploadDigest} from '@raceson/rewards-chain';
 import {publicAwardPage,publicAwardQuery} from '../dist/features/rewards/public-awards-service.js';
 import {decodePublicRewardPage} from '@raceson/domain/rewards/public-campaign';
 const h=n=>'0x'+n.toString(16).padStart(64,'0'),address='0x'+'11'.repeat(20),scope={id:'73000000-0000-4000-8000-000000000001',slot:1,chainId:10143};
-function fixture(count=2){
- const awards=Array.from({length:count},(_,i)=>({entitlementId:h(i+1),beneficiaryId:h(i+100),explanationHash:h(i+200),amount:String(i+1),pot:0,beneficiaryKind:0}));
+function fixture(count=2,kind=0){
+ const awards=Array.from({length:count},(_,i)=>({entitlementId:h(i+1),beneficiaryId:h(i+100),explanationHash:h(i+200),amount:String(i+1),pot:0,beneficiaryKind:kind}));
  const commit=rewardUploadDigest(awards.map(r=>({...r,amount:BigInt(r.amount)})),0,1000000n);
  const raw={...scope,programmeAddress:address,campaignAddress:address,fundingHash:h(400),uploadDigest:commit.digest,awards};
  const observed={address,funded:true,cancelled:false,fundingHash:h(400),blockNumber:'10',blockHash:h(10),blockTimestamp:'100',pots:[{slot:1,address,amountWei:'1000000',state:3,paused:false,allocatedWei:String(commit.total),paidWei:'1',remainingWei:'999999',returnedWei:'0',claimDeadline:'200',entitlementCount:String(count)}]};
@@ -14,7 +14,7 @@ function fixture(count=2){
   assert.equal(blockNumber,10n);
   if(functionName==='uploadDigest')return commit.digest;
   reads++;const r=awards.find(a=>a.entitlementId===args[0]);
-  return [r.beneficiaryId,BigInt(r.amount),r.explanationHash,0n,args[0]===h(1)?address:'0x'+'00'.repeat(20),0,args[0]===h(1),0];
+  return [r.beneficiaryId,BigInt(r.amount),r.explanationHash,0n,args[0]===h(1)?address:'0x'+'00'.repeat(20),0,args[0]===h(1),r.beneficiaryKind];
  }};
  return{raw,observed,reader,reads:()=>reads};
 }
@@ -31,12 +31,33 @@ test('copied sporting display is bounded and cannot expose account, wallet or co
  assert.doesNotThrow(()=>decodePublicRewardPage({...p,rows:[club,p.rows[1]]}));
  assert.throws(()=>decodePublicRewardPage({...p,rows:[{...club,display:{...club.display,timeMs:'1000'}},p.rows[1]]}));
 });
-test('mixed finalized paid flags become claimed/unclaimed without identity or recipient leakage',async()=>{
+test('only finalized paid recipients are public; private identity and unknown fields stay excluded',async()=>{
  const f=fixture(),p=await publicAwardPage(f.reader,f.observed,scope,f.raw,query);
  assert.deepEqual(p.rows.map(r=>r.status),['claimed','unclaimed']);assert.equal(p.availability,'open');
- assert.equal(JSON.stringify(p).includes('beneficiaryId'),false);assert.equal(JSON.stringify(p).includes(address),false);
+ assert.equal(JSON.stringify(p).includes('beneficiaryId'),false);assert.equal(p.rows[0].recipientAddress,address);assert.equal('recipientAddress' in p.rows[1],false);
  assert.equal(p.rows.reduce((n,r)=>n+BigInt(r.amountWei),0n),3n);
  assert.throws(()=>decodePublicRewardPage({...p,owner:'private'}));assert.throws(()=>decodePublicRewardPage({...p,rows:[{...p.rows[0],recipient:address},p.rows[1]]}));
+});
+test('athlete and club links use the paid contract recipient, never a saved wallet',async()=>{
+ for(const kind of [0,1]){
+  const f=fixture(2,kind);
+  f.raw.awards[0].recipientAddress='0x'+'22'.repeat(20);
+  f.raw.awards[1].wallet=address;
+  const p=await publicAwardPage(f.reader,f.observed,scope,f.raw,query);
+  assert.equal(p.rows[0].kind,kind===0?'athlete':'club');
+  assert.equal(p.rows[0].recipientAddress,address);
+  assert.equal('recipientAddress' in p.rows[1],false);assert.equal('wallet' in p.rows[1],false);
+  assert.equal(f.reads(),2);
+  for(const patch of [{recipientAddress:null},{recipientAddress:'javascript:alert(1)'},{recipientAddress:'0x'+'00'.repeat(20)},{status:'unclaimed'},{status:'planned'}])
+   assert.throws(()=>decodePublicRewardPage({...p,rows:[{...p.rows[0],...patch},p.rows[1]]}));
+ }
+});
+test('a contradictory or invalid paid recipient fails closed before publication',async()=>{
+ for(const [recipient,paid] of [['0x'+'00'.repeat(20),true],[address,false],['not-an-address',true]]){
+  const f=fixture(),read=f.reader.readContract;
+  f.reader.readContract=async args=>{const row=await read(args);return args.functionName==='entitlements'&&args.args[0]===h(1)?[...row.slice(0,4),recipient,row[5],paid,row[7]]:row;};
+  await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scope,f.raw,query));
+ }
 });
 test('global numerical sorting and page bounds cap chain row reads at 25',async()=>{
  const f=fixture(30),p=await publicAwardPage(f.reader,f.observed,scope,f.raw,{offset:0,sort:'amount',direction:'desc'});

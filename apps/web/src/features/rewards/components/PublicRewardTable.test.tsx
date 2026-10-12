@@ -7,6 +7,20 @@ const row=(n:number,status='unclaimed')=>({id:'0x'+String(n).padStart(64,'0'),nu
 const page={total:2,offset:0,rows:[row(1,'claimed'),row(2)],availability:'open',blockNumber:'100',blockTimestamp:'1800000000'};
 const ui=(slot=1,refresh=0)=><MemoryRouter><PublicRewardTable key={slot} id="campaign" slot={slot} hr={false} refresh={refresh}/></MemoryRouter>;
 beforeEach(()=>api.mockReset());
+it('links paid athlete and club names to their public recipients without guessing member-club wallets',async()=>{
+ const address='0x'+'12'.repeat(20),treasury='0x'+'34'.repeat(20);
+ api.mockResolvedValue({...page,chainId:10143,total:3,rows:[
+  {...row(1,'claimed'),recipientAddress:address,display:{name:'Paid athlete',club:'Member club',timeMs:null}},
+  {...row(2),display:{name:'Unpaid athlete',club:null,timeMs:null}},
+  {...row(3,'claimed'),kind:'club',recipientAddress:treasury,display:{name:'Paid club',club:null,timeMs:null}},
+ ]});
+ render(ui());const athlete=await screen.findByRole('link',{name:'Paid athlete'}),club=screen.getByRole('link',{name:'Paid club'});
+ expect(athlete).toHaveAttribute('href',`https://testnet.monadvision.com/address/${address}?tab=Internal+Transaction`);
+ expect(club).toHaveAttribute('href',`https://testnet.monadvision.com/address/${treasury}?tab=Internal+Transaction`);
+ for(const link of [athlete,club]){expect(link).toHaveAttribute('target','_blank');expect(link).toHaveAttribute('rel','noopener noreferrer');}
+ expect(screen.queryByRole('link',{name:'Unpaid athlete'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('link',{name:'Member club'})).not.toBeInTheDocument();
+});
 it.each([false,true])('rounds athlete and club rewards while sorting exact amounts (hr=%s)',async hr=>{
  const smaller={...row(2),amountWei:'3495104000000000'},larger={...row(1),amountWei:'3495105000000000'};
  api.mockResolvedValue({...page,total:3,rows:[smaller,larger,{...row(3),kind:'club',amountWei:'999995000000000000'}]});
