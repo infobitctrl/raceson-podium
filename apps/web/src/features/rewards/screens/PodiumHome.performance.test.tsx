@@ -1,0 +1,26 @@
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import {act,render,screen} from '@testing-library/react';
+import {MemoryRouter} from 'react-router-dom';
+import {afterEach,expect,it,vi} from 'vitest';
+import {I18nProvider} from '@/shared/i18n/I18nProvider';
+import PodiumHome from './PodiumHome';
+const mocks=vi.hoisted(()=>({read:vi.fn()}));
+vi.mock('@/lib/auth',()=>({useAuth:()=>({user:{id:'synthetic-owner'},session:null})}));
+vi.mock('../data/campaignBranding',()=>({readCampaignBranding:mocks.read}));
+vi.mock('../data/copyCatalogue',()=>({useSponsorCatalogue:()=>({items:[],copy:null,loading:false,error:false})}));
+vi.mock('../data/publicDirectory',()=>({usePublicDirectory:()=>({data:{chainId:10143,sponsors:1,checkedAt:'2026-10-12T12:00:00Z',refreshStatus:'current',items:[{selection:null,publishedAt:'2026-10-10T12:00:00Z',verified:true,campaign:{id:'73000000-0000-4000-8000-000000000001',name:'Synthetic campaign',chainId:10143,budgetWei:'100',address:`0x${'11'.repeat(20)}`,fundingHash:`0x${'aa'.repeat(32)}`,blockNumber:'100',blockTimestamp:'1800000000',pots:[{slot:0,name:'Race',amountWei:'100',state:3,paused:false,allocatedWei:'100',paidWei:'25',remainingWei:'75',returnedWei:'0',claimDeadline:'1800001000',groups:[]}]}}]},isPending:false,isError:false,isFetching:false,refetch:vi.fn()})}));
+vi.mock('../components/PodiumPaymentRing',()=>({default:()=>null}));
+afterEach(()=>vi.useRealTimers());
+it('shares Home sponsor requests and renders public details before a slow owner read',async()=>{
+ vi.useFakeTimers();
+ const record={id:'73000000-0000-4000-8000-000000000001',name:'Synthetic sponsor',logo:null,revision:1};
+ mocks.read.mockImplementation((mine=false)=>new Promise(resolve=>setTimeout(()=>resolve([record]),mine?2000:40)));
+ const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+ const view=render(<QueryClientProvider client={client}><I18nProvider initialLocale="en"><MemoryRouter><PodiumHome/></MemoryRouter></I18nProvider></QueryClientProvider>);
+ await act(()=>vi.advanceTimersByTimeAsync(60));
+ const early=screen.queryAllByText('Synthetic sponsor').length;
+ await act(()=>vi.advanceTimersByTimeAsync(2000));
+ const counts={public:mocks.read.mock.calls.filter(([mine])=>!mine).length,owner:mocks.read.mock.calls.filter(([mine])=>mine).length,visibleAt60ms:early,visibleAt2060ms:screen.queryAllByText('Synthetic sponsor').length};
+ expect(counts).toEqual({public:1,owner:1,visibleAt60ms:2,visibleAt2060ms:2});
+ view.unmount();client.clear();
+});

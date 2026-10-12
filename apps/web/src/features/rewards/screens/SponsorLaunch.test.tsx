@@ -1,4 +1,6 @@
-import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import type {ReactElement} from 'react';
+import {act, fireEvent, render as rtlRender, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {beforeEach, expect, it, vi} from 'vitest';
 import {I18nProvider} from '@/shared/i18n/I18nProvider';
@@ -123,3 +125,5 @@ it('renders Croatian unavailable-campaign recovery',async()=>{
  await screen.findByRole('heading',{name:'Kampanja nije dostupna'});
  expect(screen.getByRole('link',{name:'Otvori moje kampanje'})).toHaveAttribute('href','/rewards/manage');
 });
+
+function render(ui:ReactElement){const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});return rtlRender(ui,{wrapper:({children})=><QueryClientProvider client={client}>{children}</QueryClientProvider>});}

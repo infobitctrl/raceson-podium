@@ -1,6 +1,8 @@
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import type {ReactElement} from 'react';
 vi.mock('../data/publicDirectory',()=>({usePublicDirectory:()=>({data:{items:[]},isError:false})}));
 import {createRewardSetup,defaultRewardSetupPolicy} from '@raceson/domain/rewards/distribution-setup';
-import {fireEvent,render,screen,within} from '@testing-library/react';
+import {fireEvent,render as rtlRender,screen,within} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {beforeEach,expect,it,vi} from 'vitest';
 import {I18nProvider} from '@/shared/i18n/I18nProvider';
@@ -64,3 +66,5 @@ it('refreshes changed event categories without rebuilding the chart and requires
  fireEvent.click(await screen.findByRole('button',{name:'Refresh categories'}));step(4);fireEvent.click(screen.getByRole('button',{name:/^My custom award, 100%/}));
  expect(await screen.findByLabelText('Eligibility reviewed')).not.toBeChecked();expect(screen.getByLabelText('Place 1 %')).toHaveValue(70);expect(screen.getByLabelText('Place 2 %')).toHaveValue(30);step(6);expect(screen.getByRole('button',{name:'Finish setup'})).toBeDisabled();
 });
+
+function render(ui:ReactElement){const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});return rtlRender(ui,{wrapper:({children})=><QueryClientProvider client={client}>{children}</QueryClientProvider>});}

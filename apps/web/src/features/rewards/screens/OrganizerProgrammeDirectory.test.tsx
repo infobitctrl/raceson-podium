@@ -1,6 +1,8 @@
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import type {ReactElement} from 'react';
 vi.mock('../data/campaignBranding',()=>({readCampaignBranding:async()=>[],saveCampaignBranding:vi.fn()}));
 vi.mock('../data/publicDirectory',()=>({usePublicDirectory:()=>({data:{items:[]},isError:false})}));
-import {act,render,screen,fireEvent} from "@testing-library/react";
+import {act,render as rtlRender,screen,fireEvent} from "@testing-library/react";
 import {MemoryRouter,useLocation} from "react-router-dom";
 import {createGuidedSetup} from "@raceson/domain/rewards/guided-setup-editor";
 import {beforeEach,expect,it,vi} from "vitest";
@@ -88,3 +90,5 @@ it('clears only the search and returns focus while retaining archived view and s
  expect(params.get('q')).toBe('');expect(params.get('status')).toBe('archived');expect(params.get('view')).toBe('list');expect(params.get('sort')).toBe('budget');expect(params.get('order')).toBe('asc');
  expect(mocks.remove).not.toHaveBeenCalled();expect(mocks.archive).not.toHaveBeenCalled();
 });
+
+function render(ui:ReactElement){const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});return rtlRender(ui,{wrapper:({children})=><QueryClientProvider client={client}>{children}</QueryClientProvider>});}

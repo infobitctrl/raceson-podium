@@ -1,4 +1,5 @@
-import {createContext,useContext,useEffect,useState,type ReactNode} from 'react';
+import {useQuery,useQueryClient} from '@tanstack/react-query';
+import {createContext,useContext,useEffect,useRef,useState,type ReactNode} from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {Pencil,X,BadgeCheck} from 'lucide-react';
 import {useAuth} from '@/lib/auth';
@@ -10,21 +11,51 @@ import s from './CampaignSponsor.module.css';
 import SponsorPromotionFields from './SponsorPromotionFields';
 type BrandingContext={items:CampaignBranding[];owned:Set<string>;loading:boolean;failed:boolean;reload:()=>void;update:(record:CampaignBranding)=>void};
 const Context=createContext<BrandingContext|null>(null);
+const publicBrandingKey=['podium-public-branding'] as const;
+
+/** Nested campaign sections reuse the page scope, including its private read. */
 export function CampaignSponsorProvider({children}:{children:ReactNode}){
- const auth=useAuth(),identity=auth.user?.id??'',epoch=useRewardSessionEpoch(auth.session),key=`${identity}:${epoch}`;
- const [value,setValue]=useState<{key:string;items:CampaignBranding[];owned:Set<string>}>({key:'',items:[],owned:new Set()}),[attempt,setAttempt]=useState(0),[loading,setLoading]=useState(true),[failed,setFailed]=useState(false);
- useEffect(()=>{let active=true;setLoading(true);setFailed(false);
-  void Promise.allSettled([readCampaignBranding(),identity?readCampaignBranding(true):Promise.resolve([])]).then(([publicResult,ownerResult])=>{
-   if(!active)return;
-   const published=publicResult.status==='fulfilled'?publicResult.value:[],mine=ownerResult.status==='fulfilled'?ownerResult.value:[];
-   setValue({key,items:[...published.filter(p=>!mine.some(m=>m.id===p.id)),...mine],owned:new Set(mine.map(m=>m.id))});
-   setFailed(publicResult.status==='rejected'||ownerResult.status==='rejected');
-   setLoading(false);
+ const parent=useContext(Context);
+ return parent?<>{children}</>:<CampaignSponsorScope>{children}</CampaignSponsorScope>;
+}
+function CampaignSponsorScope({children}:{children:ReactNode}){
+ const auth=useAuth(),identity=auth.user?.id??'',epoch=useRewardSessionEpoch(auth.session);
+ return <CampaignSponsorSession key={`${identity}:${epoch}`} identity={identity}>{children}</CampaignSponsorSession>;
+}
+function CampaignSponsorSession({children,identity}:{children:ReactNode;identity:string}){
+ const client=useQueryClient(),active=useRef(false);
+ const published=useQuery({queryKey:publicBrandingKey,queryFn:()=>readCampaignBranding(),
+  staleTime:30000,gcTime:60000,retry:false,refetchOnWindowFocus:false});
+ // Owner-only records stay in this exact-session component, never in public or
+ // persistent caches. Rotation/logout unmounts it and retires pending results.
+ const [owner,setOwner]=useState<{items:CampaignBranding[];loading:boolean;failed:boolean}>({items:[],loading:!!identity,failed:false});
+ const [attempt,setAttempt]=useState(0);
+ useEffect(()=>{active.current=true;return()=>{active.current=false;};},[]);
+ useEffect(()=>{
+  if(!identity)return;
+  let current=true;
+  setOwner(old=>({...old,loading:true,failed:false}));
+  void readCampaignBranding(true).then(items=>{
+   if(current)setOwner({items,loading:false,failed:false});
+  },()=>{if(current)setOwner({items:[],loading:false,failed:true});});
+  return()=>{current=false;};
+ },[identity,attempt]);
+ const owned=new Set(owner.items.map(item=>item.id));
+ const items=[...(published.data??[]).filter(item=>!owned.has(item.id)),...owner.items];
+ const reload=()=>{if(!active.current)return;setAttempt(n=>n+1);void published.refetch();};
+ const update=(record:CampaignBranding)=>{
+  if(!active.current)return;
+  setOwner(old=>({...old,items:old.items.map(item=>item.id===record.id?record:item)}));
+  // Retire an older public read before updating an already-public record. An
+  // unpublished owner record must never acquire public-cache membership here.
+  void client.cancelQueries({queryKey:publicBrandingKey}).then(()=>{
+   if(!active.current)return;
+   const visible=client.getQueryData<CampaignBranding[]>(publicBrandingKey);
+   if(visible?.some(item=>item.id===record.id))client.setQueryData(publicBrandingKey,visible.map(item=>item.id===record.id?record:item));
+   else void client.invalidateQueries({queryKey:publicBrandingKey});
   });
-  return()=>{active=false;};
- },[key,identity,attempt]);
- const current=value.key===key;
- return <Context.Provider key={key} value={{items:current?value.items:[],owned:current?value.owned:new Set(),loading:loading||!current&&!failed,failed,reload:()=>setAttempt(n=>n+1),update:record=>setValue(old=>({...old,items:[...old.items.filter(i=>i.id!==record.id),record]}))}}>{children}</Context.Provider>;
+ };
+ return <Context.Provider value={{items,owned,loading:published.isPending||owner.loading,failed:published.isError||owner.failed,reload,update}}>{children}</Context.Provider>;
 }
 /** Read-only branding received through the authorized review endpoint. */
 export function CampaignSponsorRecords({children,records}:{children:ReactNode;records:CampaignBranding[]}){return <Context.Provider value={{items:records,owned:new Set(),loading:false,failed:false,reload:()=>{},update:()=>{}}}>{children}</Context.Provider>;}

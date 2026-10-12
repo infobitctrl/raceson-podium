@@ -1,3 +1,4 @@
+import {artworkImageProps} from '../model/responsiveArtwork';
 import {publicEnv} from "@/lib/public-env";
 import {useEffect,useRef,useState} from "react";
 import {Link} from "react-router-dom";
@@ -48,7 +49,7 @@ export default function SavedCampaignCard({record,hr,finished=false,live,onDelet
   finally{pending.current=false;if(active.current)setBusy(false);}
  }
  return <article className={s.card} aria-label={c.name}>
-  {source?<Link className={s.photo} to={href} tabIndex={-1} aria-hidden="true"><img src={source.image} alt="" loading="lazy"/></Link>:null}
+  {source?<Link className={s.photo} to={href} tabIndex={-1} aria-hidden="true"><img {...artworkImageProps(source.image)} decoding="async" alt="" loading="lazy"/></Link>:null}
   <div className={s.identity}><CampaignSponsor id={record.id} hr={hr}/><OfficialSourceLinks selection={c.sponsorSelection} hr={hr}/></div>
   <Link className={s.content} to={href}><span className={s.badge} data-funded={state==="funded"||finished}>{status}</span><h2>{c.name}</h2><p>{source?.name??event}</p><small>{c.event?.date}</small><div className={s.budget}><small>{hr?"Planirani fond":"Planned budget"}</small><strong>{c.budgetMon} <span>test MON</span></strong></div><p>{savedCampaignNext(record,hr,live)}</p>{live?<small>{hr?"Zadnja provjera":"Last checked"} {new Date(Number(live.campaign.blockTimestamp)*1000).toLocaleString(hr?"hr-HR":"en-GB")}</small>:null}<p className={s.next}>{next}</p></Link>
   <SavedBudgetGraphic configuration={c} hr={hr}/>

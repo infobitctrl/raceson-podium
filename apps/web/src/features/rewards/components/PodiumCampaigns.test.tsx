@@ -1,4 +1,6 @@
-import {fireEvent,render,screen,within} from '@testing-library/react';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import type {ReactElement} from 'react';
+import {fireEvent,render as rtlRender,screen,within} from '@testing-library/react';
 import {MemoryRouter,useLocation} from 'react-router-dom';
 import {expect,it,vi} from 'vitest';
 vi.mock('@/lib/auth',()=>({useAuth:()=>({user:null,session:null})}));
@@ -83,3 +85,5 @@ it('returns focus and scroll to campaign results when changing page',()=>{
  expect(screen.getByRole('button',{name:'Next',exact:true})).toBeDisabled();
  delete (Element.prototype as Partial<Element>).scrollIntoView;
 });
+
+function render(ui:ReactElement){return rtlRender(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}})}>{ui}</QueryClientProvider>);}

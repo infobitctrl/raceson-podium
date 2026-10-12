@@ -1,10 +1,12 @@
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import type {ReactElement} from 'react';
 vi.mock('../model/usePublicCampaignRewards',()=>({usePublicCampaignRewards:()=>({page:null,busy:false,failed:false,retry:()=>{}})}));
 vi.mock('../data/publicDirectory',()=>({usePublicDirectory:()=>{throw Error('Detail pages must not verify every campaign');}}));
 vi.mock('@/lib/auth',()=>({useAuth:()=>({account:{hasOrganizerAccess:access.organizer},user:access.user?{id:access.user}:null})}));
 const access=vi.hoisted(()=>({organizer:false,user:''}));
 vi.mock('../components/PublicRewardTable',()=>({default:({title,subtitle}:{title:string;subtitle:string})=> <div><h3>{title}</h3><p>{subtitle}</p>Individual rewards table</div>}));
 
-import {fireEvent,render,screen,within} from '@testing-library/react';
+import {fireEvent,render as rtlRender,screen,within} from '@testing-library/react';
 import {MemoryRouter,Route,Routes,useLocation} from 'react-router-dom';
 import {beforeEach,expect,it,vi} from 'vitest';
 import {I18nProvider} from '@/shared/i18n/I18nProvider';
@@ -133,3 +135,5 @@ it('shows published details and a saved-budget chart before the slow live observ
  expect(screen.getByText(/Checking current status. Published amounts/)).toBeVisible();
  expect(screen.queryByText('Claims open')).not.toBeInTheDocument();
 });
+
+function render(ui:ReactElement){const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});return rtlRender(ui,{wrapper:({children})=><QueryClientProvider client={client}>{children}</QueryClientProvider>});}

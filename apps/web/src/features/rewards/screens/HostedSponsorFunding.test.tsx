@@ -1,4 +1,6 @@
-import {act,fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import type {ReactElement} from 'react';
+import {act,fireEvent,render as rtlRender,screen,waitFor} from '@testing-library/react';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';
 import {beforeEach,expect,it,vi} from 'vitest';
 import {createGuidedSetup} from '@raceson/domain/rewards/guided-setup-editor';
@@ -30,3 +32,5 @@ it('retries a read failure without requesting creation or a deposit',async()=>{m
 it('does not reveal a late previous-account response',async()=>{
  let resolve;mocks.read.mockImplementationOnce(()=>new Promise(done=>{resolve=done;}));const page=render(view());await waitFor(()=>expect(mocks.read).toHaveBeenCalledOnce());mocks.userId='other';mocks.read.mockRejectedValueOnce(new ApiError('denied',{status:403}));page.rerender(view());await screen.findByRole('alert');await act(async()=>resolve(saved()));expect(screen.queryByRole('heading',{name:'Saved event'})).not.toBeInTheDocument();
 });
+
+function render(ui:ReactElement){const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});return rtlRender(ui,{wrapper:({children})=><QueryClientProvider client={client}>{children}</QueryClientProvider>});}

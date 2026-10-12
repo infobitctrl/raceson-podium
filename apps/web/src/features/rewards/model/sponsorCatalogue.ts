@@ -1,17 +1,13 @@
 import type {DirectoryCampaign} from "@raceson/domain/rewards/public-directory";
 import type {RewardSponsorSelection} from "@raceson/domain/rewards/distribution-setup";
-import valley from "../assets/sitrail-valley.jpeg";
-import wordmark from "../assets/sitrail-wordmark.png";
-import subicevac from "../assets/subicevac.jpeg";
-import raslina from "../assets/raslina.jpeg";
-import trtar from "../assets/trtar.png";
-import vrpolje from "../assets/vrpolje.jpeg";
+import wordmark from "../assets/optimized/sitrail-wordmark.webp";
 import {staticAssetUrl} from "@/lib/static-asset";
+import {artworkVariants} from "./artworkVariants";
 import {sponsorPreparedSource as source} from "./sponsorPreparedSource";
 
 // Artwork is presentation only; sporting identities and labels come from the capture.
-export const sponsorArtwork = {league:staticAssetUrl(valley),logo:staticAssetUrl(wordmark)};
-export const roundArtwork=[vrpolje,valley,trtar,raslina,subicevac].map(staticAssetUrl);
+export const sponsorArtwork = {league:artworkVariants[0][1].src,logo:staticAssetUrl(wordmark)};
+export const roundArtwork=[1,0,2,3,4].map(index=>artworkVariants[index][1].src);
 type Category={id:string;competitionId:string;competitionName:string;name:string;target:string};
 type CatalogueSource={sourceLeagueId:string;sourceSeasonId:string;categories:readonly Category[];rounds:readonly {slot:number;roundId:string;sourceRoundId:string;eventEditionId:string;editionId:string;name:string;date:string;status:string;tracks:readonly {raceId:string;sourceRaceId:string;competitionId:string;name:string;distanceMetres:string|null}[]}[]};
 export type SponsorCatalogueItem={id:string;kind:"race"|"track";name:string;image:string;detail:string;parent:string;parentName:string;

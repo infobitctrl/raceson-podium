@@ -1,6 +1,8 @@
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import type {ReactElement} from 'react';
 vi.mock('@/lib/auth',()=>({useAuth:()=>({user:{id:'fixture-sponsor'},session:{access_token:'fixture',refresh_token:'fixture',user:{id:'fixture-sponsor'},expires_at:1900000000,token_type:'bearer'}})}));
 vi.mock('../data/campaignBranding',()=>({readCampaignBranding:async()=>[],saveCampaignBranding:vi.fn()}));
-import {act,render,screen,waitFor,fireEvent} from '@testing-library/react';
+import {act,render as rtlRender,screen,waitFor,fireEvent} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {beforeEach,expect,it,vi} from 'vitest';
 import {createGuidedSetup} from '@raceson/domain/rewards/guided-setup-editor';
@@ -40,3 +42,5 @@ it('ignores a late account-scoped read after the workspace is unmounted',async()
  let resolve;mocks.launch.mockImplementationOnce(()=>new Promise(done=>{resolve=done;}));const page=render(view());
  await waitFor(()=>expect(mocks.launch).toHaveBeenCalledOnce());page.unmount();await act(async()=>resolve(fixture()));expect(mocks.funding).not.toHaveBeenCalled();
 });
+
+function render(ui:ReactElement){const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});return rtlRender(ui,{wrapper:({children})=><QueryClientProvider client={client}>{children}</QueryClientProvider>});}

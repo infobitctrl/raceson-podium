@@ -1,3 +1,29 @@
+## Responsive artwork and shared sponsor details — 12 October 2026
+
+Event photographs now have 480/960 pixel WebP card variants and larger header
+variants. Original artwork and CSS framing are retained. The two largest originals
+(3.11 MB and 2.77 MB) become 37.6 KB and 86.6 KB at the 960 pixel card size;
+the shared header logo drops from 274.8 KB to 24.2 KB. Browser selection depends
+on layout and display density; these are file sizes, not page-load guarantees.
+Regeneration is documented alongside the optimized assets.
+
+Home now shares one sponsor scope across live campaigns and distribution history.
+Public branding reads use the existing browser QueryClient with 30-second
+freshness and 60-second inactive retention. Public details render independently
+of owner requests. Owner-only records remain in exact-session component state,
+are discarded on logout/rotation, and never enter the public cache unless their
+ID is already public. Saves update existing public entries and shared owner views;
+conflicts and failures retain the existing retry behavior. Review records remain
+read-only. No API, database, chain, wallet, consent or payment implementation changes.
+
+A controlled Home regression delays public data by 40 ms and owner data by two
+seconds: public/owner requests fall from two each to one each, and both sponsor
+names are present at 60 ms instead of waiting for the owner. Additional regressions
+cover navigation reuse, nested providers, failure recovery, account/session
+changes, late responses/saves and unpublished branding isolation. Hosted asset
+transfer and rendered checks accompany the release; this does not change full
+chain-verification latency.
+
 ## More efficient complete campaign verification — 12 October 2026
 
 The public directory now overlaps at most 16 complete campaign observations,
