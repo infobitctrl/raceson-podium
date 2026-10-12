@@ -8,6 +8,9 @@ and clubs explicitly claim. Walletless beneficiaries retain their shares.
 [Architecture](docs/architecture.md) · [Verification](docs/release-readiness.md) ·
 [Security and privacy](SECURITY.md) · [Reviewer guide](docs/submission-preparation.md)
 
+See the [hackathon release notes](docs/hackathon-release.md) for the final scope,
+verification gates, measured improvements and remaining submission steps.
+
 ## Product
 
 1. Select an existing RacesOn event and its races and classifications.
@@ -42,6 +45,7 @@ npm run check:api
 npm run check:web
 npm run check:lint
 npm run test:rewards:ui
+npm run test:locale
 npm run test:wallet
 npm run check:rewards:chain
 npm run check:dependencies

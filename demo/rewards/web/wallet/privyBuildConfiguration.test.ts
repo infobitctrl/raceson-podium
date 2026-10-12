@@ -33,6 +33,19 @@ function ids(server: string | undefined, browser: string | undefined) {
 }
 
 describe("actual independent demo Privy build boundary", () => {
+  it("prevents incoming framing without restricting embedded wallet frames or connections", async () => {
+    ids(appId, appId);
+    const result = (await config()).default;
+    expect(await result.headers?.()).toEqual([{
+      source: "/:path*",
+      headers: expect.arrayContaining([
+        { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+        { key: "X-Frame-Options", value: "DENY" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+      ]),
+    }]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it("keeps the demo usable without a wallet provider", async () => {
     expect((await config()).default.distDir).toBe(".next-build");
     expect(fetch).not.toHaveBeenCalled();

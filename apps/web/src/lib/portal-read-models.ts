@@ -21,6 +21,7 @@ import { getPublicRegistrationCountsByCategoryId } from "@/lib/public-registrati
 import { getCurrentPublishedResultRows } from "@/lib/current-published-results";
 import { resolvePublicLocationLabel } from "@/lib/public-location-labels";
 import { apiRequest } from "@/lib/api";
+import { publicEnv } from "@/lib/public-env";
 import { getHomepageFeaturedRaces } from "@/features/homepage/data/homepageFeaturedRaces";
 import { formatEventDistanceKm, formatEventEntryFees } from "@/features/events/public/model/eventInfoPresentation";
 import { eventHasFinished } from "@/features/events/model/eventCompletion";
@@ -1773,7 +1774,6 @@ export async function getHomepageReadModel(): Promise<HomepageReadModel> {
 export async function getPublicAthleteResultsReadModel(
   athleteSlug: string = "",
 ): Promise<AthleteResultsReadModel> {
-  const supabase = getSupabasePublicClient();
   const emptyReadModel: AthleteResultsReadModel = {
     seasonStats: {
       totalParticipations: 0,
@@ -1786,11 +1786,14 @@ export async function getPublicAthleteResultsReadModel(
     results: [],
   };
 
-  if (!supabase) {
+  // Hosted Podium does not expose the platform's athlete-history API or view.
+  // Keep its existing empty state without attempting both unsupported reads.
+  if ((publicEnv.rewardDemo && publicEnv.hostedCopy) || !athleteSlug.trim()) {
     return emptyReadModel;
   }
 
-  if (!athleteSlug.trim()) {
+  const supabase = getSupabasePublicClient();
+  if (!supabase) {
     return emptyReadModel;
   }
 

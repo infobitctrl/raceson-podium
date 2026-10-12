@@ -61,6 +61,9 @@ const config: NextConfig = {
     return [{ source: "/:path*", headers: [
       { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
       { key: "Referrer-Policy", value: "same-origin" },
+      { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
     ] }];
   },
 };

@@ -39,7 +39,19 @@ advisory checks and verifies a synthetic server key is absent from browser asset
 The Gitleaks allowlist is restricted to exact reviewed lines in named files;
 it does not exempt test directories or arbitrary credential-like values.
 
+Demo responses prohibit incoming framing with CSP `frame-ancestors 'none'` and
+`X-Frame-Options: DENY`, and disable MIME sniffing with `nosniff`. The CSP does not
+restrict outgoing wallet frames, scripts or connections. These headers complement
+the existing session, origin, signature and receipt checks.
+
 ## Review scope and limits
+
+The 12 October release review repeated source/history scanning (132 baseline
+commits), dependency audits, source tracing and the application/contract suites.
+No validated vulnerability was found in the reviewed boundaries, no open GitHub
+secret alert was present, and the dependency audits found no known advisories.
+The final tagged commit must also pass the complete source-quality CI workflow.
+See [hackathon release notes](docs/hackathon-release.md) for the release scope.
 
 The 11 October 2026 review inventoried tracked source and scanned all 107 existing
 commits. Eighteen initial pattern alerts were reviewed as synthetic idempotency

@@ -1,3 +1,21 @@
+## Hackathon release candidate — 12 October 2026
+
+The final review starts from `120be9c46acb2a5c67b234ea5521bf6e89d5b499`.
+The small follow-up removes unsupported hosted profile-history API/database reads
+while keeping their existing empty UI and ordinary/local history behavior.
+Five regression cases cover hosted request suppression, empty slugs and retained
+compatibility paths; three fail against the prior implementation. Next response
+headers now prohibit incoming framing and MIME sniffing without imposing script,
+connection or outgoing-frame restrictions on wallet providers.
+
+Baseline API (1,241), UI (1,917), locale/account (93), wallet (63), chain unit (212),
+contract and owned-chain integration checks pass, alongside types, zero-warning
+lint, dependency audits, publication and synthetic production-build checks.
+The follow-up reruns affected suites; the exact final commit must pass all CI jobs,
+including disposable database verification and full-history secret scanning,
+before tagging. See [hackathon release notes](hackathon-release.md) for scope,
+performance evidence and remaining owner submission steps.
+
 ## English-only hackathon presentation — 12 October 2026
 
 The Podium composition root now fixes the presentation language to English.
