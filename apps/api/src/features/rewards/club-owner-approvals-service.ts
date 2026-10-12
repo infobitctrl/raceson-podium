@@ -33,7 +33,17 @@ export async function clubDirectClaimV5(actor:RewardAccountIdentity,approvalId:s
 }
 export async function coordinateClubOwnerApproval(actor:RewardAccountIdentity,scope:{approvalId:string;entitlementId:string;creationId:string},command:ClubOwnerCommand|undefined,deps:{rpc:Deps['rpc'];build:(command?:ClubDirectClaimCommandV5)=>Promise<View>}){
  const read=()=>deps.build();
- let [current,saved]=await Promise.all([read(),clubOwnerApproval(actor,scope,deps.rpc)]);
+ const receiptCommand=command?.action==='receipt'||command?.action==='registrationReceipt';
+ const initial=async()=>{
+  if(receiptCommand){
+   // Keep account/club authorization ahead of any receipt write. The receipt
+   // builder already performs the complete current-state and Safe checks.
+   const saved=await clubOwnerApproval(actor,scope,deps.rpc);
+   return [await deps.build(command),saved] as const;
+  }
+  return Promise.all([read(),clubOwnerApproval(actor,scope,deps.rpc)]);
+ };
+ let [current,saved]=await initial();
  if(command?.action==='prepare'){
   if(!saved.signerAddress)throw Error('reward_club_owner_required');
   // Rejoining a valid request never replaces another owner's signature.
@@ -59,7 +69,7 @@ export async function coordinateClubOwnerApproval(actor:RewardAccountIdentity,sc
    if(request.signatures.length<2)return conflict();
    saved=await clubOwnerApproval(actor,scope,deps.rpc,'submitted',{requestId:command.requestId,hash:command.hash});
   }
- }else if(command){
+ }else if(command&&!receiptCommand){
   current=await deps.build(command);
  }
  const request=saved.request;

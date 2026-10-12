@@ -38,7 +38,7 @@ test('expired queued requests reject immediately and do not delay live requests 
  const live=performance.now();await pace();assert.ok(performance.now()-live>=199,'live request pacing changed');
 });
 
-test('public directory batches at most eight exact read RPCs and shares pacing with unbatched private reads',async()=>{
+test('public directory batches at most twenty exact read RPCs and shares pacing with unbatched private reads',async()=>{
  const {publicDirectoryClient}=await import('../dist/canary-public-client.js');
  const original=globalThis.fetch,calls=[];
  globalThis.fetch=async(url,init)=>{
@@ -54,11 +54,11 @@ test('public directory batches at most eight exact read RPCs and shares pacing w
   const privateRead=controllerPublicClient.getChainId();
   assert.deepEqual(await Promise.all(reads),addresses,'reordered batch replies must retain their request identity');
   assert.equal(await privateRead,10143);
-  const batches=calls.filter(c=>Array.isArray(c.body));assert.equal(batches.length,4);
-  assert.deepEqual(batches.map(c=>c.body.length),[8,8,8,2],'a short final batch must not wait for more reads');
+  const batches=calls.filter(c=>Array.isArray(c.body));assert.equal(batches.length,2);
+  assert.deepEqual(batches.map(c=>c.body.length),[20,6],'a short final batch must not wait for more reads');
   assert.deepEqual(batches.flatMap(c=>c.body.map(b=>b.params)).sort(),addresses.map(a=>[a,'0x78']).sort());
   assert.equal(calls.filter(c=>!Array.isArray(c.body)).length,1,'private transport stays unbatched');
-  for(let i=1;i<calls.length;i++)assert.ok(calls[i].time-calls[i-1].time>=190,'directory bypassed shared pacing');
+  for(let i=1;i<calls.length;i++)assert.ok(calls[i].time-calls[i-1].time>=90,'directory bypassed shared pacing');
   for(const start of calls){
    const window=calls.filter(c=>c.time>=start.time&&c.time<start.time+990);
    assert.ok(window.reduce((n,c)=>n+(Array.isArray(c.body)?c.body.length:1),0)<=40,'logical read limit exceeded');
@@ -115,7 +115,7 @@ test('mixed public call batches and private requests stay within the shared roll
   assert.ok(window.reduce((n,s)=>n+s.count,0)<=20,'eth_call limit exceeded');
   assert.ok(window.length<=5,'shared HTTP limit exceeded');
  }
- for(const invalid of [-1,9,1.5,NaN])await assert.rejects(pace(undefined,invalid),/invalid_rpc_batch/);
+ for(const invalid of [-1,21,1.5,NaN])await assert.rejects(pace(undefined,invalid),/invalid_rpc_batch/);
 });
 
 
@@ -131,7 +131,7 @@ test('actual directory eth_call envelopes honor the call limit alongside private
  try{
   await Promise.all([...Array.from({length:40},(_,i)=>publicDirectoryClient.request({method:'eth_call',params:[{to:'0x'+'11'.repeat(20),data:'0x'+i.toString(16).padStart(2,'0')},'0x10']})),controllerPublicClient.getChainId()]);
   assert.equal(starts.reduce((sum,s)=>sum+s.calls,0),40);
-  assert.ok(starts.every(s=>s.total<=8));
+  assert.ok(starts.every(s=>s.total<=20));
   for(const start of starts){
    const window=starts.filter(s=>s.time>=start.time&&s.time<start.time+990);
    assert.ok(window.reduce((sum,s)=>sum+s.calls,0)<=20);
@@ -147,4 +147,49 @@ test('an expired call-heavy batch releases its wait without holding up a permitt
  setTimeout(()=>controller.abort(Error('expired')),20);
  await rejected;await pace();
  assert.ok(performance.now()-began<700,'cancelled eth_call batch held the private queue');
+});
+
+test('large metadata and call batches share rolling budgets with private reads',async()=>{
+ const pace=createCanaryRpcPacer(),starts=[];
+ const batches=[{reads:16,calls:0},{reads:16,calls:0},{reads:16,calls:8},{reads:1,calls:1},{reads:16,calls:16},{reads:8,calls:8}];
+ await Promise.all(batches.map((batch,i)=>pace(undefined,batch.calls,()=>starts.push({...batch,i,time:performance.now()}),batch.reads)));
+ assert.deepEqual(starts.map(s=>s.i),batches.map((_,i)=>i));
+ for(const start of starts){
+  const window=starts.filter(s=>s.time>=start.time&&s.time<start.time+990);
+  assert.ok(window.length<=10);assert.ok(window.reduce((n,s)=>n+s.reads,0)<=40);assert.ok(window.reduce((n,s)=>n+s.calls,0)<=20);
+ }
+ for(const reads of [0,21,1.5,NaN])await assert.rejects(pace(undefined,0,undefined,reads),/invalid_rpc_batch/);
+ await assert.rejects(pace(undefined,2,undefined,1),/invalid_rpc_batch/);
+});
+
+test('receipt transport batches only read methods, keeps identities and errors, and does not cache',async()=>{
+ const {receiptVerificationClient}=await import('../dist/canary-public-client.js');
+ const original=globalThis.fetch;let sends=0,fail=false;
+ globalThis.fetch=async(url,init)=>{
+  sends++;assert.equal(new URL(url).origin,'https://testnet-rpc.monad.xyz');assert.equal(new Headers(init.headers).has('authorization'),false);
+  const items=JSON.parse(init.body);assert.ok(Array.isArray(items)&&items.length<=20);
+  return new Response(JSON.stringify(items.map(item=>({jsonrpc:'2.0',id:item.id,...(fail?{error:{code:-32000,message:'synthetic_failure'}}:{result:item.params[0]})})).reverse()),{headers:{'Content-Type':'application/json'}});
+ };
+ try{
+  const addresses=Array.from({length:22},(_,i)=>'0x'+String(i+1).padStart(40,'0'));
+  assert.deepEqual(await Promise.all(addresses.map(address=>receiptVerificationClient.getCode({address,blockNumber:9n}))),addresses);assert.equal(sends,2);
+  const storage={address:addresses[0],slot:'0x'+'00'.repeat(32),blockNumber:9n};
+  assert.equal(await receiptVerificationClient.getStorageAt(storage),addresses[0]);assert.equal(sends,3);
+  fail=true;await assert.rejects(receiptVerificationClient.getCode({address:addresses[0],blockNumber:9n}),/synthetic_failure/);assert.equal(sends,4);
+  fail=false;await receiptVerificationClient.getCode({address:addresses[0],blockNumber:9n});assert.equal(sends,5);
+  for(const method of ['eth_sendRawTransaction','eth_sendTransaction','eth_sign','personal_sign','eth_estimateGas'])await assert.rejects(receiptVerificationClient.request({method,params:[]}));
+  assert.equal(sends,5);assert.equal(receiptVerificationClient.cacheTime,0);
+ }finally{globalThis.fetch=original;}
+});
+
+test('read-only batch cadence never accelerates ordinary private requests',async()=>{
+ const pace=createCanaryRpcPacer(),starts=[];
+ await Promise.all(Array.from({length:15},(_,i)=>{
+  const privateRead=i%3===0;
+  return pace(undefined,privateRead?1:0,()=>starts.push({i,privateRead,time:performance.now()}),privateRead?undefined:1);
+ }));
+ for(let i=1;i<starts.length;i++)assert.ok(starts[i].time-starts[i-1].time>=99);
+ const privateStarts=starts.filter(s=>s.privateRead);
+ for(let i=1;i<privateStarts.length;i++)assert.ok(privateStarts[i].time-privateStarts[i-1].time>=199);
+ for(const start of starts)assert.ok(starts.filter(s=>s.time>=start.time&&s.time<start.time+990).length<=10);
 });

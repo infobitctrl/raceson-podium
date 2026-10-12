@@ -90,3 +90,23 @@ test('member club discovery uses session identity and rejects writes and caller 
   await dispatchDirectClaimsV5({method:'GET'},{},new URL(list,origin),{...deps,requireIdentity:async()=>{throw Error('Unauthorized');}});assert.equal(response.status,401);assert.equal(calls,1);
  }finally{for(const[k,v]of Object.entries(old))if(v===undefined)delete process.env[k];else process.env[k]=v;}
 });
+
+test('only authenticated receipt commands select the receipt reader',async()=>{
+ const old=Object.fromEntries(Object.keys(env).map(k=>[k,process.env[k]]));Object.assign(process.env,env);
+ try{
+  const address='0x'+'12'.repeat(20),calls=[];
+  const reader=label=>Object.fromEntries(['getChainId','getBlock','getTransaction','getTransactionReceipt'].map(name=>[name,async()=>{calls.push(label);throw Error('synthetic_stop');}]));
+  const plan={version:6,chainId:10143,launchId:id,setupRevision:1,configurationHash:'a'.repeat(64),funder:address,operator:'0x'+'34'.repeat(20),
+   unallocatedTreasury:address,expiredTreasury:address,walletRegistry:'0x'+'56'.repeat(20),identityIssuer:'0x'+'78'.repeat(20),claimLifetime:86400,
+   reviewPeriods:[0,0,0,0,0,0],caps:['100','0','0','0','0','0'],budgetWei:'100'};
+  const facts={approvalId:id,slot:0,plan,deploymentHash:hash,fundingHash:hash,award:{entitlementId:hash,beneficiaryId:hash,pot:1,amount:'100',explanationHash:hash,beneficiaryKind:0},challenge:null,receipt:null,rehearsalPolicy:'podium-demo-alias-rehearsal-v1'};
+  let response;
+  const deps={config:()=>({chainId:10143,origin}),sponsorReader:reader('ordinary'),receiptReader:reader('receipt'),identityIssuer:null,
+   applyPrivateSessionHeaders(){},requireIdentity:async()=>({userId:id,sessionId:id}),readJsonBody:async()=>({action:'receipt',hash}),
+   rpc:async()=>({data:facts,error:null}),sendSuccess(){assert.fail('synthetic readers cannot succeed');},sendError(_r,status){response=status;}};
+  await dispatchDirectClaimsV5({method:'GET'},{},new URL(path,origin),deps);assert.equal(response,503);assert.ok(calls.length);assert(calls.every(c=>c==='ordinary'));
+  calls.length=0;await dispatchDirectClaimsV5({method:'POST'},{},new URL(path,origin),deps);assert.equal(response,503);assert.ok(calls.length);assert(calls.every(c=>c==='receipt'));
+  calls.length=0;await dispatchDirectClaimsV5({method:'POST'},{},new URL(path,origin),{...deps,requireIdentity:async()=>{throw Error('Unauthorized');}});assert.equal(response,401);assert.deepEqual(calls,[]);
+  await dispatchDirectClaimsV5({method:'POST'},{},new URL(path,origin),{...deps,receiptReader:undefined});assert.equal(response,503);assert.ok(calls.length);assert(calls.every(c=>c==='ordinary'));
+ }finally{for(const[k,v]of Object.entries(old)){if(v===undefined)delete process.env[k];else process.env[k]=v;}}
+});

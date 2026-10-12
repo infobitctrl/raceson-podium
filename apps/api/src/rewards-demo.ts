@@ -59,7 +59,7 @@ import { dispatchCanaryStatusRoute } from "./routes/rewards/canary.js";
 import { dispatchFinalResultsCanaryStatusRoute } from "./routes/rewards/final-results-canary.js";
 import { dispatchRewardResultReviewV3 } from "./routes/rewards/result-review-v3.js";
 import { authenticateRewardRequest, rewardPortalConfig } from "./features/rewards/request-identity.js";
-import { canaryPublicClient, controllerPublicClient, publicDirectoryClient } from "@raceson/rewards-chain/canary-public-client";
+import { canaryPublicClient, controllerPublicClient, publicDirectoryClient, receiptVerificationClient } from "@raceson/rewards-chain/canary-public-client";
 import { programmeLocalReader } from "./features/rewards/programme-local-reader.js";
 import {hostedPublicDirectoryCache} from './features/rewards/public-directory-cache.js';
 import { dispatchPilotAcceptanceV3, type LocalPilotRunnerV3 } from "./routes/rewards/pilot-acceptance-v3.js";
@@ -86,7 +86,7 @@ const rewardRoutes = (localPilot?: LocalPilotRunnerV3, workflow?: WorkflowEndpoi
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClubClaims(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   // Direct claim checks use the same block-pinned, read-only aggregation as
   // publication. Keep the shared RPC pacer; no cached state or signing changes.
-  if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchDirectClaimsV5(req,res,url,{...deps,sponsorReader:config?.chainId===10143?controllerPublicClient:undefined}))return true;
+  if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchDirectClaimsV5(req,res,url,{...deps,sponsorReader:config?.chainId===10143?controllerPublicClient:undefined,receiptReader:config?.chainId===10143?receiptVerificationClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchHostedCopyClaims(req,res,url,{...deps,sponsorReader:config?.chainId===10143?canaryPublicClient:undefined}))return true;
   if(hostedCopyOperationsEnabled(process.env,boundary.env)&&await dispatchAthleteRewardRoutes(req,res,url,{...deps,
     resolveRpc:identity=>hostedCopyBeneficiaryWalletRpc(identity,(name,args)=>createAdminSupabaseClient(boundary.env).rpc(name,args))}))return true;

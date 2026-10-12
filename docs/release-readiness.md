@@ -1,3 +1,51 @@
+## Read-only batch and receipt follow-up — 12 October 2026
+
+Starting source: `80837f7e31ea536731f283186a4955ca197f8e38`. Three fresh hosted
+full-directory checks took 16.006, 21.852 and 20.968 seconds for 15 campaigns and
+65 pots. Verification accounted for 15.026–20.987 seconds; initial loading stayed
+below 0.7 seconds. This baseline includes the subsequent chart and round-switch
+releases and supersedes older timings for this comparison only.
+
+Read-only verification now groups at most 20 RPCs per HTTP envelope and may start
+one envelope every 100 ms. The same FIFO enforces rolling ceilings of 40 logical
+reads and 20 eth_call operations per second, including ordinary private work.
+Ordinary unbatched requests retain their separate 200 ms start spacing. These
+remain below the [documented endpoint limits](https://docs.monad.xyz/developer-essentials/testnet).
+No provider configuration, endpoint, timeout, retry or transaction-send change is
+part of this update. Limits remain per process, not an account-wide guarantee.
+
+Only authenticated receipt and club-registration receipt commands select the new
+read-only receipt transport. Ordinary status, preparation, signing and submission
+retain their existing readers. The receipt reader also permits the existing Safe
+storage inspection, and rejects signing, sending and gas-estimation RPCs. Receipt
+checks overlap independent evidence reads but retain every amount, recipient,
+event, nonce, finality and canonical-block assertion. There is no new success cache.
+
+Club owner coordination now authorizes the account and calls the complete receipt
+builder once. Its former preliminary full-state read duplicated the receipt
+builder's checks. Preparation, owner signatures, quorum, submission records, Safe
+provenance and nonce checks remain unchanged.
+
+Owned, non-forked chain comparisons used production scheduling and a synthetic
+150 ms response delay. Exact complete results were equal:
+
+| Check | Before | After |
+| --- | --- | --- |
+| 15 programmes / 65 pots | 54 HTTP requests; 10.856 s | 36 requests; 8.734 s |
+| 16 programmes / 96 pots | 66 HTTP requests; 13.282 s | 43 requests; 10.422 s |
+| Already-finalized V6 athlete receipt | 32 HTTP requests; 6.422 s | 25 requests; 3.789 s |
+
+The directory cases retain exactly 308 and 382 logical reads respectively. The
+receipt combines one additional getter into the existing deployless call batch;
+no validation result is omitted. These isolate app verification after finality,
+not transaction inclusion or blockchain confirmation. Hosted results, exact source
+and CI completion are recorded in the versioned GitHub release.
+
+Regressions cover mixed logical/call budgets, ordinary private spacing, aborts,
+request/error identity, receipt-only routing, unauthorized club rejection before
+recording, and one complete verification per club receipt. Existing full negative
+receipt, payment, consent and finality suites remain required release gates.
+
 ## Verification and receipt performance follow-up — 12 October 2026
 
 Baseline: `877cb262dc40f7f9646abc176f5d8bffeb925f21`. Previous full

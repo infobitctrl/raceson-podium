@@ -69,3 +69,20 @@ test('display labels do not change an existing approval message or grant signing
  const current=await f.run(1);assert.deepEqual(current.ownerDisplay,ownerDisplay);assert.equal(current.ownerApproval.requestId,requestId);
  assert(currentClubOwnerRequest(f.saved,f.current));await assert.rejects(f.run(4,{action:'prepare',proofId:id(8)}),/owner_required/);
 });
+
+for(const action of ['receipt','registrationReceipt'])test(`${action} checks club authority before recording and performs one complete verification`,async()=>{
+ const f=fixture(),command={action,hash:hash('d')},events=[];
+ const rpc=async()=>{events.push('authority');return{data:{signerAddress:null,request:null},error:null};};
+ const current={...f.current,status:action==='receipt'?'paid':'claimable'};
+ const result=await coordinateClubOwnerApproval(actor(0),scope,command,{rpc,build:async received=>{
+  events.push('verified receipt');assert.deepEqual(received,command);return current;
+ }});
+ assert.deepEqual(events,['authority','verified receipt']);assert.equal(result.status,current.status);
+ assert.equal(result.ownerApproval.requestId,null);assert.deepEqual(result.ownerApproval.signatures,[]);
+ let builds=0;
+ await assert.rejects(coordinateClubOwnerApproval(actor(3),scope,command,{
+  rpc:async()=>({data:null,error:{message:'reward_claim_scope_required'}}),build:async()=>{builds++;return current;},
+ }),/scope_required/);
+ assert.equal(builds,0,'foreign account cannot reach receipt recording');
+ await assert.rejects(coordinateClubOwnerApproval(actor(0),scope,command,{rpc,build:async()=>{throw Error('direct_claim_receipt_mismatch');}}),/receipt_mismatch/);
+});

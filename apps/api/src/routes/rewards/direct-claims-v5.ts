@@ -16,7 +16,7 @@ const command=z.discriminatedUnion('action',[
  z.object({action:z.literal('submitted'),requestId:uuid,hash}).strict(),
  z.object({action:z.literal('prepare'),proofId:uuid}).strict(),z.object({action:z.literal('receipt'),hash}).strict(),z.object({action:z.literal('registrationReceipt'),hash}).strict(),
 ]);
-export async function dispatchDirectClaimsV5(req:IncomingMessage,res:ServerResponse,url:URL,deps:OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;identityIssuer?:IdentityBindingIssuerV1|null}){
+export async function dispatchDirectClaimsV5(req:IncomingMessage,res:ServerResponse,url:URL,deps:OrganizerRewardRouteDependencies&{sponsorReader?:SponsorChainReader;receiptReader?:SponsorChainReader;identityIssuer?:IdentityBindingIssuerV1|null}){
  const match=/^\/api\/v1\/athlete\/rewards\/direct-claims\/([^/]+)\/([^/]+)$/.exec(url.pathname);
  const club=/^\/api\/v1\/club\/rewards\/direct-claims\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(url.pathname);
  const ownerList=url.pathname==='/api/v1/club/rewards/owner-awards';
@@ -38,10 +38,12 @@ export async function dispatchDirectClaimsV5(req:IncomingMessage,res:ServerRespo
   const change=req.method==='POST'?command.parse(await deps.readJsonBody(req)):undefined;
   if(change&&['registrationReceipt','sign','submitted'].includes(change.action)&&!club)throw Error('invalid_sponsor_claim');
   const rpc=deps.rpc??((name,args)=>createAdminSupabaseClient(env).rpc(name,args));
-  const shared={rpc,reader:deps.sponsorReader,issuer:deps.identityIssuer===undefined?directIdentityIssuerFromEnv(process.env):deps.identityIssuer};
+  const receipt=change?.action==='receipt'||change?.action==='registrationReceipt';
+  const reader=receipt?(deps.receiptReader??deps.sponsorReader):deps.sponsorReader;
+  const shared={rpc,reader,issuer:deps.identityIssuer===undefined?directIdentityIssuerFromEnv(process.env):deps.identityIssuer};
   if(club){
-   if(!safeReader(deps.sponsorReader))throw Error('hosted_copy_unavailable');
-   deps.sendSuccess(res,await clubDirectClaimV5(actor,approvalId,entitlementId,uuid.parse(club[3]),change as Parameters<typeof clubDirectClaimV5>[4],{...shared,reader:req.method==='GET'?clubStatusReader(deps.sponsorReader):deps.sponsorReader}));
+   if(!safeReader(reader))throw Error('hosted_copy_unavailable');
+   deps.sendSuccess(res,await clubDirectClaimV5(actor,approvalId,entitlementId,uuid.parse(club[3]),change as Parameters<typeof clubDirectClaimV5>[4],{...shared,reader:req.method==='GET'?clubStatusReader(reader):reader}));
   }else deps.sendSuccess(res,await directClaimV5(actor,approvalId,entitlementId,change as Parameters<typeof directClaimV5>[3],shared));
  }catch(e){const code=e&&typeof e==='object'&&'code'in e?String(e.code):e instanceof Error?e.message:'';
   if(['Unauthorized','Missing bearer token','reward_account_session_required'].includes(code))deps.sendError(res,401,'reward_auth_required','Sign in to the isolated demo.');

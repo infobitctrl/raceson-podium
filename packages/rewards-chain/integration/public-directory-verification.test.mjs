@@ -61,7 +61,7 @@ test('15 independently funded programmes retain exact full observations with les
   assert.deepEqual(after.results,before.results);
   assert.equal(after.results.length,15);assert.equal(after.results.flatMap(r=>r.pots).length,65);
   assert.ok(after.httpRequests<before.httpRequests*0.85,'directory must reduce network requests, not just hide loading');
-  assert.equal(after.maxBatch,8);assert.equal(before.maxBatch,4);
+  assert.equal(after.maxBatch,20);assert.equal(before.maxBatch,4);
   assert.equal(after.requests.eth_getTransactionByHash,before.requests.eth_getTransactionByHash);
   assert.equal(after.requests.eth_getTransactionReceipt,before.requests.eth_getTransactionReceipt);
   assert.equal(after.requests.eth_getBalance,before.requests.eth_getBalance);

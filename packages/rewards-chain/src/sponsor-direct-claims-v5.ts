@@ -61,9 +61,10 @@ export async function observeSponsorDirectClaimV5(reader:SponsorChainReader,inpu
  const observed=await observeSponsorProgrammePot(reader,plan,scope.deploymentHash,scope.fundingHash,scope.slot);
  const pot=observed.pots.find(p=>p.slot===scope.slot);demand(pot&&observed.funded&&!observed.cancelled,'direct_claim_not_funded');
  const blockNumber=BigInt(observed.blockNumber),campaign=walletAddress(pot.address as Address),registry=walletAddress(plan.walletRegistry as Address);
- const [award,binding]=await Promise.all([
+ const [award,binding,allocationDigest]=await Promise.all([
   reader.readContract({address:campaign,abi:directClaimAbiV5,functionName:'entitlements',args:[scope.entitlementId],blockNumber}),
   reader.readContract({address:registry,abi:plan.version===6?walletRegistryAbiV2:walletRegistryAbiV1,functionName:'registrations',args:[scope.beneficiaryId],blockNumber}),
+  plan.version===6?reader.readContract({address:campaign,abi:parseAbi(['function allocationDigest() view returns(bytes32)']),functionName:'allocationDigest',blockNumber}):null,
  ]);
  // Approved database awards can be visible before the reviewer uploads them.
  // Only an entirely empty mapping in Review is an expected unpublished award;
@@ -73,8 +74,8 @@ export async function observeSponsorDirectClaimV5(reader:SponsorChainReader,inpu
  demand(unpublished||award[0]===scope.beneficiaryId&&award[1]===BigInt(scope.amountWei)&&award[2]===scope.explanationHash
   &&award[5]===(scope.slot===0?1:0)&&award[7]===scope.beneficiaryKind,'direct_claim_award_mismatch');
  demand(binding[2]===0n||binding[1]===scope.beneficiaryKind,'direct_claim_binding_mismatch');
- const allocationDigest=plan.version===6?await reader.readContract({address:campaign,abi:parseAbi(['function allocationDigest() view returns(bytes32)']),functionName:'allocationDigest',blockNumber}):null;
- const anchor=await reader.getBlock({blockNumber});demand(anchor.hash===observed.blockHash&&await reader.getChainId()===plan.chainId,'direct_claim_chain_changed');
+ const [anchor,chainId]=await Promise.all([reader.getBlock({blockNumber}),reader.getChainId()]);
+ demand(anchor.hash===observed.blockHash&&chainId===plan.chainId,'direct_claim_chain_changed');
  const paid=award[6],recipient=paid?award[4]:binding[0];
  return {observation:observed,campaignAddress:campaign.toLowerCase(),registryAddress:registry.toLowerCase(),
   allocationDigest,clubOwnersHash:plan.version===6?(binding as readonly [Address,number,bigint,Hex])[3]:null,
@@ -92,8 +93,8 @@ export async function verifySponsorDirectReceiptV5(reader:SponsorChainReader,sco
 /** Return the view already verified with this receipt, so recording it does not
  * perform an additional complete observation or display an earlier snapshot. */
 export async function verifySponsorDirectReceiptWithViewV5(reader:SponsorChainReader,scope:DirectClaimScopeV5,hash:Hex,treasury?:DirectClubTreasuryV5){
- const view=await observeSponsorDirectClaimV5(reader,scope);
- const [tx,receipt]=await Promise.all([reader.getTransaction({hash}),reader.getTransactionReceipt({hash})]);
+ const [view,tx,receipt]=await Promise.all([observeSponsorDirectClaimV5(reader,scope),
+  reader.getTransaction({hash}),reader.getTransactionReceipt({hash})]);
  demand(view.paid&&view.recipient&&tx.hash===hash&&receipt.transactionHash===hash&&tx.chainId===scope.plan.chainId
   &&tx.from.toLowerCase()===receipt.from.toLowerCase()&&tx.value===0n
   &&tx.to?.toLowerCase()===receipt.to?.toLowerCase()&&receipt.status==='success'&&receipt.blockNumber<=BigInt(view.observation.blockNumber)
@@ -137,8 +138,8 @@ export async function verifySponsorDirectReceiptWithViewV5(reader:SponsorChainRe
  demand(matches.length===1&&matches[0]!.args.recipient.toLowerCase()===view.recipient
   &&matches[0]!.args.amount===BigInt(scope.amountWei)&&matches[0]!.args.pot===(scope.slot===0?1:0)
   &&matches[0]!.args.nonce+1n===BigInt(view.authorizationNonce),'direct_claim_receipt_mismatch');
- const [block,anchor]=await Promise.all([reader.getBlock({blockNumber:receipt.blockNumber}),reader.getBlock({blockNumber:BigInt(view.observation.blockNumber)})]);
- demand(block.hash===receipt.blockHash&&anchor.hash===view.observation.blockHash&&await reader.getChainId()===scope.plan.chainId,'direct_claim_chain_changed');
+ const [block,anchor,chainId]=await Promise.all([reader.getBlock({blockNumber:receipt.blockNumber}),reader.getBlock({blockNumber:BigInt(view.observation.blockNumber)}),reader.getChainId()]);
+ demand(block.hash===receipt.blockHash&&anchor.hash===view.observation.blockHash&&chainId===scope.plan.chainId,'direct_claim_chain_changed');
  return {view,receipt:{transactionHash:hash,amountWei:scope.amountWei,recipient:view.recipient,blockNumber:receipt.blockNumber.toString(),blockHash:receipt.blockHash}};
 }
 
@@ -148,8 +149,9 @@ export async function verifyClubRegistrationReceiptV6(reader:SponsorChainReader 
 }
 export async function verifyClubRegistrationReceiptWithViewV6(reader:SponsorChainReader & RewardClubSafeDeploymentReader,scope:DirectClaimScopeV5,hash:Hex,treasury:DirectClubTreasuryV5){
  demand(scope.plan.version===6&&scope.beneficiaryKind===1,'direct_claim_version_required');
- const view=await observeSponsorDirectClaimV5(reader,scope),safe=treasury.safe.context.verifyingContract.toLowerCase();
- const [tx,r]=await Promise.all([reader.getTransaction({hash}),reader.getTransactionReceipt({hash})]);
+ const safe=treasury.safe.context.verifyingContract.toLowerCase();
+ const [view,tx,r]=await Promise.all([observeSponsorDirectClaimV5(reader,scope),
+  reader.getTransaction({hash}),reader.getTransactionReceipt({hash})]);
  demand(tx.hash===hash&&r.transactionHash===hash&&tx.chainId===scope.plan.chainId&&tx.value===0n
   &&tx.to?.toLowerCase()===r.to?.toLowerCase()&&tx.from.toLowerCase()===r.from.toLowerCase()
   &&r.status==='success'&&r.blockNumber<=BigInt(view.observation.blockNumber)&&tx.blockNumber===r.blockNumber
@@ -168,7 +170,7 @@ export async function verifyClubRegistrationReceiptWithViewV6(reader:SponsorChai
  });
  demand(events.length===1&&events[0]!.args.beneficiaryId===scope.beneficiaryId&&events[0]!.args.recipient.toLowerCase()===safe
   &&events[0]!.args.beneficiaryKind===1&&events[0]!.args.nonce===BigInt(view.registrationNonce),'direct_claim_receipt_mismatch');
- const [block,anchor]=await Promise.all([reader.getBlock({blockNumber:r.blockNumber}),reader.getBlock({blockNumber:BigInt(view.observation.blockNumber)})]);
- demand(block.hash===r.blockHash&&anchor.hash===view.observation.blockHash&&await reader.getChainId()===scope.plan.chainId,'direct_claim_chain_changed');
+ const [block,anchor,chainId]=await Promise.all([reader.getBlock({blockNumber:r.blockNumber}),reader.getBlock({blockNumber:BigInt(view.observation.blockNumber)}),reader.getChainId()]);
+ demand(block.hash===r.blockHash&&anchor.hash===view.observation.blockHash&&chainId===scope.plan.chainId,'direct_claim_chain_changed');
  return {view,receipt:{transactionHash:hash,blockNumber:r.blockNumber.toString(),blockHash:r.blockHash}};
 }

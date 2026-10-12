@@ -47,13 +47,17 @@ account mappings, consent, credentials and signing journals remain private.
 
 ## Verification performance follow-up
 
-The original full live check varied with provider and shared-queue load. Three
-fresh baseline samples took 25.480–32.204 seconds; earlier samples reached
-51.085 seconds. Controlled tests reduced complete directory verification from
-20.023 to 11.569 seconds and an already-finalized receipt check from 11.726 to
-7.168 seconds. Complete results and receipt validation remain equal. See
-[the detailed measurements and limits](release-readiness.md) and the versioned
-GitHub release for hosted results.
+The latest update uses fuller read-only batches within rolling provider budgets,
+adds a read-only transport only for receipt recording, and removes another duplicate
+club receipt observation. Ordinary wallet, preparation, consent, signing and payment
+rules remain unchanged. The existing chart and round-switch improvements are retained.
+
+Controlled complete directory verification improved from 10.856 to 8.734 seconds;
+an already-finalized receipt check improved from 6.422 to 3.789 seconds. Complete
+results and strict receipt decisions remain equal. These are owned-chain app
+verification benchmarks, not blockchain-confirmation measurements or latency promises.
+See [the measurements and limits](release-readiness.md) and the versioned GitHub
+release for fresh hosted results and exact-source CI.
 
 ## Earlier measured performance
 
