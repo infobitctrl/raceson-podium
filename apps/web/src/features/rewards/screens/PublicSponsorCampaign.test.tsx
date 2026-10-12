@@ -137,3 +137,14 @@ it('shows published details and a saved-budget chart before the slow live observ
 });
 
 function render(ui:ReactElement){const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});return rtlRender(ui,{wrapper:({children})=><QueryClientProvider client={client}>{children}</QueryClientProvider>});}
+
+it('places the round buttons immediately above the chart and keeps selection synchronized',async()=>{
+ api.mockResolvedValue(campaign);render(ui());await screen.findByRole('heading',{name:'Synthetic league'});
+ const rounds=screen.getByRole('group',{name:'Prize pots'}),chart=screen.getByRole('region',{name:'Prize pool allocation'});
+ expect(rounds.closest('section')).toBe(screen.getByRole('region',{name:'Round rewards'}));
+ expect(rounds.compareDocumentPosition(chart)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ expect(screen.getByRole('region',{name:'Totals'})).not.toContainElement(rounds);
+ fireEvent.click(within(rounds).getByRole('button',{name:/Round 1/}));
+ expect(screen.getByLabelText('Current URL')).toHaveTextContent('?pot=1');
+ expect(within(rounds).getByRole('button',{name:/Round 1/})).toHaveAttribute('aria-pressed','true');
+});

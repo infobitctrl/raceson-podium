@@ -2,6 +2,7 @@ import {act, renderHook} from '@testing-library/react';
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import type {PublicRewardPage} from '@raceson/domain/rewards/public-campaign';
 import {usePublicCampaignRewards} from './usePublicCampaignRewards';
+import {cancelPublicRewardLoads, loadCachedRewardCollection} from './publicRewardCollection';
 
 const read = vi.hoisted(() => vi.fn());
 vi.mock('../data/publicCampaign', () => ({readPublicRewards: read}));
@@ -121,7 +122,7 @@ it('uses a fresh campaign anchor for the initial page, but retry requests a new 
   expect(result.current.page?.total).toBe(1);
 });
 it('does not reuse an old campaign observation for a newly visited pot', async () => {
-  const anchor = {blockNumber: '100', receivedAt: Date.now()-30_001};
+  const anchor = {blockNumber: '100', receivedAt: Date.now()-90_001};
   read.mockResolvedValue(page(0, 1));
   renderHook(() => usePublicCampaignRewards(id, 1, 0, true, undefined, anchor));
   await act(async () => {}); expect(read.mock.calls[0][6]).toBeUndefined();
@@ -131,6 +132,7 @@ it('shows a complete cached round immediately on revisit and retains it through 
   read.mockResolvedValueOnce(page(0, 501)).mockResolvedValueOnce(page(500, 501));
   const first = renderHook(() => usePublicCampaignRewards(id, 1, 0, true, cache));
   await act(async () => {}); expect(cache.get(`${id}:1`)?.page.rows).toHaveLength(501); first.unmount();
+  await act(async () => {await vi.advanceTimersByTimeAsync(30_001);});
   let reject!: () => void;
   read.mockImplementationOnce(() => new Promise((_, fail) => {reject = () => fail(Error('offline'));}));
   const anchor = {blockNumber: '100', receivedAt: Date.now()};
@@ -163,4 +165,68 @@ it('verifies a 741-row campaign in two bounded requests', async () => {
   await act(async () => {});
   expect(read.mock.calls.map(call => call[2])).toEqual([0, 500]);
   expect(result.current.page?.rows).toHaveLength(741);
+});
+
+it('preloads only the next round after the selected collection completes and shares the pending request on switch',async()=>{
+ const cache: import('./usePublicCampaignRewards').PublicRewardCache=new Map();
+ const anchor={blockNumber:'100',receivedAt:Date.now()};
+ let finish!: (value:PublicRewardPage)=>void;
+ read.mockImplementation(async (_id,slot)=>slot===1?page(0,1,id,slot):new Promise<PublicRewardPage>(resolve=>{finish=resolve;}));
+ const selected=renderHook(()=>usePublicCampaignRewards(id,1,0,true,cache,anchor,2));
+ await act(async()=>{});
+ expect(selected.result.current).toMatchObject({busy:false,page:{slot:1}});
+ expect(read.mock.calls.map(call=>call[1])).toEqual([1,2]);
+ expect(read.mock.calls[1][6]).toBe('100');
+ selected.unmount();
+ const next=renderHook(()=>usePublicCampaignRewards(id,2,0,true,cache,anchor));
+ expect(next.result.current.page).toBeNull();
+ expect(read).toHaveBeenCalledTimes(2);
+ expect(read.mock.calls[1][5].aborted).toBe(false);
+ await act(async()=>finish(page(0,1,id,2)));
+ expect(next.result.current).toMatchObject({busy:false,failed:false,page:{slot:2,total:1}});
+});
+it('revisits a recently verified round without another request and explicit refresh still loads a newer snapshot',async()=>{
+ const cache: import('./usePublicCampaignRewards').PublicRewardCache=new Map();
+ read.mockImplementation(async (_id,slot)=>page(0,1,id,slot));
+ const first=renderHook(()=>usePublicCampaignRewards(id,1,0,true,cache));
+ await act(async()=>{});first.unmount();
+ const revisit=renderHook(p=>usePublicCampaignRewards(id,1,p.refresh,true,cache,p.anchor),{initialProps:{refresh:0,anchor:{blockNumber:'100',receivedAt:Date.now()}}});
+ expect(revisit.result.current.page?.slot).toBe(1);expect(revisit.result.current.busy).toBe(false);
+ await act(async()=>{});expect(read).toHaveBeenCalledOnce();
+ read.mockResolvedValueOnce({...page(0,1),blockNumber:'101'});
+ revisit.rerender({refresh:1,anchor:{blockNumber:'101',receivedAt:Date.now()}});
+ await act(async()=>{});expect(read).toHaveBeenCalledTimes(2);expect(read.mock.calls[1][6]).toBe('101');
+ expect(revisit.result.current.page?.blockNumber).toBe('101');
+});
+it('reuses a recent campaign anchor after inspecting another round for a minute',async()=>{
+ const anchor={blockNumber:'100',receivedAt:Date.now()-60_000};
+ read.mockResolvedValue(page(0,1));renderHook(()=>usePublicCampaignRewards(id,1,0,true,undefined,anchor));
+ await act(async()=>{});expect(read.mock.calls[0][6]).toBe('100');
+});
+it('keeps failed preloads out of the cache and retries them when selected',async()=>{
+ const cache: import('./usePublicCampaignRewards').PublicRewardCache=new Map();
+ const anchor={blockNumber:'100',receivedAt:Date.now()};
+ read.mockResolvedValueOnce(page(0,1)).mockRejectedValueOnce(Error('offline')).mockResolvedValueOnce(page(0,1,id,2));
+ const first=renderHook(()=>usePublicCampaignRewards(id,1,0,true,cache,anchor,2));
+ await act(async()=>{});expect(cache.has(`${id}:2`)).toBe(false);expect(first.result.current.failed).toBe(false);first.unmount();
+ const next=renderHook(()=>usePublicCampaignRewards(id,2,0,true,cache,anchor));
+ await act(async()=>{});expect(read).toHaveBeenCalledTimes(3);expect(next.result.current).toMatchObject({failed:false,page:{slot:2}});
+});
+it('screen cleanup cancels only its old generation and cannot overwrite refreshed data',async()=>{
+ const cache: import('./usePublicCampaignRewards').PublicRewardCache=new Map();
+ let finishOld!: (value:PublicRewardPage)=>void;
+ read.mockReturnValueOnce(new Promise<PublicRewardPage>(resolve=>{finishOld=resolve;})).mockResolvedValueOnce({...page(0,1),blockNumber:'101'});
+ const old=loadCachedRewardCollection(cache,id,1,0,'100').catch(()=>null);
+ const current=loadCachedRewardCollection(cache,id,1,1,'101');
+ cancelPublicRewardLoads(cache,id,0);
+ expect(read.mock.calls[0][5].aborted).toBe(true);expect(read.mock.calls[1][5].aborted).toBe(false);
+ await current;finishOld(page(0,1));await old;
+ expect(cache.get(`${id}:1`)).toMatchObject({refresh:1,page:{blockNumber:'101'}});
+});
+
+it('does not preload an already visited round from an older campaign block',async()=>{
+ const cache: import('./usePublicCampaignRewards').PublicRewardCache=new Map([[`${id}:2`,{page:{...page(0,1,id,2),blockNumber:'110'},refresh:0,receivedAt:Date.now()-40_000}]]);
+ const anchor={blockNumber:'100',receivedAt:Date.now()-60_000};
+ read.mockResolvedValue(page(0,1));renderHook(()=>usePublicCampaignRewards(id,1,0,true,cache,anchor,2));
+ await act(async()=>{});expect(read).toHaveBeenCalledOnce();expect(cache.get(`${id}:2`)?.page.blockNumber).toBe('110');
 });

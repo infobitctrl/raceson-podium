@@ -8,6 +8,7 @@ import {campaignStatus, type DirectoryCampaign} from '@raceson/domain/rewards/pu
 import {useI18n} from '@/shared/i18n/I18nContext';
 import {useAuth} from '@/lib/auth';
 import {usePublicCampaignOverview} from '../model/usePublicCampaignOverview';
+import {cancelPublicRewardLoads} from '../model/publicRewardCollection';
 import type {PublicRewardCache} from '../model/usePublicCampaignRewards';
 import {sponsorColors} from '../model/sponsorCatalogue';
 import {publicAmount as setupAmount} from '../model/publicAmount';
@@ -25,6 +26,7 @@ export default function PublicSponsorCampaign() {
   const [attempt, setAttempt] = useState(0), [copied, setCopied] = useState(false), [copyFailed, setCopyFailed] = useState(false);
   const {campaign, selection, busy, failure, live, anchor} = usePublicCampaignOverview(id, attempt);
   const [rewardCache] = useState<PublicRewardCache>(() => new Map());
+  useEffect(() => () => cancelPublicRewardLoads(rewardCache, id, attempt), [rewardCache, id, attempt]);
   const [params, setParams] = useSearchParams(), selected = params.get('pot');
   const [sort, setSort] = useState<'name' | 'amount'>('amount'), [descending, setDescending] = useState(true);
   useEffect(() => {setCopied(false); setCopyFailed(false);}, [id]);
@@ -62,19 +64,20 @@ export default function PublicSponsorCampaign() {
     {copied ? <p role="status">{t('Campaign link copied.', 'Poveznica kampanje je kopirana.')}</p> : null}
     {copyFailed ? <p role="alert">{t('Copy the page address from your browser to share this campaign.', 'Kopirajte adresu stranice iz preglednika za dijeljenje kampanje.')}</p> : null}
     <section aria-label={t('Totals', 'Ukupno')}>
-      {campaign.pots.length > 1 || !pot ? <div className={detail.potPicker}>
-        <label className={detail.mobilePot}>{t('Prize pot', 'Fond nagrada')}<select aria-label={t('Select prize pot', 'Odaberi fond nagrada')} value={pot?.slot ?? ''} onChange={e => select(e.target.value)}>{!pot ? <option value="" disabled>{t('Choose a prize pot', 'Odaberite fond nagrada')}</option> : null}{campaign.pots.map(p => <option key={p.slot} value={p.slot}>{potLabel(p.slot)} · {amount(p.amountWei)}</option>)}</select></label>
-        <div className={detail.potButtons} role="group" aria-label={t('Prize pots', 'Fondovi nagrada')}>{campaign.pots.map(p => <button key={p.slot} aria-pressed={p.slot === pot?.slot} onClick={() => select(String(p.slot))} title={p.name} aria-label={`${potLabel(p.slot)} · ${amount(p.amountWei)}`}>{potLabel(p.slot)} <small>{setupAmount(BigInt(p.amountWei), hr)}</small></button>)}</div>
-      </div> : null}
-      {!pot ? <div className={s.notice} role="alert"><h3>{t('Prize pot not found', 'Fond nagrada nije pronađen')}</h3><p>{t('This link does not identify an available prize pot. Choose one above to view its allocation and payments.', 'Ova poveznica ne upućuje na dostupan fond nagrada. Odaberite fond iznad za pregled raspodjele i isplata.')}</p></div> : null}
       {campaign.pots.length>1?<p className={detail.poolContext}>{t('Campaign budget','Proračun kampanje')}: <strong>{amount(campaign.budgetWei)}</strong> · {pot?potLabel(pot.slot):'—'}</p>:null}
       <dl className={detail.metrics}>{metrics.map(metric => <div key={metric.label}><dt>{metric.label}</dt><dd>{metric.value === undefined ? '—' : <>{setupAmount(BigInt(metric.value), hr)} <small>test MON</small></>}</dd><p>{metric.note}</p></div>)}</dl>
       <div className={detail.verification}><ShieldCheck size={16}/><span>{live ? t('Last verified', 'Posljednja provjera') : t('Published status as of', 'Objavljeno stanje na') }: {new Date(Number(campaign.blockTimestamp) * 1000).toLocaleString(hr ? 'hr-HR' : 'en-GB')}</span><button className={detail.smallButton} disabled={busy} aria-label={t('Refresh status', 'Osvježi stanje')} onClick={() => setAttempt(n => n + 1)}><RefreshCw size={14}/>{busy ? t('Refreshing…', 'Osvježavanje…') : t('Refresh', 'Osvježi')}</button></div>
       {failure ? <p role="alert">{t('Refresh failed. Showing the last verified status below.', 'Osvježavanje nije uspjelo. Prikazano je posljednje provjereno stanje.')}</p> : null}
     </section>
     {!live || busy ? <p className={s.muted} role="status">{busy ? t('Checking current status. Published amounts and budgets remain visible.', 'Provjera trenutačnog stanja. Objavljeni iznosi i proračuni ostaju vidljivi.') : t('Showing the published snapshot. Current status is unavailable.', 'Prikazan je objavljeni pregled. Trenutačno stanje nije dostupno.')}</p> : null}
+    <section className={detail.distribution} aria-label={t('Round rewards', 'Nagrade po kolima')}>
+      {campaign.pots.length > 1 || !pot ? <div className={detail.potPicker}>
+        <div className={detail.potButtons} role="group" aria-label={t('Prize pots', 'Fondovi nagrada')}>{campaign.pots.map(p => <button key={p.slot} aria-pressed={p.slot === pot?.slot} onClick={() => select(String(p.slot))} title={p.name} aria-label={`${potLabel(p.slot)} · ${amount(p.amountWei)}`}>{potLabel(p.slot)} <small>{setupAmount(BigInt(p.amountWei), hr)}</small></button>)}</div>
+      </div> : null}
+      {!pot ? <div className={s.notice} role="alert"><h3>{t('Prize pot not found', 'Fond nagrada nije pronađen')}</h3><p>{t('This link does not identify an available prize pot. Choose one above to view its allocation and payments.', 'Ova poveznica ne upućuje na dostupan fond nagrada. Odaberite fond iznad za pregled raspodjele i isplata.')}</p></div> :
+      <PublicDistribution key={`${id}:${pot.slot}`} campaign={campaign} pot={pot} hr={hr} refresh={attempt} ready={!busy} rewardCache={rewardCache} anchor={anchor} nextSlot={campaign.pots[(campaign.pots.findIndex(p => p.slot === pot.slot) + 1) % campaign.pots.length]?.slot} subtitle={potLabel(pot.slot)} onSelectPot={slot=>select(String(slot))} startAtPot={selected!==null}/>}
+    </section>
     {pot ? <>
-      <PublicDistribution key={`${id}:${pot.slot}`} campaign={campaign} pot={pot} hr={hr} refresh={attempt} ready={!busy} rewardCache={rewardCache} anchor={anchor} subtitle={potLabel(pot.slot)} onSelectPot={slot=>select(String(slot))} startAtPot={selected!==null}/>
       <details key={pot.slot} className={detail.budgets} open={pot.allocatedWei === '0'}><summary><span>{t('Saved category budgets', 'Spremljeni fondovi kategorija')}</span><span className={detail.summaryAmount}>{potLabel(pot.slot)} · {amount(pot.amountWei)}</span></summary><div className={detail.disclosureBody}>
         <div className={s.scroll}><table className={`${s.table} ${detail.categories}`}><caption className="sr-only">{t('Saved category budgets', 'Spremljeni fondovi kategorija')}</caption><thead><tr><th scope="col" aria-sort={sort === 'name' ? descending ? 'descending' : 'ascending' : 'none'}><button onClick={() => changeSort('name')}>{t('Category', 'Kategorija')}<ArrowUpDown size={14}/></button></th><th scope="col" aria-sort={sort === 'amount' ? descending ? 'descending' : 'ascending' : 'none'}><button onClick={() => changeSort('amount')}>{t('Budget', 'Fond')}<ArrowUpDown size={14}/></button></th></tr></thead><tbody>{groups.map(g => <tr key={g.id}><td><span className={detail.category}><i aria-hidden="true" style={{background: g.color}}/>{g.name}</span></td><td>{amount(g.amountWei)}</td></tr>)}</tbody></table></div><p className={s.muted}>{t('These are the saved budget splits. Individual awards depend on approved results.', 'Ovo su spremljeni udjeli proračuna. Pojedinačne nagrade ovise o odobrenim rezultatima.')}</p>
       </div></details>

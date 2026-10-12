@@ -9,8 +9,8 @@ import {publicRewardAmount as setupAmount} from '../model/publicAmount';
 import {prizePercent} from '../model/prizeDisplay';
 import PublicRewardTable from './PublicRewardTable';
 import s from './PublicDistribution.module.css';
-export default function PublicDistribution({campaign, pot, hr, refresh, subtitle, onSelectPot, startAtPot=false, ready=true, rewardCache, anchor}: {campaign: PublicSponsorCampaign; pot: PublicSponsorCampaign['pots'][number]; hr: boolean; refresh: number; subtitle: string;onSelectPot:(slot:number)=>void;startAtPot?:boolean;ready?:boolean;rewardCache?:PublicRewardCache;anchor?:PublicRewardAnchor}) {
-  const loaded = usePublicCampaignRewards(campaign.id, pot.slot, refresh, ready, rewardCache, anchor);
+export default function PublicDistribution({campaign, pot, hr, refresh, subtitle, onSelectPot, startAtPot=false, ready=true, rewardCache, anchor, nextSlot}: {campaign: PublicSponsorCampaign; pot: PublicSponsorCampaign['pots'][number]; hr: boolean; refresh: number; subtitle: string;onSelectPot:(slot:number)=>void;startAtPot?:boolean;ready?:boolean;rewardCache?:PublicRewardCache;anchor?:PublicRewardAnchor;nextSlot?:number}) {
+  const loaded = usePublicCampaignRewards(campaign.id, pot.slot, refresh, ready, rewardCache, anchor, nextSlot);
   const rewards = {...loaded, busy: loaded.busy || !ready};
   const tree = useMemo(() => publicDistributionTree(campaign, pot, rewards.page?.rows ?? null, hr), [campaign, pot, rewards.page, hr]);
   return <>
