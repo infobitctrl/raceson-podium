@@ -31,6 +31,7 @@ jobs:
       - run: npm run check:web
       - run: npm run check:lint
       - run: npm run test:rewards:ui
+      - run: npm run test:locale
       - run: npm run test:wallet
       - run: npm run check:rewards:chain
       - run: npm run check:dependencies

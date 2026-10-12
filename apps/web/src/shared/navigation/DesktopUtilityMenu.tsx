@@ -29,7 +29,7 @@ export function DesktopUtilityMenu({
   onSignOut,
   searchPath = "/events",
 }: DesktopUtilityMenuProps) {
-  const { locale, t } = useI18n();
+  const { locale, localeLocked, t } = useI18n();
   const setRouteLocale = useRouteLocaleChange();
   const { resolvedTheme, setTheme } = useTheme();
   const dark = resolvedTheme === "dark";
@@ -67,6 +67,7 @@ export function DesktopUtilityMenu({
           </Link>
         </DropdownMenuItem>
 
+        {!localeLocked ? <>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="flex items-center gap-2 px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
           <Globe2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -80,6 +81,8 @@ export function DesktopUtilityMenu({
             {t("common.english")}
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
+
+        </> : null}
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">

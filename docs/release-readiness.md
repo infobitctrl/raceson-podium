@@ -1,3 +1,28 @@
+## English-only hackathon presentation — 12 October 2026
+
+The Podium composition root now fixes the presentation language to English.
+Saved browser and account language preferences are left intact, including when
+other account fields are edited. Nested compatibility layouts inherit the same
+language boundary; desktop/mobile language controls and account language fields
+are hidden while that boundary is active. Wallet, consent, payment, authentication
+and account update logic are unchanged.
+
+English and Croatian dictionaries are separate modules with their original
+contents preserved verbatim. The initial Podium shell and the shared English
+fallback import only English. The shared bilingual provider and Croatian
+compatibility copy remain available in source; this is a hackathon presentation
+decision, not deletion of language support. Some lazy compatibility modules still
+contain bilingual copy. Re-enablement requires restoring the selectable provider
+and browser/account preference initialization at RewardsDemoEntry, then rerunning
+locale and rendered checks.
+
+`npm run test:locale` verifies shared bilingual behavior, dictionary completeness,
+interpolation and account preference preservation. Rewards UI tests cover fixed
+English despite Croatian cookies/account settings, nested layouts, route-language
+attempts and server/client agreement. CI now runs these locale/account checks.
+Initial-script sizes and controlled download timings are measured independently
+of complete page load and live chain verification.
+
 ## Responsive artwork and shared sponsor details — 12 October 2026
 
 Event photographs now have 480/960 pixel WebP card variants and larger header

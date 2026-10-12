@@ -32,15 +32,16 @@ describe("demo shell and English default", () => {
     expect(screen.queryByRole("group", { name: "Change language" })).not.toBeInTheDocument();
     expect(screen.queryByText(/Monad testnet|production password/)).not.toBeInTheDocument();
   });
-  it("preserves an explicit language choice over account defaults", async () => {
+  it("uses hackathon English without overwriting an explicit Croatian preference", async () => {
     document.cookie = "raceson_locale=hr; Path=/";
     state.account = { userId: "synthetic-user", locale: "en" };
     render(<RewardsDemoEntry />);
-    expect(await screen.findByText("Demo application fixture: hr")).toBeVisible();
+    expect(await screen.findByText("Demo application fixture: en")).toBeVisible();
+    expect(document.cookie).toContain("raceson_locale=hr");
   });
-  it("retains a signed-in account's saved language preference", async () => {
+  it("keeps hackathon English for an account with Croatian saved", async () => {
     state.account = { userId: "synthetic-user", locale: "hr" };
     render(<RewardsDemoEntry />);
-    expect(await screen.findByText("Demo application fixture: hr")).toBeVisible();
+    expect(await screen.findByText("Demo application fixture: en")).toBeVisible();
   });
 });

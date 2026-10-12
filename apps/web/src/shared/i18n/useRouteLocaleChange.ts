@@ -8,9 +8,10 @@ import type { AppLocale } from "@/shared/i18n/locales";
 export function useRouteLocaleChange() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setLocale } = useI18n();
+  const { setLocale, localeLocked } = useI18n();
 
   return useCallback((nextLocale: AppLocale) => {
+    if (localeLocked) return;
     setLocale(nextLocale, { source: "explicit" });
 
     const routeLocale = location.pathname.match(/^\/(hr|en)(?=\/|$)/)?.[1];
@@ -21,5 +22,5 @@ export function useRouteLocaleChange() {
       search: location.search,
       hash: location.hash,
     });
-  }, [location.hash, location.pathname, location.search, navigate, setLocale]);
+  }, [location.hash, location.pathname, location.search, navigate, setLocale, localeLocked]);
 }

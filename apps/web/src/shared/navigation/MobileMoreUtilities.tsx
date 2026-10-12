@@ -9,12 +9,12 @@ export function MobileMoreUtilities({
 }: {
   onSignOut?: () => void | Promise<void>;
 }) {
-  const { t } = useI18n();
+  const { t, localeLocked } = useI18n();
   const changeLocale = useRouteLocaleChange();
 
   return (
     <div data-mobile-more-utilities className="space-y-1 py-1">
-      <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl px-2.5 py-1.5">
+      {!localeLocked ? <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl px-2.5 py-1.5">
         <div className="flex min-w-0 items-center gap-3 text-sm font-semibold text-foreground">
           <Languages className="h-[18px] w-[18px] shrink-0 text-muted-foreground" aria-hidden="true" />
           <span>{t("common.language")}</span>
@@ -24,7 +24,7 @@ export function MobileMoreUtilities({
           className="h-auto [&_button]:min-h-11 [&_button]:min-w-11"
           onLocaleChange={changeLocale}
         />
-      </div>
+      </div> : null}
 
       <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl px-2.5 py-1.5">
         <div className="flex min-w-0 items-center gap-3 text-sm font-semibold text-foreground">

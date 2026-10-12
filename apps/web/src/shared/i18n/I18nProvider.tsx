@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
@@ -35,7 +36,7 @@ function initialLocaleSource(): LocaleSource {
       : "device";
 }
 
-export function I18nProvider({
+function SelectableI18nProvider({
   children,
   initialLocale,
 }: {
@@ -84,4 +85,10 @@ export function I18nProvider({
   }), [locale, setLocale, source]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+// A fixed-language demo boundary also applies to nested compatibility layouts.
+export function I18nProvider(props: { children: ReactNode; initialLocale?: AppLocale }) {
+  const parent = useContext(I18nContext);
+  return parent.localeLocked ? <>{props.children}</> : <SelectableI18nProvider {...props} />;
 }

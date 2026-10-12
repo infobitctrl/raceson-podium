@@ -59,7 +59,8 @@
     "check:dependencies": "node --test vendor/security/test/*.test.cjs",
     "check:publication": "node --test scripts/check-publication.test.mjs && node scripts/check-publication.mjs",
     "check:build": "node scripts/check-build.mjs",
-    "check:lint": "npm --workspace @raceson/web run lint"
+    "check:lint": "npm --workspace @raceson/web run lint",
+    "test:locale": "npm --workspace @raceson/web run test -- src/shared/i18n src/pages/athlete/AthleteAccountPage.test.tsx src/pages/organizer/OrganizerAccountPage.test.tsx"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

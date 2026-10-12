@@ -217,7 +217,7 @@ function FormField({
 
 export default function OrganizerAccountPage() {
   const queryClient = useQueryClient();
-  const { t } = useI18n();
+  const { t, localeLocked } = useI18n();
   const {
     user,
     account,
@@ -592,7 +592,7 @@ export default function OrganizerAccountPage() {
                   placeholder="Europe/Zagreb"
                 />
               </FormField>
-              <FormField
+              {!localeLocked ? <FormField
                 id="organizer-locale"
                 label={t("common.language")}
                 hint={t("profile.languageHint")}
@@ -606,7 +606,7 @@ export default function OrganizerAccountPage() {
                   <option value="hr">{t("common.croatian")}</option>
                   <option value="en">{t("common.english")}</option>
                 </select>
-              </FormField>
+              </FormField> : null}
               <AccountAppearancePreference id="organizer-appearance" />
                   </div>
                 </div>

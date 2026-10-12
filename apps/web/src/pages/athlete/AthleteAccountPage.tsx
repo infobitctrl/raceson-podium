@@ -102,7 +102,7 @@ export default function AthleteAccountPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { t } = useI18n();
+  const { t, localeLocked } = useI18n();
   const [searchParams] = useSearchParams();
   const coverFileInputRef = useRef<HTMLInputElement>(null);
   const {
@@ -912,7 +912,7 @@ export default function AthleteAccountPage() {
                 <label htmlFor="athlete-account-email" className="text-xs font-semibold text-foreground/80">Email (account)</label>
                 <Input id="athlete-account-email" value={account?.email ?? user?.email ?? ""} disabled />
               </div>
-              <div className="space-y-1">
+              {!localeLocked ? <div className="space-y-1">
                 <label htmlFor="athlete-locale" className="text-xs font-semibold text-foreground/80">{t("common.language")}</label>
                 <select
                   id="athlete-locale"
@@ -925,7 +925,7 @@ export default function AthleteAccountPage() {
                   <option value="en">{t("common.english")}</option>
                 </select>
                 <p id="athlete-locale-hint" className="text-[11px] leading-4 text-muted-foreground">{t("profile.languageHint")}</p>
-              </div>
+              </div> : null}
               <AccountAppearancePreference id="athlete-appearance" />
               <label className="space-y-1" htmlFor="athlete-timezone">
                 <span className="text-xs font-semibold text-foreground/80">{t("profile.timezone")}</span>

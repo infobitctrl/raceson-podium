@@ -3,10 +3,10 @@
 import { createContext, useContext } from "react";
 import { DEFAULT_LOCALE, localeTags, type AppLocale } from "@/shared/i18n/locales";
 import {
-  translate,
   type TranslationKey,
   type TranslationValues,
-} from "@/shared/i18n/messages";
+} from "@/shared/i18n/englishMessages";
+import { translateEnglish } from "@/shared/i18n/translateEnglish";
 
 export type LocaleSource = "default" | "detected" | "device" | "explicit" | "profile";
 
@@ -17,6 +17,7 @@ export type SetLocaleOptions = {
 
 export type I18nContextValue = {
   locale: AppLocale;
+  localeLocked?: boolean;
   localeTag: string;
   source: LocaleSource;
   setLocale: (locale: AppLocale, options?: SetLocaleOptions) => void;
@@ -30,7 +31,7 @@ const fallbackContext: I18nContextValue = {
   localeTag: localeTags[DEFAULT_LOCALE],
   source: "default",
   setLocale: () => undefined,
-  t: (key, values) => translate(DEFAULT_LOCALE, key, values),
+  t: (key, values) => translateEnglish(key, values),
   formatNumber: (value, options) => new Intl.NumberFormat(localeTags[DEFAULT_LOCALE], options).format(value),
   formatDate: (value, options) => new Intl.DateTimeFormat(localeTags[DEFAULT_LOCALE], options).format(new Date(value)),
 };

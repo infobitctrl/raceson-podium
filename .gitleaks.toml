@@ -52,7 +52,7 @@ description = "Reviewed synthetic idempotency value or non-secret display/enum t
 targetRules = ["generic-api-key"]
 condition = "AND"
 regexTarget = "line"
-paths = ['''^apps/web/src/shared/i18n/messages\.ts$''']
+paths = ['''^apps/web/src/shared/i18n/(?:messages|englishMessages)\.ts$''']
 regexes = [
   '''^\s*"rewards\.claimV3\.unmatched":\ "The\ matching\ allocation\ is\ not\ available\ for\ consent\ review\.\ Refresh\ or\ load\ more\ allocations;\ recorded\ payment\ history\ remains\ accessible\.",\s*"rewards\.claimV3\.collected":\ "Signature\ collected\ in\ this\ tab\.\ Save\ it\ to\ record\ your\ consent;\ no\ payment\ has\ been\ sent\.",$''',
   '''^\s*"rewards\.depositV3\.help":\ "Local\ simulation\ only\.\ Use\ a\ wallet\ you\ control\ on\ chain\ 31337\.\ This\ calls\ the\ programme\ deposit\ function;\ it\ does\ not\ route\ pots\ or\ pay\ athletes\.\ Never\ enter\ a\ private\ key\ here\.",\s*"rewards\.depositV3\.testnet":\ "Public\-testnet\ programme\ deposits\ are\ not\ enabled\ yet\.\ This\ is\ separate\ from\ the\ funded\ 0\.1\-MON\ trial\.\ Programme\ execution\ approval\ and\ wallet\ acceptance\ are\ still\ required\.",$''',

@@ -15,7 +15,8 @@ export function LanguageSwitcher({
   className?: string;
   onLocaleChange?: (locale: AppLocale) => void;
 }) {
-  const { locale, setLocale, t } = useI18n();
+  const { locale, localeLocked, setLocale, t } = useI18n();
+  if (localeLocked) return null;
   const choices: Array<{ locale: AppLocale; label: string; shortLabel: string }> = [
     { locale: "hr", label: t("common.croatian"), shortLabel: "HR" },
     { locale: "en", label: t("common.english"), shortLabel: "EN" },
