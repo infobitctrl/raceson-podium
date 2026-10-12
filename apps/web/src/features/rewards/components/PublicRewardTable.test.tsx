@@ -7,6 +7,18 @@ const row=(n:number,status='unclaimed')=>({id:'0x'+String(n).padStart(64,'0'),nu
 const page={total:2,offset:0,rows:[row(1,'claimed'),row(2)],availability:'open',blockNumber:'100',blockTimestamp:'1800000000'};
 const ui=(slot=1,refresh=0)=><MemoryRouter><PublicRewardTable key={slot} id="campaign" slot={slot} hr={false} refresh={refresh}/></MemoryRouter>;
 beforeEach(()=>api.mockReset());
+it.each([false,true])('rounds athlete and club rewards while sorting exact amounts (hr=%s)',async hr=>{
+ const smaller={...row(2),amountWei:'3495104000000000'},larger={...row(1),amountWei:'3495105000000000'};
+ api.mockResolvedValue({...page,total:3,rows:[smaller,larger,{...row(3),kind:'club',amountWei:'999995000000000000'}]});
+ render(<MemoryRouter><PublicRewardTable id="campaign" slot={1} hr={hr} refresh={0}/></MemoryRouter>);
+ const athletes=await screen.findByRole('table',{name:hr?'Nagrade sportaša':'Athlete rewards'});
+ expect(within(athletes).getAllByText(hr?'0,0035':'0.0035')).toHaveLength(2);
+ const clubs=screen.getByRole('table',{name:hr?'Nagrade klubova':'Club rewards'});
+ expect(within(clubs).getByText('1')).toHaveTextContent('1 test MON');
+ fireEvent.click(within(athletes).getByRole('button',{name:hr?'Nagrade':'Rewards'}));
+ expect(within(athletes).getAllByRole('rowheader').map(e=>e.textContent)).toEqual(hr?['Nagrada sportaša 1','Nagrada sportaša 2']:['Athlete reward 1','Athlete reward 2']);
+ expect(larger.amountWei).toBe('3495105000000000');
+});
 it('shows every reward with distinct claim status and hides private identities',async()=>{
  api.mockResolvedValue(page);render(ui());const table=await screen.findByRole('table',{name:'Athlete rewards'});
  expect(within(table).getByText('Claimed')).toBeVisible();expect(within(table).getByText('Unclaimed')).toBeVisible();expect(within(table).getAllByRole('row')).toHaveLength(3);

@@ -4,7 +4,7 @@ import {ArrowUpDown,ArrowUp,ArrowDown,Clock3} from 'lucide-react';
 import {PUBLIC_REWARD_PAGE_SIZE} from '@raceson/domain/rewards/public-campaign';
 import {usePublicCampaignRewards,type PublicCampaignRewards} from '../model/usePublicCampaignRewards';
 import {sortPublicRewards,publicFinishTime,type RewardSort} from '../model/publicDistribution';
-import {publicAmount as setupAmount} from '../model/publicAmount';
+import {publicRewardAmount as setupAmount} from '../model/publicAmount';
 import s from './Podium.module.css';
 import styles from './PublicRewardTable.module.css';
 export default function PublicRewardTable({id,slot,hr,refresh,title,subtitle,rewards}:{id:string;slot:number;hr:boolean;refresh:number;title?:string;subtitle?:string;rewards?:PublicCampaignRewards}) {

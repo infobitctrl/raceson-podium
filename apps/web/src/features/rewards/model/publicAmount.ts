@@ -5,3 +5,9 @@ export function publicAmount(wei: bigint, hr = false) {
   const fraction = digits.slice(-18).replace(/0+$/, '');
   return integer + (fraction ? (hr ? ',' : '.') + fraction : '');
 }
+
+/** Round nonnegative reward displays to five decimals; underlying wei stay exact. */
+export function publicRewardAmount(wei: bigint, hr = false) {
+  const unit = 10n ** 13n;
+  return publicAmount((wei + unit / 2n) / unit * unit, hr);
+}

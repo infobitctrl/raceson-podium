@@ -3,6 +3,18 @@ import {it,expect} from 'vitest';
 import {DistributionExplorer} from './PublicDistribution';
 import type {DistributionNode} from '../model/publicDistribution';
 const tree:DistributionNode={id:'pool',label:'Prize pool',amountWei:10n**18n,level:'pool',children:[{id:'long',label:'Long',amountWei:10n**18n,level:'allocation',children:[{id:'female',label:'Female',amountWei:10n**18n,level:'category',children:[{id:'winner',label:'#1 · Winner 1',amountWei:10n**18n,level:'winner',status:'claimed',reference:'public-reference',children:[]}]}]}]};
+it.each([false,true])('rounds chart labels, accessible names and selected details (hr=%s)',hr=>{
+ const reward={...tree.children[0]!.children[0]!.children[0]!,amountWei:3495105000000000n};
+ render(<DistributionExplorer tree={{...tree,children:[reward]}} hr={hr} busy={false} failed={false}/>);
+ const amount=hr?'0,0035':'0.0035';
+ const circle=screen.getByRole('button',{name:`#1 · Winner 1, ${amount} test MON, ${hr?'Preuzeto':'Claimed'}`});
+ expect(circle.querySelector('title')).toHaveTextContent(amount);
+ expect(circle.querySelectorAll('text')[1]).toHaveTextContent(amount);
+ fireEvent.click(circle);
+ expect(document.querySelector('aside strong')).toHaveTextContent(amount);
+ expect(document.body).not.toHaveTextContent('003495105');
+ expect(reward.amountWei).toBe(3495105000000000n);
+});
 it('expands pool, track, category and winner with keyboard and returns through breadcrumbs',()=>{render(<DistributionExplorer tree={tree} hr={false} busy={false} failed={false}/>);fireEvent.keyDown(screen.getByRole('button',{name:'Long, 1 test MON, Saved budget'}),{key:'Enter'});fireEvent.click(screen.getByRole('button',{name:'Female, 1 test MON, Saved budget'}));const winner=screen.getByRole('button',{name:'#1 · Winner 1, 1 test MON, Claimed'});expect(winner).toHaveAttribute('data-status','claimed');fireEvent.click(winner);expect(screen.getByText('public-reference')).toBeVisible();fireEvent.click(screen.getByRole('button',{name:'Reset allocation view'}));expect(screen.getByRole('button',{name:'Long, 1 test MON, Saved budget'})).toBeVisible();});
 
 it('keeps the whole pot and every parent circle visible when inspecting a reward',()=>{

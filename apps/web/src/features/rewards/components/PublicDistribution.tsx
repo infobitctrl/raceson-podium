@@ -5,7 +5,7 @@ import {useDistributionViewport} from '../model/useDistributionViewport';
 import {radialDistribution} from '../model/radialDistribution';
 import {publicDistributionTree, type DistributionNode} from '../model/publicDistribution';
 import {usePublicCampaignRewards, type PublicRewardCache, type PublicRewardAnchor} from '../model/usePublicCampaignRewards';
-import {publicAmount as setupAmount} from '../model/publicAmount';
+import {publicRewardAmount as setupAmount} from '../model/publicAmount';
 import {prizePercent} from '../model/prizeDisplay';
 import PublicRewardTable from './PublicRewardTable';
 import s from './PublicDistribution.module.css';
