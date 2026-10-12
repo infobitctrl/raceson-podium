@@ -5,9 +5,10 @@ export function rewardExplorerUrl(chainId: number, kind: "address" | "tx" | "blo
   return valid ? `https://testnet.monadvision.com/${kind}/${value}` : null;
 }
 
-/** Link only a confirmed public payment recipient, never a guessed/account wallet. */
-export function publicRewardWalletUrl(chainId: number, reward: {status?: string; recipientAddress?: string}) {
-  if (reward.status !== 'claimed' || !reward.recipientAddress || /^0x0{40}$/i.test(reward.recipientAddress)) return null;
-  const addressUrl = rewardExplorerUrl(chainId, 'address', reward.recipientAddress);
+/** Paid recipients and registered unpaid destinations retain distinct meanings. */
+export function publicRewardWalletUrl(chainId: number, reward: {status?: string; recipientAddress?: string; registeredAddress?: string}) {
+  const address=reward.status==='claimed'?reward.recipientAddress:reward.status==='unclaimed'?reward.registeredAddress:undefined;
+  if (!address || /^0x0{40}$/i.test(address)) return null;
+  const addressUrl = rewardExplorerUrl(chainId, 'address', address);
   return addressUrl ? `${addressUrl}?tab=Internal+Transaction` : null;
 }

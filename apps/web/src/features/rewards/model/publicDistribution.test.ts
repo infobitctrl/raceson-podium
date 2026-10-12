@@ -25,6 +25,21 @@ it('uses approved athlete and club display names and only confirmed testnet reci
  for(const recipientAddress of [undefined,'','0x'+'0'.repeat(40),'javascript:alert(1)',address+'?other=1'])expect(publicRewardWalletUrl(10143,{status:'claimed',recipientAddress})).toBeNull();
  expect(publicRewardWalletUrl(31337,{status:'claimed',recipientAddress:address})).toBeNull();
 });
+it('links registered unclaimed athlete and club names without changing status or using paid fields',()=>{
+ const registeredAddress='0x'+'12'.repeat(20),recipientAddress='0x'+'34'.repeat(20);
+ const url=`https://testnet.monadvision.com/address/${registeredAddress}?tab=Internal+Transaction`;
+ for(const kind of ['athlete','club'] as const){
+  const named={...row,status:'unclaimed' as const,kind,registeredAddress,display:{name:'Registered recipient',club:null,timeMs:null}};
+  const tree=publicDistributionTree({...campaign,chainId:10143},pot,[named],false);
+  expect(tree.children[0]!.children[0]!.children[0]).toMatchObject({label:'#1 · Registered recipient',walletUrl:url,status:'unclaimed',amountWei:40n,reference:row.id});
+ }
+ expect(publicRewardWalletUrl(10143,{status:'claimed',registeredAddress,recipientAddress})).toContain(recipientAddress);
+ expect(publicRewardWalletUrl(10143,{status:'claimed',registeredAddress})).toBeNull();
+ for(const status of ['planned','unknown'])expect(publicRewardWalletUrl(10143,{status,registeredAddress})).toBeNull();
+ for(const address of [undefined,'','0x'+'0'.repeat(40),'javascript:alert(1)',registeredAddress+'?other=1'])
+  expect(publicRewardWalletUrl(10143,{status:'unclaimed',registeredAddress:address})).toBeNull();
+ expect(publicRewardWalletUrl(31337,{status:'unclaimed',registeredAddress})).toBeNull();
+});
 it('sorts sporting names, positions and exact times with absent values last',()=>{
  const rows=[{...row,id:'a',number:1,display:{name:'Runner 10',club:null,timeMs:null},breakdown:[{category:'Distance',amountWei:'60',place:null}]},
  {...row,id:'b',number:2,display:{name:'Runner 2',club:'Club 2',timeMs:'1000000000000001'}},

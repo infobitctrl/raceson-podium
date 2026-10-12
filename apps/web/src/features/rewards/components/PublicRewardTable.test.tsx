@@ -21,6 +21,22 @@ it('links paid athlete and club names to their public recipients without guessin
  expect(screen.queryByRole('link',{name:'Unpaid athlete'})).not.toBeInTheDocument();
  expect(screen.queryByRole('link',{name:'Member club'})).not.toBeInTheDocument();
 });
+it('links registered unclaimed athletes and clubs while keeping status and walletless names unchanged',async()=>{
+ const address='0x'+'12'.repeat(20),treasury='0x'+'34'.repeat(20);
+ api.mockResolvedValue({...page,chainId:10143,total:3,rows:[
+  {...row(1),registeredAddress:address,display:{name:'Registered athlete',club:'Member club',timeMs:null}},
+  {...row(2),kind:'club',registeredAddress:treasury,display:{name:'Registered club',club:null,timeMs:null}},
+  {...row(3),display:{name:'Walletless athlete',club:null,timeMs:null}},
+ ]});
+ render(ui());const athlete=await screen.findByRole('link',{name:'Registered athlete'}),club=screen.getByRole('link',{name:'Registered club'});
+ for(const [link,wallet] of [[athlete,address],[club,treasury]] as const){
+  expect(link).toHaveAttribute('href',`https://testnet.monadvision.com/address/${wallet}?tab=Internal+Transaction`);
+  expect(link).toHaveAttribute('target','_blank');expect(link).toHaveAttribute('rel','noopener noreferrer');
+  expect(link.closest('tr')).toHaveTextContent('Unclaimed');expect(link.closest('tr')).toHaveTextContent('0.003');
+ }
+ expect(screen.queryByRole('link',{name:'Walletless athlete'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('link',{name:'Member club'})).not.toBeInTheDocument();
+});
 it.each([false,true])('rounds athlete and club rewards while sorting exact amounts (hr=%s)',async hr=>{
  const smaller={...row(2),amountWei:'3495104000000000'},larger={...row(1),amountWei:'3495105000000000'};
  api.mockResolvedValue({...page,total:3,rows:[smaller,larger,{...row(3),kind:'club',amountWei:'999995000000000000'}]});

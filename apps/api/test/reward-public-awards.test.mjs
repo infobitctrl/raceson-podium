@@ -59,6 +59,62 @@ test('a contradictory or invalid paid recipient fails closed before publication'
   await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scope,f.raw,query));
  }
 });
+test('unclaimed athlete and club wallets come from the versioned registry at the reward block',async()=>{
+ for(const version of [5,6])for(const kind of [0,1]){
+  const f=fixture(2,kind),read=f.reader.readContract,registry='0x'+'33'.repeat(20),registered='0x'+'22'.repeat(20);
+  const requests=[];
+  f.raw.awards[1].registeredAddress=address; // Raw saved fields have no authority.
+  f.reader.readContract=async args=>{
+   if(args.functionName!=='registrations')return read(args);
+   requests.push(args);assert.equal(args.address,registry);assert.equal(args.blockNumber,10n);
+   assert.deepEqual(args.args,[f.raw.awards[1].beneficiaryId]);
+   assert.equal(args.abi.find(a=>a.name==='registrations').outputs.length,version===6?4:3);
+   return version===6?[registered,kind,2n,kind===1?h(9):h(0)]:[registered,kind,2n];
+  };
+  const page=await publicAwardPage(f.reader,f.observed,{...scope,walletRegistry:{address:registry,version}},f.raw,query);
+  assert.equal(requests.length,1);assert.equal(f.reads(),2);
+  assert.equal(page.rows[0].recipientAddress,address);assert.equal(page.rows[0].registeredAddress,undefined);
+  assert.equal(page.rows[1].status,'unclaimed');assert.equal(page.rows[1].amountWei,'2');
+  assert.equal(page.rows[1].registeredAddress,registered);assert.equal(page.rows[1].recipientAddress,undefined);
+  assert.equal(JSON.stringify(page).includes('beneficiaryId'),false);
+  assert.equal(JSON.stringify(page).includes('nonce'),false);
+  for(const patch of [{registeredAddress:null},{registeredAddress:'javascript:alert(1)'},{registeredAddress:'0x'+'00'.repeat(20)},{status:'claimed'},{status:'planned'},{recipientAddress:registered}])
+   assert.throws(()=>decodePublicRewardPage({...page,rows:[page.rows[0],{...page.rows[1],...patch}]}));
+ }
+});
+test('unregistered rewards stay unlinked and planned rewards never read registration',async()=>{
+ const f=fixture(),read=f.reader.readContract,zero='0x'+'00'.repeat(20),registry='0x'+'33'.repeat(20);
+ let reads=0;
+ f.reader.readContract=async args=>{if(args.functionName!=='registrations')return read(args);reads++;return [zero,0,0n];};
+ const scoped={...scope,walletRegistry:{address:registry,version:5}};
+ const page=await publicAwardPage(f.reader,f.observed,scoped,f.raw,query);
+ assert.equal(reads,1);assert.equal(page.rows[1].registeredAddress,undefined);assert.equal(page.rows[1].status,'unclaimed');
+ f.observed.pots[0].state=1;
+ f.reader.readContract=async args=>args.functionName==='entitlements'?[h(0),0n,h(0),0n,zero,0,false,0]:read(args);
+ const planned=await publicAwardPage(f.reader,f.observed,scoped,f.raw,query);
+ assert.ok(planned.rows.every(r=>r.status==='planned'&&!r.registeredAddress));
+});
+test('invalid, mismatched or unavailable registry state cannot publish an unclaimed wallet',async()=>{
+ const registry='0x'+'33'.repeat(20);
+ for(const binding of [[address,1,1n],[address,0,0n],['0x'+'00'.repeat(20),0,1n],['invalid',0,1n],[registry,0,1n],[address,0,-1n],null]){
+  const f=fixture(),read=f.reader.readContract;
+  f.reader.readContract=async args=>{if(args.functionName!=='registrations')return read(args);if(binding===null)throw Error('registry offline');return binding;};
+  await assert.rejects(()=>publicAwardPage(f.reader,f.observed,{...scope,walletRegistry:{address:registry,version:5}},f.raw,query));
+ }
+ for(const walletRegistry of [{address:'not-an-address',version:5},{address:registry,version:4}]){
+  const f=fixture();await assert.rejects(()=>publicAwardPage(f.reader,f.observed,{...scope,walletRegistry},f.raw,query));
+ }
+});
+test('registration reads stay within the requested page and retain the final canonical check',async()=>{
+ const f=fixture(30),read=f.reader.readContract,registry='0x'+'33'.repeat(20),registered=[];
+ f.reader.readContract=async args=>{if(args.functionName!=='registrations')return read(args);registered.push(args.args[0]);assert.equal(args.blockNumber,10n);return [address,0,1n];};
+ const scoped={...scope,walletRegistry:{address:registry,version:5}};
+ const page=await publicAwardPage(f.reader,f.observed,scoped,f.raw,{...query,offset:25});
+ assert.equal(page.rows.length,5);assert.equal(registered.length,5);assert.equal(f.reads(),5);
+ assert.deepEqual(registered,f.raw.awards.slice(25).map(r=>r.beneficiaryId));
+ f.reader.getBlock=async()=>({hash:h(11),timestamp:100n});
+ await assert.rejects(()=>publicAwardPage(f.reader,f.observed,scoped,f.raw,{...query,offset:25}));
+});
 test('global numerical sorting and page bounds cap chain row reads at 25',async()=>{
  const f=fixture(30),p=await publicAwardPage(f.reader,f.observed,scope,f.raw,{offset:0,sort:'amount',direction:'desc'});
  assert.equal(p.total,30);assert.equal(p.rows.length,25);assert.equal(p.rows[0].amountWei,'30');assert.equal(f.reads(),25);

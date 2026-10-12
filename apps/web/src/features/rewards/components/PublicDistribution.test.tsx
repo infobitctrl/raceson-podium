@@ -19,6 +19,16 @@ it('links the visible winner name separately from circle selection and preserves
  const click=new MouseEvent('click',{bubbles:true,cancelable:true,detail:1});
  fireEvent(link,click);expect(click.defaultPrevented).toBe(true);
 });
+it('keeps an unclaimed winner selectable while its registered-wallet name is a separate link',()=>{
+ const walletUrl='https://testnet.monadvision.com/address/0x'+'12'.repeat(20)+'?tab=Internal+Transaction';
+ const winner={...tree.children[0]!.children[0]!.children[0]!,label:'#1 · Registered athlete',status:'unclaimed' as const,walletUrl};
+ render(<DistributionExplorer tree={{...tree,children:[winner]}} hr={false} busy={false} failed={false}/>);
+ const circle=screen.getByRole('button',{name:'#1 · Registered athlete, 1 test MON, Unclaimed'});
+ const link=screen.getByRole('link',{name:'#1 · Registered athlete · View recipient wallet (opens in a new tab)'});
+ expect(circle.contains(link)).toBe(false);expect(link).toHaveAttribute('href',walletUrl);
+ fireEvent.click(circle);expect(document.querySelector('aside')).toHaveTextContent('Unclaimed');
+ expect(screen.getByRole('link',{name:'#1 · Registered athlete',exact:true})).toHaveAttribute('href',walletUrl);
+});
 it.each([false,true])('rounds chart labels, accessible names and selected details (hr=%s)',hr=>{
  const reward={...tree.children[0]!.children[0]!.children[0]!,amountWei:3495105000000000n};
  render(<DistributionExplorer tree={{...tree,children:[reward]}} hr={hr} busy={false} failed={false}/>);
