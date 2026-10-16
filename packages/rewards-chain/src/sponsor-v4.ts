@@ -1,3 +1,4 @@
+import {matchesBytecodeHash} from './bytecode-hash.js';
 import {decodeSponsorExecutionPlan, type SponsorExecutionPlan} from "@raceson/domain/rewards/sponsor-execution";
 import {TransactionNotFoundError, TransactionReceiptNotFoundError, decodeEventLog, encodeAbiParameters, encodeDeployData, encodeFunctionData, getContractAddress, getCreate2Address, hashDomain, keccak256, padHex, parseAbi, parseAbiParameters, stringToHex, toHex, type Address, type Hex, type PublicClient} from "viem";
 import {sponsorProgrammeBuild, sponsorCampaignBuild} from "./sponsor-v4-build.js";
@@ -40,7 +41,7 @@ export function sponsorContractConfiguration(input: SponsorExecutionPlan) {
 }
 export function sponsorDeploymentData(plan: SponsorExecutionPlan): Hex {
   const p=decodeSponsorExecutionPlan(plan),build=p.version===6?sponsorProgrammeBuildV6:p.version===5?sponsorProgrammeBuildV5:sponsorProgrammeBuild;
-  check(keccak256(build.bytecode) === build.creationCodeHash);
+  check(matchesBytecodeHash(build.bytecode, build.creationCodeHash));
   return encodeDeployData({abi: parseAbi([`constructor(${configTupleFor(p)} c)`]), bytecode: build.bytecode, args: [sponsorContractConfiguration(p)]});
 }
 export const sponsorFactoryAbi = parseAbi([`function deploy(${configTuple} c) returns(address programme)`,
@@ -52,7 +53,7 @@ export const sponsorFactoryProgrammeAddress = (plan:SponsorExecutionPlan,factory
 export async function verifySponsorFactory(reader:Pick<PublicClient,"getChainId"|"getCode">,factory:Address,chainId=10143,blockNumber?:bigint,version:4|5|6=4){
  check(await reader.getChainId()===chainId);
  const code=await reader.getCode({address:factory,...(blockNumber!==undefined?{blockNumber}:{blockTag:"finalized" as const})});
- check(code&&keccak256(code)===(version===6?sponsorFactoryBuildV6.runtimeTemplateHash:version===5?sponsorFactoryBuildV5.runtimeTemplateHash:sponsorFactoryBuild.runtimeHash));
+ check(code&&matchesBytecodeHash(code,version===6?sponsorFactoryBuildV6.runtimeTemplateHash:version===5?sponsorFactoryBuildV5.runtimeTemplateHash:sponsorFactoryBuild.runtimeHash));
 }
 export const sponsorFundingData = () => encodeFunctionData({abi: sponsorProgrammeAbi, functionName: "fundProgramme"});
 
@@ -66,7 +67,7 @@ function runtime(build: {runtimeBytes: number; runtimeTemplateHash: Hex; offsets
       template = template.slice(0, at) + "0".repeat(64) + template.slice(at + 64);
     }
   }
-  check(keccak256(template as Hex) === build.runtimeTemplateHash);
+  check(matchesBytecodeHash(template as Hex, build.runtimeTemplateHash));
 }
 const word = (v: bigint | number | string): Hex => typeof v === "string" ? padHex(v as Hex) : toHex(v, {size: 32});
 const same = (a: string | null | undefined, b: string) => a?.toLowerCase() === b.toLowerCase();
